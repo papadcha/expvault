@@ -466,6 +466,7 @@ body.electron .main    { padding-top: 60px; }
         <button class="btn btn-danger" onclick="doExport('pdf')">📄 Εξαγωγή PDF (Νόμιμη Μορφή)</button>
         <button class="btn btn-success" onclick="doExport('excel')">📊 Εξαγωγή Excel</button>
       </div>
+      <div id="export-msg" class="mt-8"></div>
     </div>
   </div>
 
@@ -1038,6 +1039,8 @@ async function doExport(fmt) {
   const origText = btn.textContent;
   btn.textContent = '⏳ Παραγωγή...';
   btn.disabled = true;
+  const msgEl = document.getElementById('export-msg');
+  msgEl.innerHTML = '';
   try {
     const yl = document.getElementById('exp-yliko').value;
     const ap = document.getElementById('exp-apo').value;
@@ -1052,9 +1055,9 @@ async function doExport(fmt) {
       yliko_label: 'Όλα', period_label: `${ap||'—'} έως ${eo||'—'}`,
       out_path: savePath
     });
-    alert(`✅ Αποθηκεύτηκε: ${savePath}`);
+    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${savePath}</div>`;
   } catch(e) {
-    alert('Σφάλμα εξαγωγής: ' + e.message);
+    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${e.message}</div>`;
   } finally {
     btn.textContent = origText;
     btn.disabled = false;
