@@ -975,7 +975,7 @@ async function submitPdfEntries() {
   if (promName) {
     let p = allProm.find(x=>x.onoma.toLowerCase()===promName.toLowerCase());
     if (!p) {
-      await py('add_promitheftis', {onoma: promName});
+      try { await py('add_promitheftis', {onoma: promName}); } catch(e) {}
       allProm = await py('get_promitheftes');
       p = allProm.find(x=>x.onoma.toLowerCase()===promName.toLowerCase());
     }
@@ -986,7 +986,7 @@ async function submitPdfEntries() {
   if (adeiaNum) {
     let a = allAdeies.find(x=>x.arithmos_adeias===adeiaNum);
     if (!a) {
-      await py('add_adeia', {arithmos_adeias: adeiaNum});
+      try { await py('add_adeia', {arithmos_adeias: adeiaNum}); } catch(e) {}
       allAdeies = await py('get_adeies');
       a = allAdeies.find(x=>x.arithmos_adeias===adeiaNum);
     }
@@ -1001,12 +1001,11 @@ async function submitPdfEntries() {
     if (!onoma || isNaN(pos)) continue;
     let yliko = allYlika.find(y=>y.onoma===onoma);
     if (!yliko) {
-      try {
-        await py('add_yliko', {onoma, monada_metrisis:mon, paratirishis:'Αυτόματη εισαγωγή PDF'});
-        allYlika = await py('get_ylika');
-        yliko = allYlika.find(y=>y.onoma===onoma);
-      } catch(e) { errors.push(onoma+': '+e.message); continue; }
+      try { await py('add_yliko', {onoma, monada_metrisis:mon, paratirishis:'Αυτόματη εισαγωγή PDF'}); } catch(e) {}
+      allYlika = await py('get_ylika');
+      yliko = allYlika.find(y=>y.onoma===onoma);
     }
+    if (!yliko) { errors.push(onoma+': δεν βρέθηκε'); continue; }
     try {
       await py('add_kinisi', {imerominia, tipos:'ΕΙΣΑΓΩΓΗ', yliko_id:yliko.id,
         posotita:pos, arithmos_parstatikos:parstatiko,
