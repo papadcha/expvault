@@ -1,36 +1,105 @@
-# Βιβλίο Εκρηκτικών Υλών — Οδηγίες Εγκατάστασης
+# Βιβλίο Εκρηκτικών Υλών — Electron + Flask
 
-## Απαιτήσεις
+## Δομή Project
+
 ```
+vivlio-ekrktikon/
+├── main.js          ← Electron main process
+├── preload.js       ← Electron preload (window controls)
+├── package.json     ← npm config + electron-builder
+├── assets/
+│   ├── icon.png     ← 512x512 PNG (Linux + fallback)
+│   ├── icon.ico     ← Windows icon
+│   └── icon.icns    ← macOS icon
+└── backend/         ← Ο φάκελος με τον Flask κώδικα
+    ├── app.py
+    ├── database.py
+    ├── pdf_parser.py
+    ├── exports.py
+    ├── templates/
+    │   └── index.html
+    └── venv/        ← Python virtual environment (δεν ανεβαίνει στο git)
+```
+
+## Εγκατάσταση (Development)
+
+### 1. Python backend
+```bash
+cd backend
+python3 -m venv venv
+
+# Linux / macOS:
+source venv/bin/activate
+# Windows:
+venv\Scripts\activate
+
 pip install flask pypdf openpyxl reportlab
 ```
 
-## Εκτέλεση
+### 2. Node / Electron
 ```bash
-python app.py
+# Στον root φάκελο:
+npm install
 ```
-Μετά άνοιξε στο browser: http://localhost:5000
 
-Για απομακρυσμένη πρόσβαση (άλλος χρήστης στο δίκτυο):
-http://<IP_ΥΠΟΛΟΓΙΣΤΗ>:5000
+### 3. Εκτέλεση
+```bash
+npm start
+```
 
-## Αρχεία
-- `app.py`         — Flask server, όλα τα endpoints
-- `database.py`    — Βάση δεδομένων (SQLite), δημιουργείται αυτόματα
-- `pdf_parser.py`  — Γενικός PDF parser
-- `exports.py`     — Εξαγωγή σε PDF (νόμιμη μορφή) και Excel
-- `templates/`     — HTML interface
+Το Electron ξεκινά → spawns το Flask → φορτώνει http://localhost:5000
 
-## Δομή Βάσης
-- **ylika**: Είδη εκρηκτικών
-- **promitheftes**: Προμηθευτές
-- **adeies**: Άδειες αγοράς
-- **kiniseis**: Κινήσεις (εισαγωγές/εξαγωγές) με αύξοντα αριθμό
+---
 
-## Λειτουργίες
-1. **Βιβλίο Κινήσεων** — Καταχώρηση αγορών (εισαγωγών) και αναλώσεων
-2. **Αποθέματα** — Τρέχον υπόλοιπο ανά υλικό
-3. **PDF Import** — Εισαγωγή τιμολογίου, εμφάνιση κειμένου, χειροκίνητη συμπλήρωση
-4. **Εξαγωγή PDF** — Νόμιμη μορφή βιβλίου (landscape A4)
-5. **Εξαγωγή Excel** — Πλήρες βιβλίο με φόρμουλες
-6. **Φίλτρα** — Ανά υλικό, τύπο, ημερομηνία
+## Build (Παραγωγή)
+
+### Windows (.exe installer)
+```bash
+npm run dist:win
+```
+
+### Linux (.AppImage)
+```bash
+npm run dist:linux
+```
+
+### macOS (.dmg)
+```bash
+npm run dist:mac
+```
+
+Τα αρχεία βγαίνουν στον φάκελο `dist/`.
+
+> **Σημείωση για packaging:** Το electron-builder θα πρέπει να συμπεριλάβει
+> και το venv ή να χρησιμοποιήσεις PyInstaller για να φτιάξεις ένα
+> standalone Python executable. Δες παρακάτω.
+
+---
+
+## Packaging Python (για standalone .exe / AppImage)
+
+Αντί να απαιτείς Python εγκατεστημένη στον υπολογιστή του χρήστη,
+μπόρεσε να χρησιμοποιήσεις PyInstaller:
+
+```bash
+cd backend
+pip install pyinstaller
+pyinstaller --onefile --name flask_backend app.py
+```
+
+Μετά αντικατέστησε στο `main.js` το `getPythonPath()` ώστε να δείχνει
+στο `backend/dist/flask_backend` (ή `.exe` σε Windows).
+
+---
+
+## .gitignore
+
+```
+node_modules/
+dist/
+backend/venv/
+backend/*.db
+backend/__pycache__/
+*.pyc
+*.log
+```

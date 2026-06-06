@@ -1,0 +1,51 @@
+{
+  "name": "expvault",
+  "version": "1.0.0",
+  "description": "Βιβλίο Εκρηκτικών Υλών",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "dist:mac": "electron-builder --mac"
+  },
+  "build": {
+    "appId": "gr.latomeio.expvault",
+    "productName": "ExpVault",
+    "files": [
+      "main.js",
+      "preload.js",
+      "backend/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend",
+        "to": "backend"
+      }
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerLanguages": [
+        "el_GR",
+        "en_US"
+      ]
+    }
+  },
+  "devDependencies": {
+    "electron-builder": "^26.15.0"
+  }
+}
