@@ -111,8 +111,8 @@ function setupIPC() {
     const filters = ext === 'pdf'
       ? [{ name: 'PDF', extensions: ['pdf'] }]
       : [{ name: 'Excel', extensions: ['xlsx'] }];
-    const { canceled, filePath } = await dialog.showSaveDialog({
-      defaultPath: defaultName, filters
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultName, filters, properties: ['createDirectory']
     });
     return canceled ? null : filePath;
   });
