@@ -31,6 +31,7 @@ def parse_pdf(filepath: str) -> dict:
         'arithmos_parstatikos': '',
         'promitheftis': '',
         'adeia': '',
+        'ekdousa_archi': '',
         'grammes': []
     }
 
@@ -56,20 +57,17 @@ def parse_pdf(filepath: str) -> dict:
             suggested['arithmos_parstatikos'] = m.group(1)
             break
 
-    # ── Άδεια ─────────────────────────────────────────────────────────────────
-    # Ψάξε "40923" μετά το "Αρ. Αδείας:" — μπορεί να είναι πολλές γραμμές μετά
-    adeia_label_idx = None
+    # ── Άδεια + Εκδούσα Αρχή ─────────────────────────────────────────────────
+    # Το αρ. άδειας είναι στη γραμμή πριν το "Δ.Α. ..."
+    # Το "Δ.Α. ΧΑΛΚΙΔΙΚΗΣ" είναι η εκδούσα αρχή
     for i, line in enumerate(lines):
-        if re.search(r'Αρ\.\s*Αδείας', line, re.IGNORECASE):
-            adeia_label_idx = i
+        if re.search(r'^Δ\.Α\.\s+\w+', line.strip(), re.IGNORECASE):
+            suggested['ekdousa_archi'] = line.strip()
+            if i > 0:
+                m = re.match(r'^\s*(\d{4,6})\s*$', lines[i-1])
+                if m:
+                    suggested['adeia'] = m.group(1)
             break
-    if adeia_label_idx is not None:
-        # Ψάξε στις επόμενες 60 γραμμές για 5ψήφιο αριθμό (τυπικός αρ. άδειας)
-        for line in lines[adeia_label_idx+1 : adeia_label_idx+60]:
-            m = re.match(r'^\s*(\d{5})\s*$', line)
-            if m:
-                suggested['adeia'] = m.group(1)
-                break
 
     # ── Προμηθευτής ───────────────────────────────────────────────────────────
     known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']

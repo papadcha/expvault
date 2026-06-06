@@ -431,7 +431,11 @@ body.electron .main    { padding-top: 60px; }
           </div>
           <div class="form-row cols-2">
             <div><label>Άδεια (αριθμός)</label><input type="text" id="pdf-adeia-txt" placeholder="π.χ. 40923"></div>
+            <div><label>Εκδούσα Αρχή</label><input type="text" id="pdf-ekdousa-txt" placeholder="π.χ. Δ.Α. ΧΑΛΚΙΔΙΚΗΣ"></div>
+          </div>
+          <div class="form-row cols-2">
             <div><label>Προμηθευτής</label><input type="text" id="pdf-prom-txt" placeholder="Όνομα εταιρείας"></div>
+            <div></div>
           </div>
           <div id="pdf-grammes-container"></div>
           <div class="form-actions">
@@ -940,6 +944,7 @@ async function parsePdf() {
     }
     document.getElementById('pdf-parstatiko').value = s.arithmos_parstatikos||'';
     document.getElementById('pdf-adeia-txt').value  = s.adeia||'';
+    document.getElementById('pdf-ekdousa-txt').value = s.ekdousa_archi||'';
     document.getElementById('pdf-prom-txt').value   = s.promitheftis||'';
     const container = document.getElementById('pdf-grammes-container');
     if (s.grammes.length) {
@@ -966,7 +971,8 @@ async function parsePdf() {
 async function submitPdfEntries() {
   const imerominia = document.getElementById('pdf-imerominia').value;
   const parstatiko = document.getElementById('pdf-parstatiko').value;
-  const adeiaNum   = document.getElementById('pdf-adeia-txt').value.trim();
+  const adeiaNum    = document.getElementById('pdf-adeia-txt').value.trim();
+  const ekdousaArchi = document.getElementById('pdf-ekdousa-txt').value.trim();
   const promName   = document.getElementById('pdf-prom-txt').value.trim();
   if (!imerominia) { alert('Συμπληρώστε ημερομηνία.'); return; }
   if (!window.pdfGrammesCount) { alert('Δεν υπάρχουν γραμμές υλικών.'); return; }
@@ -986,7 +992,7 @@ async function submitPdfEntries() {
   if (adeiaNum) {
     let a = allAdeies.find(x=>x.arithmos_adeias===adeiaNum);
     if (!a) {
-      try { await py('add_adeia', {arithmos_adeias: adeiaNum}); } catch(e) {}
+      try { await py('add_adeia', {arithmos_adeias: adeiaNum, perigrafi: ekdousaArchi||null}); } catch(e) {}
       allAdeies = await py('get_adeies');
       a = allAdeies.find(x=>x.arithmos_adeias===adeiaNum);
     }
