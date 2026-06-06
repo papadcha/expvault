@@ -10,7 +10,8 @@ from collections import OrderedDict
 
 def find_font(names):
     search_dirs = [
-        '/usr/share/fonts', '/usr/local/share/fonts',
+        '/usr/share/fonts', '/usr/share/fonts/TTF',
+        '/usr/local/share/fonts',
         os.path.expanduser('~/.fonts'), os.path.expanduser('~/.local/share/fonts'),
         os.path.expanduser('~/.cargo'),
     ]
@@ -19,10 +20,14 @@ def find_font(names):
             matches = glob.glob(f'{d}/**/{name}', recursive=True)
             if matches:
                 return matches[0]
+            # Έλεγξε και απευθείας στο directory
+            direct = os.path.join(d, name)
+            if os.path.exists(direct):
+                return direct
     return None
 
-FONT_REGULAR = find_font(['JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf', 'FreeMono.ttf'])
-FONT_BOLD    = find_font(['JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf', 'FreeMonoBold.ttf'])
+FONT_REGULAR = find_font(['Iosevka-Regular.ttc', 'JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf', 'FreeMono.ttf'])
+FONT_BOLD    = find_font(['Iosevka-Bold.ttc', 'JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf', 'FreeMonoBold.ttf'])
 FONT_SANS_R  = find_font(['LiberationSans-Regular.ttf', 'FreeSans.ttf'])
 FONT_SANS_B  = find_font(['LiberationSans-Bold.ttf', 'FreeSansBold.ttf'])
 
