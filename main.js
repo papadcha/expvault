@@ -115,44 +115,6 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// ── Splash / loading screen ───────────────────────────────────────────────────
-function createSplash() {
-  const splash = new BrowserWindow({
-    width: 420,
-    height: 260,
-    frame: false,
-    alwaysOnTop: true,
-    backgroundColor: '#0f2040',
-    webPreferences: { contextIsolation: true }
-  });
-
-  splash.loadURL(`data:text/html,
-    <html>
-    <head><meta charset="UTF-8">
-    <style>
-      body { margin:0; background:#0f2040; display:flex; flex-direction:column;
-             align-items:center; justify-content:center; height:100vh;
-             font-family: 'Segoe UI', sans-serif; color:white; }
-      .icon { font-size:52px; margin-bottom:16px; }
-      h1 { font-size:16px; font-weight:600; letter-spacing:2px;
-           color:#e8a020; text-transform:uppercase; margin:0 0 8px; }
-      p  { font-size:12px; color:rgba(255,255,255,0.5); margin:0 0 28px; }
-      .bar-wrap { width:220px; height:4px; background:rgba(255,255,255,0.1); border-radius:2px; }
-      .bar { height:4px; background:#e8a020; border-radius:2px;
-             animation: load 2s ease-in-out infinite; }
-      @keyframes load { 0%{width:0} 60%{width:80%} 100%{width:100%} }
-    </style></head>
-    <body>
-      <div class="icon">💣</div>
-      <h1>Βιβλίο Εκρηκτικών Υλών</h1>
-      <p>Εκκίνηση υπηρεσιών...</p>
-      <div class="bar-wrap"><div class="bar"></div></div>
-    </body></html>
-  `);
-
-  return splash;
-}
-
 // ── IPC: Window controls ──────────────────────────────────────────────────────
 ipcMain.on('window-minimize', () => mainWindow?.minimize());
 ipcMain.on('window-maximize', () => {
@@ -163,8 +125,6 @@ ipcMain.on('window-close', () => mainWindow?.close());
 
 // ── App lifecycle ─────────────────────────────────────────────────────────────
 app.whenReady().then(async () => {
-  const splash = createSplash();
-
   // Ctrl+Q / Cmd+Q για έξοδο
   globalShortcut.register('CommandOrControl+Q', () => app.quit());
 
@@ -172,9 +132,7 @@ app.whenReady().then(async () => {
     startFlask();
     await waitForFlask();
     createWindow();
-    splash.close();
   } catch (err) {
-    splash.close();
     dialog.showErrorBox(
       'Σφάλμα Εκκίνησης',
       `Δεν ήταν δυνατή η εκκίνηση του backend:\n${err.message}\n\n` +
@@ -189,15 +147,16 @@ app.on('will-quit', () => {
 });
 
 app.on('window-all-closed', () => {
+  globalShortcut.unregisterAll();
   if (flaskProcess) {
     console.log('[Flask] Terminating...');
     flaskProcess.kill('SIGTERM');
-    // Windows fallback
     if (os.platform() === 'win32') {
       spawn('taskkill', ['/pid', flaskProcess.pid, '/f', '/t']);
     }
   }
-  app.quit();
+  // Μικρή καθυστέρηση για να κλείσει καθαρά το Flask
+  setTimeout(() => app.quit(), 300);
 });
 
 app.on('activate', () => {
