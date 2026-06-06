@@ -178,6 +178,31 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; }
 
+/* ── ELECTRON TITLEBAR ── */
+#titlebar {
+  position: fixed; top: 0; left: 0; right: 0; height: 36px;
+  background: var(--navy); border-bottom: 1px solid var(--accent);
+  display: flex; align-items: center; justify-content: space-between;
+  z-index: 1000; -webkit-app-region: drag; user-select: none;
+}
+#titlebar-drag {
+  padding: 0 16px; font-size: 12px; font-weight: 600;
+  color: var(--accent); letter-spacing: 1px;
+}
+#titlebar-btns {
+  display: flex; -webkit-app-region: no-drag;
+}
+#titlebar-btns button {
+  width: 46px; height: 36px; border: none; background: transparent;
+  color: rgba(255,255,255,0.6); font-size: 14px; cursor: pointer;
+  transition: background 0.15s; display: flex; align-items: center; justify-content: center;
+}
+#titlebar-btns button:hover { background: rgba(255,255,255,0.1); color: white; }
+#tb-close:hover { background: #c0392b !important; color: white !important; }
+
+body.electron .sidebar { top: 36px; }
+body.electron .main    { padding-top: 60px; }
+
 .text-right { text-align: right; }
 .text-center { text-align: center; }
 .mt-8 { margin-top: 8px; }
@@ -185,6 +210,16 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 </style>
 </head>
 <body>
+
+<!-- CUSTOM TITLEBAR (μόνο σε Electron) -->
+<div id="titlebar" style="display:none">
+  <div id="titlebar-drag">💣 Βιβλίο Εκρηκτικών Υλών</div>
+  <div id="titlebar-btns">
+    <button onclick="if(window.electronAPI)window.electronAPI.minimize()" title="Ελαχιστοποίηση">─</button>
+    <button onclick="if(window.electronAPI)window.electronAPI.maximize()" title="Μεγιστοποίηση">□</button>
+    <button id="tb-close" onclick="if(window.electronAPI)window.electronAPI.close()" title="Κλείσιμο">✕</button>
+  </div>
+</div>
 
 <!-- SIDEBAR -->
 <nav class="sidebar">
@@ -221,6 +256,12 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
     </div>
     <div class="nav-item" data-page="adeies">
       <span class="nav-icon">📜</span> Άδειες
+    </div>
+  </div>
+  <!-- Κουμπί εξόδου στο κάτω μέρος του sidebar -->
+  <div id="sidebar-exit" style="display:none; padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+    <div class="nav-item" onclick="if(window.electronAPI)window.electronAPI.close()" style="color:#e57373; border-left-color: transparent;">
+      <span class="nav-icon">⏻</span> Έξοδος
     </div>
   </div>
 </nav>
@@ -1033,6 +1074,13 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
 
 function closeConfirm() {
   document.getElementById('confirm-modal').classList.remove('open');
+}
+
+// ── ELECTRON DETECTION ───────────────────────────────────────────────────────
+if (window.electronAPI) {
+  document.getElementById('titlebar').style.display = 'flex';
+  document.getElementById('sidebar-exit').style.display = 'block';
+  document.body.classList.add('electron');
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
