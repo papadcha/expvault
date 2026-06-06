@@ -14,7 +14,7 @@ echo "📁 Αντιγραφή αρχείων..."
 [ -f "$DOWNLOADS/database.py"   ] && cp "$DOWNLOADS/database.py"    "$REPO/backend/database.py"              && echo "  ✓ database.py"
 [ -f "$DOWNLOADS/exports.py"    ] && cp "$DOWNLOADS/exports.py"     "$REPO/backend/exports.py"               && echo "  ✓ exports.py"
 [ -f "$DOWNLOADS/pdf_parser.py" ] && cp "$DOWNLOADS/pdf_parser.py"  "$REPO/backend/pdf_parser.py"            && echo "  ✓ pdf_parser.py"
-[ -f "$DOWNLOADS/index.html"    ] && cp "$DOWNLOADS/index.html"     "$REPO/backend/templates/index.html"     && echo "  ✓ index.html"
+[ -f "$DOWNLOADS/index.html" ] && cp "$DOWNLOADS/index.html" "$REPO/index.html" && echo "  ✓ index.html"
 [ -f "$DOWNLOADS/package.json"  ] && cp "$DOWNLOADS/package.json"   "$REPO/package.json"                     && echo "  ✓ package.json"
 [ -f "$DOWNLOADS/README.md"     ] && cp "$DOWNLOADS/README.md"      "$REPO/README.md"                        && echo "  ✓ README.md"
 

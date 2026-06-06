@@ -260,7 +260,7 @@ body.electron .main    { padding-top: 60px; }
   </div>
   <!-- Κουμπί εξόδου στο κάτω μέρος του sidebar -->
   <div id="sidebar-exit" style="display:none; padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-    <div class="nav-item" onclick="if(window.electronAPI)window.electronAPI.close()" style="color:#e57373; border-left-color: transparent;">
+    <div class="nav-item-exit" onclick="if(window.api)window.api.close()" style="display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;color:#e57373;font-size:13px;transition:all 0.15s;">
       <span class="nav-icon">⏻</span> Έξοδος
     </div>
   </div>

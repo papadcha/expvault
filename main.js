@@ -121,7 +121,7 @@ function setupIPC() {
   ipcMain.on('window-maximize', () => {
     mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize();
   });
-  ipcMain.on('window-close', () => mainWindow?.close());
+  ipcMain.on('window-close', () => app.quit());
 }
 
 function createWindow() {
@@ -140,9 +140,11 @@ function createWindow() {
     show: false,
   });
 
-  mainWindow.loadFile(path.join(__dirname, 'backend', 'index.html'));
-  mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('closed', () => { mainWindow = null; });
+mainWindow.loadFile(path.join(__dirname, 'index.html'));
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.webContents.openDevTools(); // ← πρόσθεσε αυτό
+  });
 }
 
 app.whenReady().then(() => {
