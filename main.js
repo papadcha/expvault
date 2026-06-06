@@ -86,7 +86,7 @@ function callPython(cmd, payload = {}) {
         delete pendingRequests[id];
         reject(new Error(`Timeout: ${cmd}`));
       }
-    }, 30000);
+    }, 120000);
   });
 }
 
@@ -121,7 +121,7 @@ function setupIPC() {
   ipcMain.on('window-maximize', () => {
     mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize();
   });
-  ipcMain.on('window-close', () => app.quit());
+  ipcMain.on('window-close', () => mainWindow?.close());
 }
 
 function createWindow() {
@@ -140,10 +140,9 @@ function createWindow() {
     show: false,
   });
 
-mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-  });
+  mainWindow.loadFile(path.join(__dirname, 'backend', 'index.html'));
+  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
 app.whenReady().then(() => {

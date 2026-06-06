@@ -1034,14 +1034,18 @@ async function loadExportDropdowns() {
 }
 
 async function doExport(fmt) {
-  const yl = document.getElementById('exp-yliko').value;
-  const ap = document.getElementById('exp-apo').value;
-  const eo = document.getElementById('exp-eos').value;
-  const savePath = await window.api.saveFile({
-    defaultName: `vivlio_ekrktikon.${fmt}`, ext: fmt
-  });
-  if (!savePath) return;
+  const btn = event.target;
+  const origText = btn.textContent;
+  btn.textContent = '⏳ Παραγωγή...';
+  btn.disabled = true;
   try {
+    const yl = document.getElementById('exp-yliko').value;
+    const ap = document.getElementById('exp-apo').value;
+    const eo = document.getElementById('exp-eos').value;
+    const savePath = await window.api.saveFile({
+      defaultName: `vivlio_ekrktikon.${fmt}`, ext: fmt
+    });
+    if (!savePath) return;
     await py(`export_${fmt}`, {
       yliko_id: yl ? parseInt(yl) : null,
       apo: ap || null, eos: eo || null,
@@ -1049,7 +1053,12 @@ async function doExport(fmt) {
       out_path: savePath
     });
     alert(`✅ Αποθηκεύτηκε: ${savePath}`);
-  } catch(e) { alert('Σφάλμα εξαγωγής: ' + e.message); }
+  } catch(e) {
+    alert('Σφάλμα εξαγωγής: ' + e.message);
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
 }
 
 // ── CONFIRM DELETE ────────────────────────────────────────────────────────────
