@@ -7,18 +7,35 @@ import os
 from datetime import datetime
 from collections import defaultdict, OrderedDict
 
-FONT_DIR     = '/usr/share/fonts/truetype/liberation'
-FONT_REGULAR = os.path.join(FONT_DIR, 'LiberationSans-Regular.ttf')
-FONT_BOLD    = os.path.join(FONT_DIR, 'LiberationSans-Bold.ttf')
+def find_font(names):
+    """Ψάχνει για TTF font σε κοινά paths."""
+    import glob
+    search_dirs = [
+        '/usr/share/fonts',
+        '/usr/local/share/fonts',
+        os.path.expanduser('~/.fonts'),
+        os.path.expanduser('~/.local/share/fonts'),
+    ]
+    for name in names:
+        for d in search_dirs:
+            matches = glob.glob(f'{d}/**/{name}', recursive=True)
+            if matches:
+                return matches[0]
+    return None
+
+FONT_REGULAR = find_font(['LiberationSans-Regular.ttf', 'FreeSans.ttf', 'DejaVuSans.ttf'])
+FONT_BOLD    = find_font(['LiberationSans-Bold.ttf', 'FreeSansBold.ttf', 'DejaVuSans-Bold.ttf'])
 
 def register_fonts():
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     try:
-        pdfmetrics.getFont('LiberationSans')
+        pdfmetrics.getFont('GreekFont')
     except:
-        pdfmetrics.registerFont(TTFont('LiberationSans',      FONT_REGULAR))
-        pdfmetrics.registerFont(TTFont('LiberationSans-Bold', FONT_BOLD))
+        if FONT_REGULAR:
+            pdfmetrics.registerFont(TTFont('GreekFont',      FONT_REGULAR))
+            pdfmetrics.registerFont(TTFont('GreekFont-Bold', FONT_BOLD or FONT_REGULAR))
+        # Fallback σε Helvetica αν δεν βρεθεί font
 
 
 def build_rows(kiniseis):
@@ -76,8 +93,8 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from reportlab.lib.enums import TA_CENTER
 
     register_fonts()
-    F  = 'LiberationSans'
-    FB = 'LiberationSans-Bold'
+    F  = 'GreekFont'      if FONT_REGULAR else 'Helvetica'
+    FB = 'GreekFont-Bold' if FONT_BOLD    else 'Helvetica-Bold'
 
     ylika_order, rows = build_rows(kiniseis)
 
