@@ -1045,8 +1045,9 @@ async function doExport(fmt) {
     const yl = document.getElementById('exp-yliko').value;
     const ap = document.getElementById('exp-apo').value;
     const eo = document.getElementById('exp-eos').value;
+    const ext = fmt === 'excel' ? 'xlsx' : fmt;
     const savePath = await window.api.saveFile({
-      defaultName: `vivlio_ekrktikon.${fmt}`, ext: fmt
+      defaultName: `vivlio_ekrktikon.${ext}`, ext
     });
     if (!savePath) return;
     await py(`export_${fmt}`, {
