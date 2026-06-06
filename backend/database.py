@@ -2,7 +2,7 @@ import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
 
-DB_NAME = 'vivlio_ekrktikon.db'
+DB_NAME = 'expvault.db'
 
 @contextmanager
 def get_db():
