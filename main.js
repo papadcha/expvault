@@ -108,13 +108,8 @@ function setupIPC() {
   });
 
   ipcMain.handle('save-file-dialog', async (event, { defaultName, ext }) => {
-    const filters = ext === 'pdf'
-      ? [{ name: 'PDF', extensions: ['pdf'] }]
-      : [{ name: 'Excel', extensions: ['xlsx'] }];
-    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
-      defaultPath: defaultName, filters, properties: ['createDirectory']
-    });
-    return canceled ? null : filePath;
+    const downloadsPath = app.getPath('downloads');
+    return require('path').join(downloadsPath, defaultName);
   });
 
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
