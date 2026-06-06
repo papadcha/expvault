@@ -1,99 +1,134 @@
 const { app, BrowserWindow, dialog, ipcMain, globalShortcut } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
-const http = require('http');
 const os = require('os');
+const fs = require('fs');
 
-const FLASK_PORT = 5000;
 let mainWindow = null;
-let flaskProcess = null;
+let pythonProcess = null;
+let pendingRequests = {};
+let reqCounter = 0;
+let bridgeReady = false;
+let queuedMessages = [];
 
-// ── Εύρεση Python executable ──────────────────────────────────────────────────
 function getPythonPath() {
-  // Σε packaged app: χρησιμοποίησε bundled python αν υπάρχει
-  const resourcesPath = process.resourcesPath || path.join(__dirname);
-  const bundledPython = path.join(resourcesPath, 'backend', 'venv',
-    os.platform() === 'win32' ? 'Scripts/python.exe' : 'bin/python'
+  const backendDir = getBackendPath();
+  const venvPython = path.join(backendDir, 'venv',
+    os.platform() === 'win32' ? 'Scripts/python.exe' : 'bin/python3'
   );
-
-  const fs = require('fs');
-  if (fs.existsSync(bundledPython)) return bundledPython;
-
-  // Fallback: system python
-  if (os.platform() === 'win32') return 'python';
-  return 'python3';
+  if (fs.existsSync(venvPython)) return venvPython;
+  return os.platform() === 'win32' ? 'python' : 'python3';
 }
 
-// ── Εύρεση backend path ───────────────────────────────────────────────────────
 function getBackendPath() {
-  // app.isPackaged είναι true και με system electron — δεν είναι αξιόπιστο
-  // Χρησιμοποίησε ELECTRON_DEV env variable ή έλεγξε αν υπάρχει το αρχείο
   const devPath = path.join(__dirname, 'backend');
-  const fs = require('fs');
-  if (fs.existsSync(path.join(devPath, 'app.py'))) {
-    return devPath;  // Development: βρήκε το backend δίπλα στο main.js
-  }
-  return path.join(process.resourcesPath, 'backend');  // Packaged
+  if (fs.existsSync(path.join(devPath, 'bridge.py'))) return devPath;
+  return path.join(process.resourcesPath, 'backend');
 }
 
-// ── Εκκίνηση Flask ────────────────────────────────────────────────────────────
-function startFlask() {
+function startBridge() {
   const python = getPythonPath();
   const backendDir = getBackendPath();
-  const appScript = path.join(backendDir, 'app.py');
+  const bridgeScript = path.join(backendDir, 'bridge.py');
+  console.log(`[Bridge] Starting: ${python} ${bridgeScript}`);
 
-  console.log(`[Flask] Starting: ${python} ${appScript}`);
-  console.log(`[Flask] Working dir: ${backendDir}`);
-
-  flaskProcess = spawn(python, [appScript], {
+  pythonProcess = spawn(python, [bridgeScript], {
     cwd: backendDir,
-    env: {
-      ...process.env,
-      FLASK_ENV: 'production',
-      PYTHONUNBUFFERED: '1'
-    },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['pipe', 'pipe', 'pipe'],
+    env: { ...process.env, PYTHONUNBUFFERED: '1' }
   });
 
-  flaskProcess.stdout.on('data', d => console.log('[Flask]', d.toString().trim()));
-  flaskProcess.stderr.on('data', d => console.log('[Flask ERR]', d.toString().trim()));
-
-  flaskProcess.on('exit', (code) => {
-    console.log(`[Flask] Exited with code ${code}`);
-    if (mainWindow && code !== 0) {
-      dialog.showErrorBox(
-        'Σφάλμα Backend',
-        `Το Flask τερματίστηκε απροσδόκητα (κωδικός ${code}).\nΕπανεκκινήστε την εφαρμογή.`
-      );
+  let buffer = '';
+  pythonProcess.stdout.on('data', (data) => {
+    buffer += data.toString();
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      try {
+        const msg = JSON.parse(line);
+        if (msg.ready) {
+          console.log('[Bridge] Ready');
+          bridgeReady = true;
+          for (const m of queuedMessages) pythonProcess.stdin.write(m + '\n');
+          queuedMessages = [];
+          return;
+        }
+        const pending = pendingRequests[msg.id];
+        if (pending) {
+          delete pendingRequests[msg.id];
+          if (msg.error) pending.reject(new Error(msg.error));
+          else pending.resolve(msg.result);
+        }
+      } catch (e) {
+        console.error('[Bridge] JSON parse error:', line);
+      }
     }
   });
-}
 
-// ── Αναμονή μέχρι το Flask να είναι έτοιμο ──────────────────────────────────
-function waitForFlask(retries = 30, delay = 500) {
-  return new Promise((resolve, reject) => {
-    const check = (n) => {
-      http.get(`http://localhost:${FLASK_PORT}/api/apothemates`, (res) => {
-        if (res.statusCode === 200) resolve();
-        else if (n > 0) setTimeout(() => check(n - 1), delay);
-        else reject(new Error('Flask δεν ξεκίνησε εγκαίρως'));
-      }).on('error', () => {
-        if (n > 0) setTimeout(() => check(n - 1), delay);
-        else reject(new Error('Flask δεν ξεκίνησε εγκαίρως'));
-      });
-    };
-    check(retries);
+  pythonProcess.stderr.on('data', d => console.error('[Bridge ERR]', d.toString().trim()));
+  pythonProcess.on('exit', (code) => {
+    console.log(`[Bridge] Exited with code ${code}`);
+    if (mainWindow && code !== 0)
+      dialog.showErrorBox('Σφάλμα', `Το Python process τερματίστηκε (κωδικός ${code}).`);
   });
 }
 
-// ── Δημιουργία παραθύρου ─────────────────────────────────────────────────────
+function callPython(cmd, payload = {}) {
+  return new Promise((resolve, reject) => {
+    const id = ++reqCounter;
+    pendingRequests[id] = { resolve, reject };
+    const msg = JSON.stringify({ id, cmd, payload });
+    if (bridgeReady) pythonProcess.stdin.write(msg + '\n');
+    else queuedMessages.push(msg);
+    setTimeout(() => {
+      if (pendingRequests[id]) {
+        delete pendingRequests[id];
+        reject(new Error(`Timeout: ${cmd}`));
+      }
+    }, 30000);
+  });
+}
+
+function setupIPC() {
+  ipcMain.handle('python', async (event, cmd, payload) => {
+    try {
+      return { ok: true, result: await callPython(cmd, payload) };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  });
+
+  ipcMain.handle('open-file-dialog', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog({
+      filters: [{ name: 'PDF', extensions: ['pdf'] }],
+      properties: ['openFile']
+    });
+    return canceled ? null : filePaths[0];
+  });
+
+  ipcMain.handle('save-file-dialog', async (event, { defaultName, ext }) => {
+    const filters = ext === 'pdf'
+      ? [{ name: 'PDF', extensions: ['pdf'] }]
+      : [{ name: 'Excel', extensions: ['xlsx'] }];
+    const { canceled, filePath } = await dialog.showSaveDialog({
+      defaultPath: defaultName, filters
+    });
+    return canceled ? null : filePath;
+  });
+
+  ipcMain.on('window-minimize', () => mainWindow?.minimize());
+  ipcMain.on('window-maximize', () => {
+    mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize();
+  });
+  ipcMain.on('window-close', () => mainWindow?.close());
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1400,
-    height: 900,
-    minWidth: 1024,
-    minHeight: 700,
-    frame: false,           // Χωρίς OS chrome — custom titlebar μέσα στο HTML
+    width: 1400, height: 900,
+    minWidth: 1024, minHeight: 700,
+    frame: false,
     titleBarStyle: 'hidden',
     backgroundColor: '#0f2040',
     webPreferences: {
@@ -102,64 +137,30 @@ function createWindow() {
       nodeIntegration: false,
     },
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    show: false,            // Δεν εμφανίζεται μέχρι να φορτωθεί
+    show: false,
   });
 
-  mainWindow.loadURL(`http://localhost:${FLASK_PORT}`);
-
-  mainWindow.once('ready-to-show', () => {
-    mainWindow.show();
-    // mainWindow.webContents.openDevTools(); // Uncomment για debugging
-  });
-
+  mainWindow.loadFile(path.join(__dirname, 'backend', 'index.html'));
+  mainWindow.once('ready-to-show', () => mainWindow.show());
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-// ── IPC: Window controls ──────────────────────────────────────────────────────
-ipcMain.on('window-minimize', () => mainWindow?.minimize());
-ipcMain.on('window-maximize', () => {
-  if (mainWindow?.isMaximized()) mainWindow.unmaximize();
-  else mainWindow?.maximize();
-});
-ipcMain.on('window-close', () => mainWindow?.close());
-
-// ── App lifecycle ─────────────────────────────────────────────────────────────
-app.whenReady().then(async () => {
-  // Ctrl+Q / Cmd+Q για έξοδο
+app.whenReady().then(() => {
   globalShortcut.register('CommandOrControl+Q', () => app.quit());
-
-  try {
-    startFlask();
-    await waitForFlask();
-    createWindow();
-  } catch (err) {
-    dialog.showErrorBox(
-      'Σφάλμα Εκκίνησης',
-      `Δεν ήταν δυνατή η εκκίνηση του backend:\n${err.message}\n\n` +
-      `Βεβαιωθείτε ότι η Python είναι εγκατεστημένη και τα dependencies είναι διαθέσιμα.`
-    );
-    app.quit();
-  }
-});
-
-app.on('will-quit', () => {
-  globalShortcut.unregisterAll();
+  setupIPC();
+  startBridge();
+  createWindow();
 });
 
 app.on('window-all-closed', () => {
   globalShortcut.unregisterAll();
-  if (flaskProcess) {
-    console.log('[Flask] Terminating...');
-    flaskProcess.kill('SIGTERM');
-    if (os.platform() === 'win32') {
-      spawn('taskkill', ['/pid', flaskProcess.pid, '/f', '/t']);
-    }
+  if (pythonProcess) {
+    pythonProcess.stdin.end();
+    pythonProcess.kill('SIGTERM');
   }
-  // Μικρή καθυστέρηση για να κλείσει καθαρά το Flask
   setTimeout(() => app.quit(), 300);
 });
 
 app.on('activate', () => {
-  // macOS: ξαναάνοιγμα παραθύρου αν κλείστηκε
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
