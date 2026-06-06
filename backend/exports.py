@@ -1,13 +1,13 @@
 """
-Εξαγωγή βιβλίου εκρηκτικών σε νόμιμη μορφή PDF και Excel.
-Χρησιμοποιεί Liberation Sans για πλήρη ελληνική υποστήριξη.
+Εξαγωγή βιβλίου εκρηκτικών.
+Μορφή: μία γραμμή ανά τιμολόγιο, δυναμικές στήλες ανά υλικό.
 """
 import io
 import os
 from datetime import datetime
+from collections import defaultdict, OrderedDict
 
-# Paths για Liberation Sans fonts
-FONT_DIR = '/usr/share/fonts/truetype/liberation'
+FONT_DIR     = '/usr/share/fonts/truetype/liberation'
 FONT_REGULAR = os.path.join(FONT_DIR, 'LiberationSans-Regular.ttf')
 FONT_BOLD    = os.path.join(FONT_DIR, 'LiberationSans-Bold.ttf')
 
@@ -17,15 +17,60 @@ def register_fonts():
     try:
         pdfmetrics.getFont('LiberationSans')
     except:
-        pdfmetrics.registerFont(TTFont('LiberationSans',     FONT_REGULAR))
+        pdfmetrics.registerFont(TTFont('LiberationSans',      FONT_REGULAR))
         pdfmetrics.registerFont(TTFont('LiberationSans-Bold', FONT_BOLD))
 
-# ─── PDF (ReportLab) ─────────────────────────────────────────────────────────
+
+def build_rows(kiniseis):
+    """
+    Επιστρέφει:
+      - ylika_order: λίστα (yliko_id, onoma, monada) με σειρά εμφάνισης
+      - rows: λίστα dicts με τα δεδομένα κάθε γραμμής (ανά παραστατικό+ημερομηνία)
+    """
+    # Συλλογή μοναδικών υλικών με σειρά πρώτης εμφάνισης
+    ylika_order = OrderedDict()  # yliko_id → (onoma, monada)
+    for k in kiniseis:
+        yid = k['yliko_id']
+        if yid not in ylika_order:
+            ylika_order[yid] = (k['yliko_onoma'], k['monada_metrisis'])
+
+    # Ομαδοποίηση ανά (imerominia, arithmos_parstatikos, adeia, promitheftis)
+    # Κλειδί: tuple για σωστή σειρά
+    row_keys = OrderedDict()  # key → index
+    row_data = []             # λίστα από dicts
+
+    for k in kiniseis:
+        key = (k['imerominia'], k.get('arithmos_parstatikos') or '',
+               k.get('arithmos_adeias') or '', k.get('promitheftis_onoma') or '')
+        if key not in row_keys:
+            row_keys[key] = len(row_data)
+            row_data.append({
+                'imerominia':   k['imerominia'],
+                'parstatiko':   k.get('arithmos_parstatikos') or '',
+                'adeia':        k.get('arithmos_adeias') or '',
+                'promitheftis': k.get('promitheftis_onoma') or '',
+                'ylika':        {}   # yliko_id → posotita
+            })
+        idx = row_keys[key]
+        yid = k['yliko_id']
+        pos = k['posotita'] if k['tipos'] == 'ΕΙΣΑΓΩΓΗ' else -k['posotita']
+        row_data[idx]['ylika'][yid] = row_data[idx]['ylika'].get(yid, 0) + pos
+
+    return list(ylika_order.items()), row_data
+
+
+def fmt(val):
+    if val is None or val == 0:
+        return ''
+    return f"{val:,.3f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+
+# ─── PDF ─────────────────────────────────────────────────────────────────────
 
 def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm
+    from reportlab.lib.units import cm, mm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER
@@ -34,16 +79,19 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     F  = 'LiberationSans'
     FB = 'LiberationSans-Bold'
 
-    buf = io.BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
-                            leftMargin=1.5*cm, rightMargin=1.5*cm,
-                            topMargin=2*cm, bottomMargin=2*cm)
+    ylika_order, rows = build_rows(kiniseis)
 
-    title_style = ParagraphStyle('title', fontSize=13, fontName=FB,
-                                  alignment=TA_CENTER, spaceAfter=4)
-    sub_style   = ParagraphStyle('sub',   fontSize=9,  fontName=F,
-                                  alignment=TA_CENTER, spaceAfter=10)
-    cell_style  = ParagraphStyle('cell',  fontSize=7.5, fontName=F, leading=10)
+    buf = io.BytesIO()
+    # Αν υπάρχουν πολλά υλικά χρησιμοποίησε μεγαλύτερο χαρτί
+    pagesize = landscape(A4)
+    doc = SimpleDocTemplate(buf, pagesize=pagesize,
+                            leftMargin=1*cm, rightMargin=1*cm,
+                            topMargin=1.5*cm, bottomMargin=1.5*cm)
+
+    title_style = ParagraphStyle('t', fontSize=11, fontName=FB, alignment=TA_CENTER, spaceAfter=3)
+    sub_style   = ParagraphStyle('s', fontSize=7,  fontName=F,  alignment=TA_CENTER, spaceAfter=8)
+    hdr_style   = ParagraphStyle('h', fontSize=6,  fontName=FB, alignment=TA_CENTER, leading=7)
+    cell_style  = ParagraphStyle('c', fontSize=6.5,fontName=F,  alignment=TA_CENTER, leading=8)
 
     story = []
     story.append(Paragraph("ΒΙΒΛΙΟ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ", title_style))
@@ -52,141 +100,128 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
         f"Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
         sub_style))
 
-    # Υπολογισμός υπολοίπου ανά υλικό
-    ypoloipa = {}  # yliko_id → ypoloipo
-    rows_data = []
-    for k in kiniseis:
-        yid = k['yliko_id']
-        if yid not in ypoloipa:
-            ypoloipa[yid] = 0.0
-        eisagogi = k['posotita'] if k['tipos'] == 'ΕΙΣΑΓΩΓΗ' else ''
-        exagogi  = k['posotita'] if k['tipos'] == 'ΕΞΑΓΩΓΗ'  else ''
-        if k['tipos'] == 'ΕΙΣΑΓΩΓΗ':
-            ypoloipa[yid] += k['posotita']
-        else:
-            ypoloipa[yid] -= k['posotita']
-
-        mon = k['monada_metrisis']
-        rows_data.append([
-            str(k['auxon_arithmos']),
-            k['imerominia'],
-            k.get('arithmos_parstatikos') or '',
-            Paragraph(k.get('yliko_onoma', ''), cell_style),
-            k.get('promitheftis_onoma') or '',
-            k.get('arithmos_adeias') or '',
-            f"{eisagogi:.3f} {mon}" if eisagogi != '' else '',
-            f"{exagogi:.3f} {mon}"  if exagogi  != '' else '',
-            f"{ypoloipa[yid]:.3f} {mon}",
-            k.get('ypografi') or '',
-        ])
-
-    headers = [
-        'Α/Α', 'Ημερομηνία', 'Αρ.\nΠαραστ.', 'Είδος\nΕκρηκτικού',
-        'Προμηθευτής', 'Αρ.\nΆδειας',
-        'Ποσότητα\nΕισαγωγής', 'Ποσότητα\nΕξαγωγής',
-        'Υπόλοιπο', 'Υπογραφή'
+    # Στήλες: Α/Α | Ημ/νία | Παραστ. | [υλικό1] [υλικό2] ...
+    fixed_headers = [
+        Paragraph('Α/Α', hdr_style),
+        Paragraph('Ημερομηνία', hdr_style),
+        Paragraph('Αρ.\nΠαραστ.', hdr_style),
+        Paragraph('Αρ.\nΆδειας', hdr_style),
+        Paragraph('Προμηθευτής', hdr_style),
     ]
-    col_widths = [1*cm, 2.2*cm, 2*cm, 5*cm, 3.5*cm, 2.2*cm,
-                  2.8*cm, 2.8*cm, 2.8*cm, 2.5*cm]
+    yliko_headers = [
+        Paragraph(f"{onoma}\n({monada})", hdr_style)
+        for _, (onoma, monada) in ylika_order
+    ]
+    headers = fixed_headers + yliko_headers
 
-    table_data = [headers] + rows_data
-    t = Table(table_data, colWidths=col_widths, repeatRows=1)
+    # Πλάτη στηλών
+    page_w = pagesize[0] - 2*cm  # διαθέσιμο πλάτος
+    fixed_w = [1*cm, 2*cm, 1.8*cm, 1.8*cm, 3*cm]
+    remaining = page_w - sum(fixed_w)
+    n_ylika = len(ylika_order)
+    yliko_w = max(1.5*cm, remaining / n_ylika) if n_ylika else 2*cm
+    col_widths = fixed_w + [yliko_w] * n_ylika
+
+    # Γραμμές δεδομένων
+    table_rows = [headers]
+    for i, row in enumerate(rows, 1):
+        cells = [
+            str(i),
+            row['imerominia'],
+            row['parstatiko'],
+            row['adeia'],
+            Paragraph(row['promitheftis'], cell_style),
+        ]
+        for yid, (onoma, monada) in ylika_order:
+            v = row['ylika'].get(yid)
+            cells.append(fmt(v) if v else '')
+        table_rows.append(cells)
+
+    t = Table(table_rows, colWidths=col_widths, repeatRows=1)
+    navy = colors.HexColor('#1a365d')
     t.setStyle(TableStyle([
-        ('BACKGROUND',     (0,0), (-1,0), colors.HexColor('#1a365d')),
+        ('BACKGROUND',     (0,0), (-1,0), navy),
         ('TEXTCOLOR',      (0,0), (-1,0), colors.white),
         ('FONTNAME',       (0,0), (-1,0), FB),
-        ('FONTSIZE',       (0,0), (-1,0), 7.5),
-        ('ALIGN',          (0,0), (-1,0), 'CENTER'),
+        ('FONTSIZE',       (0,0), (-1,0), 6),
         ('VALIGN',         (0,0), (-1,-1), 'MIDDLE'),
+        ('ALIGN',          (0,0), (-1,-1), 'CENTER'),
         ('FONTNAME',       (0,1), (-1,-1), F),
-        ('FONTSIZE',       (0,1), (-1,-1), 7.5),
-        ('ALIGN',          (0,1), (0,-1), 'CENTER'),
-        ('ALIGN',          (1,1), (1,-1), 'CENTER'),
-        ('ALIGN',          (6,1), (8,-1), 'RIGHT'),
+        ('FONTSIZE',       (0,1), (-1,-1), 6.5),
         ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f0f4f8')]),
-        ('GRID',           (0,0), (-1,-1), 0.5, colors.HexColor('#cbd5e0')),
-        ('TOPPADDING',     (0,0), (-1,-1), 4),
-        ('BOTTOMPADDING',  (0,0), (-1,-1), 4),
-        ('LEFTPADDING',    (0,0), (-1,-1), 3),
-        ('RIGHTPADDING',   (0,0), (-1,-1), 3),
+        ('GRID',           (0,0), (-1,-1), 0.4, colors.HexColor('#cbd5e0')),
+        ('TOPPADDING',     (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING',  (0,0), (-1,-1), 3),
+        ('LEFTPADDING',    (0,0), (-1,-1), 2),
+        ('RIGHTPADDING',   (0,0), (-1,-1), 2),
     ]))
     story.append(t)
     doc.build(story)
     return buf.getvalue()
 
 
-# ─── Excel (openpyxl) ────────────────────────────────────────────────────────
+# ─── Excel ────────────────────────────────────────────────────────────────────
 
 def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
+    ylika_order, rows = build_rows(kiniseis)
+    n_ylika = len(ylika_order)
+    total_cols = 5 + n_ylika
+
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Βιβλίο Εκρηκτικών"
 
-    ws.merge_cells('A1:J1')
+    last_col = get_column_letter(total_cols)
+    ws.merge_cells(f'A1:{last_col}1')
     ws['A1'] = "ΒΙΒΛΙΟ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ"
-    ws['A1'].font = Font(bold=True, size=14)
+    ws['A1'].font = Font(bold=True, size=13)
     ws['A1'].alignment = Alignment(horizontal='center')
 
-    ws.merge_cells('A2:J2')
+    ws.merge_cells(f'A2:{last_col}2')
     ws['A2'] = f"Υλικό: {yliko_label}  |  Περίοδος: {period_label}  |  Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
     ws['A2'].alignment = Alignment(horizontal='center')
 
-    headers    = ['Α/Α', 'Ημερομηνία', 'Αρ. Παραστ.', 'Είδος Εκρηκτικού',
-                  'Προμηθευτής', 'Αρ. Άδειας',
-                  'Ποσ. Εισαγωγής', 'Ποσ. Εξαγωγής', 'Υπόλοιπο', 'Υπογραφή']
-    col_widths = [6, 12, 12, 30, 20, 12, 14, 14, 14, 15]
+    navy_fill   = PatternFill("solid", fgColor="1A365D")
+    navy_font   = Font(bold=True, color="FFFFFF", size=9)
+    thin        = Side(style='thin', color="CBD5E0")
+    border      = Border(left=thin, right=thin, top=thin, bottom=thin)
+    alt_fill    = PatternFill("solid", fgColor="F0F4F8")
 
-    header_fill = PatternFill("solid", fgColor="1A365D")
-    header_font = Font(bold=True, color="FFFFFF", size=10)
-    thin   = Side(style='thin', color="CBD5E0")
-    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+    # Headers
+    fixed_headers = ['Α/Α', 'Ημερομηνία', 'Αρ. Παραστ.', 'Αρ. Άδειας', 'Προμηθευτής']
+    fixed_widths  = [5, 12, 12, 10, 20]
+    yliko_headers = [f"{onoma}\n({monada})" for _, (onoma, monada) in ylika_order]
 
-    for col, (h, w) in enumerate(zip(headers, col_widths), 1):
+    for col, (h, w) in enumerate(zip(fixed_headers + yliko_headers,
+                                      fixed_widths + [14]*n_ylika), 1):
         cell = ws.cell(row=4, column=col, value=h)
-        cell.fill = header_fill
-        cell.font = header_font
+        cell.fill = navy_fill
+        cell.font = navy_font
         cell.alignment = Alignment(horizontal='center', wrap_text=True)
         cell.border = border
         ws.column_dimensions[get_column_letter(col)].width = w
-    ws.row_dimensions[4].height = 30
+    ws.row_dimensions[4].height = 35
 
-    ypoloipa = {}  # yliko_id → ypoloipo
-    alt_fill = PatternFill("solid", fgColor="F0F4F8")
+    # Δεδομένα
+    for r_idx, row in enumerate(rows, 5):
+        fill = alt_fill if r_idx % 2 == 0 else None
+        fixed_vals = [r_idx-4, row['imerominia'], row['parstatiko'],
+                      row['adeia'], row['promitheftis']]
+        yliko_vals = [row['ylika'].get(yid) for yid, _ in ylika_order]
 
-    for row_idx, k in enumerate(kiniseis, 5):
-        yid = k['yliko_id']
-        if yid not in ypoloipa:
-            ypoloipa[yid] = 0.0
-        fill     = alt_fill if row_idx % 2 == 0 else None
-        eisagogi = k['posotita'] if k['tipos'] == 'ΕΙΣΑΓΩΓΗ' else None
-        exagogi  = k['posotita'] if k['tipos'] == 'ΕΞΑΓΩΓΗ'  else None
-        if eisagogi: ypoloipa[yid] += eisagogi
-        else:        ypoloipa[yid] -= exagogi
-
-        row_vals = [
-            k['auxon_arithmos'], k['imerominia'],
-            k.get('arithmos_parstatikos') or '',
-            k.get('yliko_onoma') or '',
-            k.get('promitheftis_onoma') or '',
-            k.get('arithmos_adeias') or '',
-            eisagogi, exagogi, round(ypoloipa[yid], 3),
-            k.get('ypografi') or ''
-        ]
-        for col, val in enumerate(row_vals, 1):
-            cell = ws.cell(row=row_idx, column=col, value=val)
+        for col, val in enumerate(fixed_vals + yliko_vals, 1):
+            cell = ws.cell(row=r_idx, column=col, value=val)
             cell.border = border
             if fill: cell.fill = fill
-            if col in (7, 8, 9):
+            if col <= 2:
+                cell.alignment = Alignment(horizontal='center')
+            if col > 5 and val is not None:
                 cell.number_format = '#,##0.000'
                 cell.alignment = Alignment(horizontal='right')
-            elif col in (1, 2):
-                cell.alignment = Alignment(horizontal='center')
-            if col == 9 and ypoloipa[yid] < 0:
-                cell.font = Font(color="C53030", bold=True)
 
     buf = io.BytesIO()
     wb.save(buf)
