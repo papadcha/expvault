@@ -141,7 +141,10 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'backend', 'index.html'));
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    mainWindow.webContents.openDevTools();
+  });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
