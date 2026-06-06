@@ -1,11 +1,10 @@
 """
-Γενικός PDF parser για τιμολόγια/δελτία εκρηκτικών.
-Εξάγει κείμενο, προσπαθεί να αναγνωρίσει βασικά πεδία,
-και επιστρέφει τόσο τα αναγνωρισμένα όσο και το πλήρες κείμενο
-ώστε ο χρήστης να συμπληρώσει χειροκίνητα.
+PDF parser για τιμολόγια εκρηκτικών NITROCHEM/EpsilonNet.
+Πραγματική μορφή γραμμής:
+  ΤΙΜΗ ΑΞΙΑ ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00
+π.χ.: "1,30 2.600,00 40000000 ΠΕΤΡΑΜΜΩΝΙΤΗΣ (AN-FO) Κιλ 2.000,000 0,00"
 """
 import re
-from datetime import datetime
 
 try:
     import pypdf
@@ -26,21 +25,6 @@ def extract_text_from_pdf(filepath: str) -> str:
 
 
 def parse_pdf(filepath: str) -> dict:
-    """
-    Επιστρέφει:
-    {
-      'raw_text': str,           # πλήρες κείμενο για εμφάνιση στον χρήστη
-      'suggested': {             # τιμές που βρέθηκαν αυτόματα (μπορεί να είναι '')
-        'imerominia': str,
-        'arithmos_parstatikos': str,
-        'promitheftis': str,
-        'adeia': str,
-        'grammes': [             # κάθε γραμμή υλικού που αναγνωρίστηκε
-          {'onoma': str, 'posotita': str, 'monada': str}
-        ]
-      }
-    }
-    """
     raw_text = extract_text_from_pdf(filepath)
     suggested = {
         'imerominia': '',
@@ -52,94 +36,85 @@ def parse_pdf(filepath: str) -> dict:
 
     lines = raw_text.split('\n')
 
-    # Ημερομηνία: ΗΗ/ΜΜ/ΕΕΕΕ ή ΗΗ-ΜΜ-ΕΕΕΕ
-    date_pattern = re.compile(r'\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})\b')
+    # ── Ημερομηνία ────────────────────────────────────────────────────────────
+    date_pat = re.compile(r'\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})\b')
     for line in lines:
-        m = date_pattern.search(line)
-        if m and not suggested['imerominia']:
-            raw_date = m.group(1)
-            # Κανονικοποίηση σε ΗΗ/ΜΜ/ΕΕΕΕ
-            for sep in ['-', '.']:
-                raw_date = raw_date.replace(sep, '/')
-            parts = raw_date.split('/')
+        m = date_pat.search(line)
+        if m:
+            d = m.group(1)
+            for sep in ['-', '.']: d = d.replace(sep, '/')
+            parts = d.split('/')
             if len(parts) == 3:
                 suggested['imerominia'] = f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{parts[2]}"
             break
 
-    # Αριθμός παραστατικού: αριθμός μετά από ΤΙΜΟΛΟΓ/ΠΑΡΑΣΤ/ΔΕΛΤ/ΑΡ.
-    parst_pattern = re.compile(
-        r'(?:ΤΙΜΟΛΟΓ|ΠΑΡΑΣΤ|ΔΕΛΤ|ΔΕΛ\.|ΑΡ\.?\s*(?:ΤΙΜ\.?|ΠΑΡ\.?|ΔΕΛ\.?))[\s\.:]*(\d+)',
-        re.IGNORECASE
-    )
+    # ── Αριθμός παραστατικού ─────────────────────────────────────────────────
+    tim_pat = re.compile(r'(?:Τιμολόγιο|ΤΙΜΟΛΟΓΙΟ|Δελτίο|ΔΕΛΤΙΟ)\s+\w+\s+(\d+)', re.IGNORECASE)
     for line in lines:
-        m = parst_pattern.search(line)
+        m = tim_pat.search(line)
         if m:
             suggested['arithmos_parstatikos'] = m.group(1)
             break
 
-    # Αν δεν βρέθηκε, ψάξε για μεγάλο αριθμό σε γραμμή με "No" ή "Νο"
-    if not suggested['arithmos_parstatikos']:
-        no_pattern = re.compile(r'\bN[oο°]\.?\s*:?\s*(\d{3,})', re.IGNORECASE)
-        for line in lines:
-            m = no_pattern.search(line)
+    # ── Άδεια ─────────────────────────────────────────────────────────────────
+    # Ψάξε "40923" μετά το "Αρ. Αδείας:" — μπορεί να είναι πολλές γραμμές μετά
+    adeia_label_idx = None
+    for i, line in enumerate(lines):
+        if re.search(r'Αρ\.\s*Αδείας', line, re.IGNORECASE):
+            adeia_label_idx = i
+            break
+    if adeia_label_idx is not None:
+        # Ψάξε στις επόμενες 60 γραμμές για 5ψήφιο αριθμό (τυπικός αρ. άδειας)
+        for line in lines[adeia_label_idx+1 : adeia_label_idx+60]:
+            m = re.match(r'^\s*(\d{5})\s*$', line)
             if m:
-                suggested['arithmos_parstatikos'] = m.group(1)
+                suggested['adeia'] = m.group(1)
                 break
 
-    # Αριθμός άδειας: ΑΔΕΙΑ + αριθμός >=4 ψηφίων
-    adeia_pattern = re.compile(r'ΑΔΕ[ΙΎ]Α[Σ]?[\s\.:]*(\d{4,})', re.IGNORECASE)
-    for line in lines:
-        m = adeia_pattern.search(line)
-        if m:
-            suggested['adeia'] = m.group(1)
+    # ── Προμηθευτής ───────────────────────────────────────────────────────────
+    known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
+    for sup in known:
+        for line in lines:
+            if sup in line.upper():
+                if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ']):
+                    continue
+                # Εξαγωγή μόνο του τμήματος με τον προμηθευτή
+                idx = line.upper().find(sup)
+                clean = line[idx:].strip()[:40]
+                suggested['promitheftis'] = clean
+                break
+        if suggested['promitheftis']:
             break
 
-    # Προμηθευτής: γνωστές εταιρείες εκρηκτικών
-    known_suppliers = [
-        'NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'SOLARIS',
-        'EΛΒΙΕΜ', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'EPEK', 'ΕΚΑΒΕ', 'EKAVE'
-    ]
-    full_upper = raw_text.upper()
-    for sup in known_suppliers:
-        if sup.upper() in full_upper:
-            # Βρες το πλήρες όνομα (μέχρι το τέλος της γραμμής)
-            for line in lines:
-                if sup.upper() in line.upper():
-                    # Καθάρισε και κράτα μέχρι 50 χαρακτήρες
-                    clean = line.strip()[:50]
-                    suggested['promitheftis'] = clean
-                    break
-            break
-
-    # Υλικά: ψάξε για γνωστά patterns ποσότητας (αριθμός + μονάδα)
-    quantity_pattern = re.compile(
-        r'^(.{5,60}?)\s+([\d\.,]+)\s*(kg|kgr|κιλ|χιλγρ|τεμ|τεμάχ|μέτρ|μετρ|m|τμχ)\b',
+    # ── Υλικά — Πραγματική μορφή EpsilonNet ──────────────────────────────────
+    # "ΤΙΜΗ ΑΞΙΑ ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00"
+    item_pat = re.compile(
+        r'^[\d,]+\s+'                               # Τιμή
+        r'[\d\.,]+\s*'                              # Αξία (κολλητή με κωδικό)
+        r'(\d{6,9})\s+'                             # Κωδικός
+        r'(.+?)\s+'                                 # Περιγραφή
+        r'(Κιλ|Τεμ|Μετρ|Κιλά|Τεμάχια|Μέτρα)\s+'   # Μονάδα
+        r'([\d\.]+,\d+)\s+'                         # Ποσότητα
+        r'0,00\s*$',                                # 0,00 στο τέλος
         re.IGNORECASE
     )
+
+    monada_map = {
+        'κιλ': 'Κιλ', 'κιλά': 'Κιλ',
+        'τεμ': 'Τεμ', 'τεμάχια': 'Τεμ',
+        'μετρ': 'Μετρ', 'μέτρα': 'Μετρ'
+    }
+
     for line in lines:
-        m = quantity_pattern.search(line)
+        m = item_pat.match(line.strip())
         if m:
-            onoma_candidate = m.group(1).strip()
-            # Φιλτράρισμα: απόρριψη γραμμών που μοιάζουν με header/σύνολο
-            skip_words = ['ΣΥΝΟΛ', 'TOTAL', 'ΑΞΙΑ', 'ΦΠΑ', 'ΠΟΣΟ', 'ΤΙΜΗ', 'ΑΡΙΘΜ']
-            if any(w in onoma_candidate.upper() for w in skip_words):
-                continue
-            posotita_str = m.group(2).replace('.', '').replace(',', '.')
-            monada = m.group(3).lower()
-            # Κανονικοποίηση μονάδας
-            monada_map = {
-                'kg': 'Κιλ', 'kgr': 'Κιλ', 'κιλ': 'Κιλ', 'χιλγρ': 'Κιλ',
-                'τεμ': 'Τεμ', 'τεμάχ': 'Τεμ', 'τμχ': 'Τεμ',
-                'μέτρ': 'Μετρ', 'μετρ': 'Μετρ', 'm': 'Μετρ'
-            }
-            monada_clean = monada_map.get(monada, monada.capitalize())
+            onoma    = m.group(2).strip()
+            monada   = monada_map.get(m.group(3).lower(), m.group(3))
+            posotita = m.group(4).replace('.', '').replace(',', '.')
             suggested['grammes'].append({
-                'onoma': onoma_candidate,
-                'posotita': posotita_str,
-                'monada': monada_clean
+                'onoma': onoma,
+                'posotita': posotita,
+                'monada': monada
             })
 
-    return {
-        'raw_text': raw_text,
-        'suggested': suggested
-    }
+    return {'raw_text': raw_text, 'suggested': suggested}
