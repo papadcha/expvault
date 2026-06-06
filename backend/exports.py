@@ -4,18 +4,13 @@
 """
 import io
 import os
+import glob
 from datetime import datetime
-from collections import defaultdict, OrderedDict
+from collections import OrderedDict
 
 def find_font(names):
-    """Ψάχνει για TTF font σε κοινά paths."""
-    import glob
-    search_dirs = [
-        '/usr/share/fonts',
-        '/usr/local/share/fonts',
-        os.path.expanduser('~/.fonts'),
-        os.path.expanduser('~/.local/share/fonts'),
-    ]
+    search_dirs = ['/usr/share/fonts', '/usr/local/share/fonts',
+                   os.path.expanduser('~/.fonts'), os.path.expanduser('~/.local/share/fonts')]
     for name in names:
         for d in search_dirs:
             matches = glob.glob(f'{d}/**/{name}', recursive=True)
@@ -23,39 +18,47 @@ def find_font(names):
                 return matches[0]
     return None
 
-FONT_REGULAR = find_font(['LiberationSans-Regular.ttf', 'FreeSans.ttf', 'DejaVuSans.ttf'])
-FONT_BOLD    = find_font(['LiberationSans-Bold.ttf', 'FreeSansBold.ttf', 'DejaVuSans-Bold.ttf'])
+FONT_REGULAR = find_font(['LiberationMono-Regular.ttf', 'FreeMono.ttf'])
+FONT_BOLD    = find_font(['LiberationMono-Bold.ttf', 'FreeMonoBold.ttf', 'LiberationMono-Regular.ttf'])
+FONT_SANS_R  = find_font(['LiberationSans-Regular.ttf', 'FreeSans.ttf'])
+FONT_SANS_B  = find_font(['LiberationSans-Bold.ttf', 'FreeSansBold.ttf'])
 
 def register_fonts():
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
     try:
-        pdfmetrics.getFont('GreekFont')
+        pdfmetrics.getFont('Mono')
     except:
         if FONT_REGULAR:
-            pdfmetrics.registerFont(TTFont('GreekFont',      FONT_REGULAR))
-            pdfmetrics.registerFont(TTFont('GreekFont-Bold', FONT_BOLD or FONT_REGULAR))
-        # Fallback σε Helvetica αν δεν βρεθεί font
+            pdfmetrics.registerFont(TTFont('Mono',      FONT_REGULAR))
+            pdfmetrics.registerFont(TTFont('Mono-Bold', FONT_BOLD or FONT_REGULAR))
+        if FONT_SANS_R:
+            pdfmetrics.registerFont(TTFont('Sans',      FONT_SANS_R))
+            pdfmetrics.registerFont(TTFont('Sans-Bold', FONT_SANS_B or FONT_SANS_R))
 
+def fmt_date(s):
+    """YYYY-MM-DD → DD/MM/YYYY"""
+    if not s: return ''
+    try:
+        parts = s.split('-')
+        if len(parts) == 3 and len(parts[0]) == 4:
+            return f"{parts[2]}/{parts[1]}/{parts[0]}"
+    except: pass
+    return s
+
+def fmt_num(val):
+    if val is None or val == 0: return ''
+    return f"{val:,.3f}".replace(',', 'X').replace('.', ',').replace('X', '.')
 
 def build_rows(kiniseis):
-    """
-    Επιστρέφει:
-      - ylika_order: λίστα (yliko_id, onoma, monada) με σειρά εμφάνισης
-      - rows: λίστα dicts με τα δεδομένα κάθε γραμμής (ανά παραστατικό+ημερομηνία)
-    """
-    # Συλλογή μοναδικών υλικών με σειρά πρώτης εμφάνισης
-    ylika_order = OrderedDict()  # yliko_id → (onoma, monada)
+    ylika_order = OrderedDict()
     for k in kiniseis:
         yid = k['yliko_id']
         if yid not in ylika_order:
             ylika_order[yid] = (k['yliko_onoma'], k['monada_metrisis'])
 
-    # Ομαδοποίηση ανά (imerominia, arithmos_parstatikos, adeia, promitheftis)
-    # Κλειδί: tuple για σωστή σειρά
-    row_keys = OrderedDict()  # key → index
-    row_data = []             # λίστα από dicts
-
+    row_keys = OrderedDict()
+    row_data = []
     for k in kiniseis:
         key = (k['imerominia'], k.get('arithmos_parstatikos') or '',
                k.get('arithmos_adeias') or '', k.get('promitheftis_onoma') or '')
@@ -66,7 +69,7 @@ def build_rows(kiniseis):
                 'parstatiko':   k.get('arithmos_parstatikos') or '',
                 'adeia':        k.get('arithmos_adeias') or '',
                 'promitheftis': k.get('promitheftis_onoma') or '',
-                'ylika':        {}   # yliko_id → posotita
+                'ylika':        {}
             })
         idx = row_keys[key]
         yid = k['yliko_id']
@@ -75,40 +78,35 @@ def build_rows(kiniseis):
 
     return list(ylika_order.items()), row_data
 
-
-def fmt(val):
-    if val is None or val == 0:
-        return ''
-    return f"{val:,.3f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-
-
 # ─── PDF ─────────────────────────────────────────────────────────────────────
 
 def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
-    from reportlab.lib.units import cm, mm
+    from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
     register_fonts()
-    F  = 'GreekFont'      if FONT_REGULAR else 'Helvetica'
-    FB = 'GreekFont-Bold' if FONT_BOLD    else 'Helvetica-Bold'
+    F   = 'Mono'      if FONT_REGULAR else 'Courier'
+    FB  = 'Mono-Bold' if FONT_BOLD    else 'Courier-Bold'
+    SF  = 'Sans'      if FONT_SANS_R  else 'Helvetica'
+    SFB = 'Sans-Bold' if FONT_SANS_B  else 'Helvetica-Bold'
 
     ylika_order, rows = build_rows(kiniseis)
 
     buf = io.BytesIO()
-    # Αν υπάρχουν πολλά υλικά χρησιμοποίησε μεγαλύτερο χαρτί
     pagesize = landscape(A4)
     doc = SimpleDocTemplate(buf, pagesize=pagesize,
                             leftMargin=1*cm, rightMargin=1*cm,
                             topMargin=1.5*cm, bottomMargin=1.5*cm)
 
-    title_style = ParagraphStyle('t', fontSize=11, fontName=FB, alignment=TA_CENTER, spaceAfter=3)
-    sub_style   = ParagraphStyle('s', fontSize=7,  fontName=F,  alignment=TA_CENTER, spaceAfter=8)
-    hdr_style   = ParagraphStyle('h', fontSize=6,  fontName=FB, alignment=TA_CENTER, leading=7)
-    cell_style  = ParagraphStyle('c', fontSize=6.5,fontName=F,  alignment=TA_CENTER, leading=8)
+    title_style = ParagraphStyle('t', fontSize=11, fontName=SFB, alignment=TA_CENTER, spaceAfter=3)
+    sub_style   = ParagraphStyle('s', fontSize=7,  fontName=SF,  alignment=TA_CENTER, spaceAfter=8)
+    hdr_style   = ParagraphStyle('h', fontSize=5.5, fontName=FB, alignment=TA_CENTER, leading=7)
+    cell_style  = ParagraphStyle('c', fontSize=6,   fontName=F,  alignment=TA_CENTER, leading=7)
+    name_style  = ParagraphStyle('n', fontSize=5.5, fontName=F,  alignment=TA_LEFT,   leading=7)
 
     story = []
     story.append(Paragraph("ΒΙΒΛΙΟ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ", title_style))
@@ -117,7 +115,6 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
         f"Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
         sub_style))
 
-    # Στήλες: Α/Α | Ημ/νία | Παραστ. | [υλικό1] [υλικό2] ...
     fixed_headers = [
         Paragraph('Α/Α', hdr_style),
         Paragraph('Ημερομηνία', hdr_style),
@@ -131,44 +128,39 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     ]
     headers = fixed_headers + yliko_headers
 
-    # Πλάτη στηλών
-    page_w = pagesize[0] - 2*cm  # διαθέσιμο πλάτος
-    fixed_w = [1*cm, 2*cm, 1.8*cm, 1.8*cm, 3*cm]
+    page_w   = pagesize[0] - 2*cm
+    fixed_w  = [0.8*cm, 1.8*cm, 1.6*cm, 1.6*cm, 2.8*cm]
     remaining = page_w - sum(fixed_w)
-    n_ylika = len(ylika_order)
-    yliko_w = max(1.5*cm, remaining / n_ylika) if n_ylika else 2*cm
+    n_ylika  = len(ylika_order)
+    yliko_w  = max(1.4*cm, remaining / n_ylika) if n_ylika else 2*cm
     col_widths = fixed_w + [yliko_w] * n_ylika
 
-    # Γραμμές δεδομένων
     table_rows = [headers]
     for i, row in enumerate(rows, 1):
         cells = [
-            str(i),
-            row['imerominia'],
-            row['parstatiko'],
-            row['adeia'],
-            Paragraph(row['promitheftis'], cell_style),
+            Paragraph(str(i), cell_style),
+            Paragraph(fmt_date(row['imerominia']), cell_style),
+            Paragraph(row['parstatiko'], cell_style),
+            Paragraph(row['adeia'], cell_style),
+            Paragraph(row['promitheftis'], name_style),
         ]
-        for yid, (onoma, monada) in ylika_order:
+        for yid, _ in ylika_order:
             v = row['ylika'].get(yid)
-            cells.append(fmt(v) if v else '')
+            cells.append(Paragraph(fmt_num(v) if v else '', cell_style))
         table_rows.append(cells)
 
+    # Ανοιχτό header color
+    header_color = colors.HexColor('#4a7fc1')
     t = Table(table_rows, colWidths=col_widths, repeatRows=1)
-    navy = colors.HexColor('#1a365d')
     t.setStyle(TableStyle([
-        ('BACKGROUND',     (0,0), (-1,0), navy),
+        ('BACKGROUND',     (0,0), (-1,0), header_color),
         ('TEXTCOLOR',      (0,0), (-1,0), colors.white),
-        ('FONTNAME',       (0,0), (-1,0), FB),
-        ('FONTSIZE',       (0,0), (-1,0), 6),
         ('VALIGN',         (0,0), (-1,-1), 'MIDDLE'),
         ('ALIGN',          (0,0), (-1,-1), 'CENTER'),
-        ('FONTNAME',       (0,1), (-1,-1), F),
-        ('FONTSIZE',       (0,1), (-1,-1), 6.5),
-        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#f0f4f8')]),
-        ('GRID',           (0,0), (-1,-1), 0.4, colors.HexColor('#cbd5e0')),
-        ('TOPPADDING',     (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING',  (0,0), (-1,-1), 3),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor('#eef2f7')]),
+        ('GRID',           (0,0), (-1,-1), 0.3, colors.HexColor('#aabbd0')),
+        ('TOPPADDING',     (0,0), (-1,-1), 2),
+        ('BOTTOMPADDING',  (0,0), (-1,-1), 2),
         ('LEFTPADDING',    (0,0), (-1,-1), 2),
         ('RIGHTPADDING',   (0,0), (-1,-1), 2),
     ]))
@@ -185,7 +177,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from openpyxl.utils import get_column_letter
 
     ylika_order, rows = build_rows(kiniseis)
-    n_ylika = len(ylika_order)
+    n_ylika    = len(ylika_order)
     total_cols = 5 + n_ylika
 
     wb = openpyxl.Workbook()
@@ -202,13 +194,12 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     ws['A2'] = f"Υλικό: {yliko_label}  |  Περίοδος: {period_label}  |  Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
     ws['A2'].alignment = Alignment(horizontal='center')
 
-    navy_fill   = PatternFill("solid", fgColor="1A365D")
-    navy_font   = Font(bold=True, color="FFFFFF", size=9)
-    thin        = Side(style='thin', color="CBD5E0")
-    border      = Border(left=thin, right=thin, top=thin, bottom=thin)
-    alt_fill    = PatternFill("solid", fgColor="F0F4F8")
+    navy_fill = PatternFill("solid", fgColor="4A7FC1")
+    navy_font = Font(bold=True, color="FFFFFF", size=9)
+    thin      = Side(style='thin', color="AABBD0")
+    border    = Border(left=thin, right=thin, top=thin, bottom=thin)
+    alt_fill  = PatternFill("solid", fgColor="EEF2F7")
 
-    # Headers
     fixed_headers = ['Α/Α', 'Ημερομηνία', 'Αρ. Παραστ.', 'Αρ. Άδειας', 'Προμηθευτής']
     fixed_widths  = [5, 12, 12, 10, 20]
     yliko_headers = [f"{onoma}\n({monada})" for _, (onoma, monada) in ylika_order]
@@ -223,10 +214,10 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
         ws.column_dimensions[get_column_letter(col)].width = w
     ws.row_dimensions[4].height = 35
 
-    # Δεδομένα
     for r_idx, row in enumerate(rows, 5):
         fill = alt_fill if r_idx % 2 == 0 else None
-        fixed_vals = [r_idx-4, row['imerominia'], row['parstatiko'],
+        # Μετατροπή ημερομηνίας
+        fixed_vals = [r_idx-4, fmt_date(row['imerominia']), row['parstatiko'],
                       row['adeia'], row['promitheftis']]
         yliko_vals = [row['ylika'].get(yid) for yid, _ in ylika_order]
 
