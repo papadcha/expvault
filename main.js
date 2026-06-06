@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, globalShortcut } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const http = require('http');
@@ -165,6 +165,9 @@ ipcMain.on('window-close', () => mainWindow?.close());
 app.whenReady().then(async () => {
   const splash = createSplash();
 
+  // Ctrl+Q / Cmd+Q για έξοδο
+  globalShortcut.register('CommandOrControl+Q', () => app.quit());
+
   try {
     startFlask();
     await waitForFlask();
@@ -179,6 +182,10 @@ app.whenReady().then(async () => {
     );
     app.quit();
   }
+});
+
+app.on('will-quit', () => {
+  globalShortcut.unregisterAll();
 });
 
 app.on('window-all-closed', () => {
