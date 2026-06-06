@@ -9,8 +9,11 @@ from datetime import datetime
 from collections import OrderedDict
 
 def find_font(names):
-    search_dirs = ['/usr/share/fonts', '/usr/local/share/fonts',
-                   os.path.expanduser('~/.fonts'), os.path.expanduser('~/.local/share/fonts')]
+    search_dirs = [
+        '/usr/share/fonts', '/usr/local/share/fonts',
+        os.path.expanduser('~/.fonts'), os.path.expanduser('~/.local/share/fonts'),
+        os.path.expanduser('~/.cargo'),
+    ]
     for name in names:
         for d in search_dirs:
             matches = glob.glob(f'{d}/**/{name}', recursive=True)
@@ -18,8 +21,8 @@ def find_font(names):
                 return matches[0]
     return None
 
-FONT_REGULAR = find_font(['LiberationMono-Regular.ttf', 'FreeMono.ttf'])
-FONT_BOLD    = find_font(['LiberationMono-Bold.ttf', 'FreeMonoBold.ttf', 'LiberationMono-Regular.ttf'])
+FONT_REGULAR = find_font(['JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf', 'FreeMono.ttf'])
+FONT_BOLD    = find_font(['JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf', 'FreeMonoBold.ttf'])
 FONT_SANS_R  = find_font(['LiberationSans-Regular.ttf', 'FreeSans.ttf'])
 FONT_SANS_B  = find_font(['LiberationSans-Bold.ttf', 'FreeSansBold.ttf'])
 
