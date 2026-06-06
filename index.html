@@ -1,0 +1,1043 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Βιβλίο Εκρηκτικών Υλών</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --navy:    #0f2040;
+  --navy2:   #1a365d;
+  --navy3:   #2a4a7f;
+  --accent:  #e8a020;
+  --accent2: #f5c060;
+  --danger:  #c0392b;
+  --success: #1a7a4a;
+  --bg:      #f4f6f9;
+  --surface: #ffffff;
+  --border:  #d0d8e4;
+  --text:    #1a2540;
+  --muted:   #6b7a99;
+  --mono:    'IBM Plex Mono', monospace;
+  --sans:    'IBM Plex Sans', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0; width: 220px;
+  background: var(--navy); display: flex; flex-direction: column;
+  border-right: 3px solid var(--accent);
+  z-index: 100;
+}
+.sidebar-logo {
+  padding: 24px 20px 16px;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+.sidebar-logo .icon { font-size: 28px; margin-bottom: 8px; }
+.sidebar-logo h1 { color: var(--accent); font-size: 11px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; line-height: 1.4; }
+.sidebar-logo p { color: rgba(255,255,255,0.4); font-size: 9px; margin-top: 4px; letter-spacing: 1px; }
+.sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
+.nav-section { padding: 8px 20px 4px; color: rgba(255,255,255,0.3); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; }
+.nav-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 20px; cursor: pointer; transition: all 0.15s;
+  color: rgba(255,255,255,0.65); font-size: 13px; font-weight: 400;
+  border-left: 3px solid transparent;
+}
+.nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
+.nav-item.active { background: rgba(232,160,32,0.15); color: var(--accent); border-left-color: var(--accent); }
+.nav-item .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+
+/* ── MAIN ── */
+.main { margin-left: 220px; padding: 32px; min-height: 100vh; }
+.page { display: none; }
+.page.active { display: block; }
+
+/* ── HEADER ── */
+.page-header { margin-bottom: 28px; }
+.page-header h2 { font-size: 22px; font-weight: 600; color: var(--navy2); }
+.page-header p { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+/* ── CARDS ── */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 24px; margin-bottom: 20px; }
+.card-title { font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--navy2); margin-bottom: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+
+/* ── GRID ── */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+/* ── FORM ── */
+.form-row { display: grid; gap: 12px; margin-bottom: 12px; }
+.form-row.cols-2 { grid-template-columns: 1fr 1fr; }
+.form-row.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+.form-row.cols-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+label { font-size: 11px; font-weight: 600; color: var(--navy2); letter-spacing: 0.5px; display: block; margin-bottom: 5px; }
+input, select, textarea {
+  width: 100%; padding: 8px 11px; border: 1px solid var(--border);
+  border-radius: 5px; font-family: var(--sans); font-size: 13px;
+  color: var(--text); background: #fafbfc; transition: border-color 0.15s;
+  outline: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--navy3); background: white; }
+textarea { resize: vertical; min-height: 60px; }
+.form-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+/* ── BUTTONS ── */
+.btn {
+  padding: 9px 18px; border: none; border-radius: 5px; cursor: pointer;
+  font-family: var(--sans); font-size: 13px; font-weight: 500;
+  transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px;
+}
+.btn-primary { background: var(--navy2); color: white; }
+.btn-primary:hover { background: var(--navy3); }
+.btn-success { background: var(--success); color: white; }
+.btn-success:hover { background: #15693e; }
+.btn-accent { background: var(--accent); color: var(--navy); font-weight: 600; }
+.btn-accent:hover { background: var(--accent2); }
+.btn-danger { background: var(--danger); color: white; }
+.btn-danger:hover { background: #a93226; }
+.btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+.btn-outline:hover { border-color: var(--navy3); color: var(--navy2); }
+.btn-sm { padding: 5px 11px; font-size: 12px; }
+
+/* ── TABLE ── */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--navy); color: white; }
+thead th { padding: 10px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.8px; white-space: nowrap; }
+tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+tbody tr:hover { background: #f0f4f9; }
+tbody tr.selected { background: #e8f0fd; }
+tbody td { padding: 9px 12px; vertical-align: middle; }
+.mono { font-family: var(--mono); font-size: 12px; }
+.badge {
+  display: inline-block; padding: 2px 8px; border-radius: 3px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.5px;
+}
+.badge-in  { background: #d4edda; color: #155724; }
+.badge-out { background: #fde8e8; color: #7b1c1c; }
+.badge-ok  { background: #d4edda; color: #155724; }
+.badge-low { background: #fff3cd; color: #856404; }
+.badge-neg { background: #fde8e8; color: #7b1c1c; }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
+.stat-card .stat-val { font-size: 28px; font-weight: 600; font-family: var(--mono); color: var(--navy2); }
+.stat-card .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
+.stat-card.accent-card { border-color: var(--accent); background: linear-gradient(135deg, #fff9ee, #fff); }
+.stat-card.accent-card .stat-val { color: var(--accent); }
+
+/* ── FILTER BAR ── */
+.filter-bar { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-bottom: 20px; padding: 16px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+.filter-bar .f-item { display: flex; flex-direction: column; gap: 4px; }
+.filter-bar label { margin-bottom: 0; }
+.filter-bar input, .filter-bar select { min-width: 150px; }
+
+/* ── APOTHEMATES ── */
+.apo-table td.pos { color: var(--success); font-weight: 600; font-family: var(--mono); }
+.apo-table td.neg { color: var(--danger); font-weight: 600; font-family: var(--mono); }
+.apo-table td.zero { color: var(--muted); font-family: var(--mono); }
+
+/* ── PDF PANEL ── */
+.pdf-panel { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.pdf-raw { background: #1a1a2e; color: #a8d8a8; padding: 16px; border-radius: 6px; font-family: var(--mono); font-size: 11px; white-space: pre-wrap; overflow-y: auto; max-height: 400px; line-height: 1.6; }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 200; align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+.modal { background: white; border-radius: 10px; padding: 28px; width: 90%; max-width: 640px; max-height: 90vh; overflow-y: auto; }
+.modal-title { font-size: 16px; font-weight: 600; color: var(--navy2); margin-bottom: 20px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border); }
+
+/* ── ALERTS ── */
+.alert { padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+.alert-error   { background: #fde8e8; color: #7b1c1c; border: 1px solid #f5b7b1; }
+.alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+
+/* ── TABS ── */
+.tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 20px; }
+.tab { padding: 10px 20px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+.tab:hover { color: var(--navy2); }
+.tab.active { color: var(--navy2); border-bottom-color: var(--accent); font-weight: 600; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ── LOADING ── */
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: white; border-radius: 50%; animation: spin 0.7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.empty-state { text-align: center; padding: 48px 20px; color: var(--muted); }
+.empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+.empty-state p { font-size: 14px; }
+
+.text-right { text-align: right; }
+.text-center { text-align: center; }
+.mt-8 { margin-top: 8px; }
+.gap-8 { gap: 8px; }
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <div class="icon">💣</div>
+    <h1>Βιβλίο<br>Εκρηκτικών<br>Υλών</h1>
+    <p>Λατομείο · Διαχείριση</p>
+  </div>
+  <div class="sidebar-nav">
+    <div class="nav-section">Κύριο</div>
+    <div class="nav-item active" data-page="dashboard">
+      <span class="nav-icon">📊</span> Πίνακας Ελέγχου
+    </div>
+    <div class="nav-item" data-page="kiniseis">
+      <span class="nav-icon">📋</span> Βιβλίο Κινήσεων
+    </div>
+    <div class="nav-item" data-page="apothemates">
+      <span class="nav-icon">📦</span> Αποθέματα
+    </div>
+    <div class="nav-section">Εισαγωγή</div>
+    <div class="nav-item" data-page="pdf-import">
+      <span class="nav-icon">📂</span> Εισαγωγή PDF
+    </div>
+    <div class="nav-section">Εξαγωγή</div>
+    <div class="nav-item" data-page="export">
+      <span class="nav-icon">🖨️</span> Εκτύπωση / Εξαγωγή
+    </div>
+    <div class="nav-section">Παράμετροι</div>
+    <div class="nav-item" data-page="ylika">
+      <span class="nav-icon">⚗️</span> Είδη Εκρηκτικών
+    </div>
+    <div class="nav-item" data-page="promitheftes">
+      <span class="nav-icon">🏭</span> Προμηθευτές
+    </div>
+    <div class="nav-item" data-page="adeies">
+      <span class="nav-icon">📜</span> Άδειες
+    </div>
+  </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<main class="main">
+
+  <!-- ── DASHBOARD ── -->
+  <div class="page active" id="page-dashboard">
+    <div class="page-header">
+      <h2>Πίνακας Ελέγχου</h2>
+      <p>Σύνοψη αποθεμάτων και πρόσφατων κινήσεων</p>
+    </div>
+    <div class="stats-grid" id="dash-stats">
+      <div class="stat-card"><div class="stat-val" id="stat-kiniseis">—</div><div class="stat-label">Σύνολο Κινήσεων</div></div>
+      <div class="stat-card accent-card"><div class="stat-val" id="stat-eisagogi">—</div><div class="stat-label">Εισαγωγές</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-exagogi">—</div><div class="stat-label">Εξαγωγές</div></div>
+      <div class="stat-card"><div class="stat-val" id="stat-ylika">—</div><div class="stat-label">Είδη Υλικών</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Τρέχον Απόθεμα ανά Υλικό</div>
+      <div class="table-wrap">
+        <table class="apo-table">
+          <thead><tr>
+            <th>Υλικό</th><th>Μονάδα</th>
+            <th class="text-right">Σύνολο Εισαγωγών</th>
+            <th class="text-right">Σύνολο Εξαγωγών</th>
+            <th class="text-right">Υπόλοιπο</th>
+            <th>Κατάσταση</th>
+          </tr></thead>
+          <tbody id="dash-apo-body"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Τελευταίες 10 Κινήσεις</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Α/Α</th><th>Ημερομηνία</th><th>Τύπος</th>
+            <th>Υλικό</th><th class="text-right">Ποσότητα</th>
+            <th>Παραστατικό</th>
+          </tr></thead>
+          <tbody id="dash-kin-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ΒΙΒΛΙΟ ΚΙΝΗΣΕΩΝ ── -->
+  <div class="page" id="page-kiniseis">
+    <div class="page-header">
+      <h2>Βιβλίο Κινήσεων</h2>
+      <p>Καταχώρηση αγορών (εισαγωγών) και αναλώσεων (εξαγωγών)</p>
+    </div>
+    <div class="card">
+      <div class="card-title" id="kin-form-title">Νέα Καταχώρηση</div>
+      <input type="hidden" id="kin-edit-id">
+      <div class="form-row cols-3">
+        <div><label>Ημερομηνία *</label><input type="date" id="kin-imerominia"></div>
+        <div><label>Τύπος *</label>
+          <select id="kin-tipos">
+            <option value="ΕΙΣΑΓΩΓΗ">📥 Εισαγωγή (Αγορά)</option>
+            <option value="ΕΞΑΓΩΓΗ">📤 Εξαγωγή (Ανάλωση)</option>
+          </select>
+        </div>
+        <div><label>Είδος Εκρηκτικού *</label><select id="kin-yliko"><option value="">— Επιλογή —</option></select></div>
+      </div>
+      <div class="form-row cols-4">
+        <div><label>Ποσότητα *</label><input type="number" id="kin-posotita" step="0.001" min="0.001"></div>
+        <div><label>Αρ. Παραστατικού</label><input type="text" id="kin-parstatiko"></div>
+        <div><label>Άδεια</label><select id="kin-adeia"><option value="">— Καμία —</option></select></div>
+        <div><label>Προμηθευτής</label><select id="kin-prom"><option value="">— Κανένας —</option></select></div>
+      </div>
+      <div class="form-row cols-2">
+        <div><label>Παρατηρήσεις</label><input type="text" id="kin-paratirishis"></div>
+        <div><label>Υπογραφή</label><input type="text" id="kin-ypografi"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-success" onclick="saveKinisi()">💾 Αποθήκευση</button>
+        <button class="btn btn-outline" onclick="clearKinisiForm()">✖ Καθαρισμός</button>
+      </div>
+    </div>
+
+    <!-- Φίλτρα -->
+    <div class="filter-bar">
+      <div class="f-item"><label>Υλικό</label><select id="flt-yliko"><option value="">Όλα</option></select></div>
+      <div class="f-item"><label>Τύπος</label>
+        <select id="flt-tipos">
+          <option value="">Όλα</option>
+          <option value="ΕΙΣΑΓΩΓΗ">Εισαγωγές</option>
+          <option value="ΕΞΑΓΩΓΗ">Εξαγωγές</option>
+        </select>
+      </div>
+      <div class="f-item"><label>Από</label><input type="date" id="flt-apo"></div>
+      <div class="f-item"><label>Έως</label><input type="date" id="flt-eos"></div>
+      <button class="btn btn-primary" onclick="loadKiniseis()">🔍 Φίλτρο</button>
+      <button class="btn btn-outline" onclick="clearFilters()">↺ Επαναφορά</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Εγγραφές Βιβλίου</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>Α/Α</th><th>Ημ/νία</th><th>Τύπος</th>
+            <th>Υλικό</th><th>Παραστατικό</th>
+            <th class="text-right">Ποσότητα</th>
+            <th>Άδεια</th><th>Προμηθευτής</th><th>Υπογραφή</th>
+            <th class="text-center">Ενέργειες</th>
+          </tr></thead>
+          <tbody id="kin-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ΑΠΟΘΕΜΑΤΑ ── -->
+  <div class="page" id="page-apothemates">
+    <div class="page-header">
+      <h2>Τρέχον Απόθεμα</h2>
+      <p>Υπόλοιπα ανά είδος εκρηκτικού (Σύνολο εισαγωγών − Σύνολο εξαγωγών)</p>
+    </div>
+    <div class="card">
+      <div class="table-wrap">
+        <table class="apo-table">
+          <thead><tr>
+            <th>Υλικό</th><th>Διατομή</th><th>Μονάδα</th>
+            <th class="text-right">Σύνολο Εισαγωγών</th>
+            <th class="text-right">Σύνολο Εξαγωγών</th>
+            <th class="text-right">Υπόλοιπο</th>
+            <th class="text-center">Κατάσταση</th>
+          </tr></thead>
+          <tbody id="apo-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PDF IMPORT ── -->
+  <div class="page" id="page-pdf-import">
+    <div class="page-header">
+      <h2>Εισαγωγή από PDF</h2>
+      <p>Ανέβασε τιμολόγιο/δελτίο και ο parser θα προτείνει τα στοιχεία</p>
+    </div>
+    <div class="card">
+      <div class="card-title">Φόρτωση PDF</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <input type="file" id="pdf-file" accept=".pdf" style="width:auto;">
+        <button class="btn btn-accent" onclick="parsePdf()">⚡ Ανάλυση PDF</button>
+        <span id="pdf-status" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+    </div>
+
+    <div id="pdf-results" style="display:none;">
+      <div class="pdf-panel">
+        <div>
+          <div class="card-title" style="margin-bottom:10px;">📝 Εξαγόμενο Κείμενο PDF</div>
+          <div class="pdf-raw" id="pdf-raw-text"></div>
+        </div>
+        <div>
+          <div class="card-title" style="margin-bottom:10px;">✏️ Συμπλήρωση / Διόρθωση Στοιχείων</div>
+          <div id="pdf-alert"></div>
+          <div class="form-row cols-2">
+            <div><label>Ημερομηνία *</label><input type="date" id="pdf-imerominia"></div>
+            <div><label>Αρ. Παραστατικού</label><input type="text" id="pdf-parstatiko"></div>
+          </div>
+          <div class="form-row cols-2">
+            <div><label>Άδεια (αριθμός)</label><input type="text" id="pdf-adeia-txt" placeholder="π.χ. 40923"></div>
+            <div><label>Προμηθευτής</label><input type="text" id="pdf-prom-txt" placeholder="Όνομα εταιρείας"></div>
+          </div>
+          <div id="pdf-grammes-container"></div>
+          <div class="form-actions">
+            <button class="btn btn-success" onclick="submitPdfEntries()">💾 Καταχώρηση Όλων</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── EXPORT ── -->
+  <div class="page" id="page-export">
+    <div class="page-header">
+      <h2>Εκτύπωση / Εξαγωγή</h2>
+      <p>Έκδοση νόμιμης μορφής βιβλίου εκρηκτικών</p>
+    </div>
+    <div class="card" style="max-width:560px;">
+      <div class="card-title">Φίλτρα Εξαγωγής</div>
+      <div class="form-row cols-2">
+        <div><label>Υλικό</label><select id="exp-yliko"><option value="">Όλα τα υλικά</option></select></div>
+        <div></div>
+      </div>
+      <div class="form-row cols-2">
+        <div><label>Από ημερομηνία</label><input type="date" id="exp-apo"></div>
+        <div><label>Έως ημερομηνία</label><input type="date" id="exp-eos"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-danger" onclick="doExport('pdf')">📄 Εξαγωγή PDF (Νόμιμη Μορφή)</button>
+        <button class="btn btn-success" onclick="doExport('excel')">📊 Εξαγωγή Excel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ΥΛΙΚΑ ── -->
+  <div class="page" id="page-ylika">
+    <div class="page-header">
+      <h2>Είδη Εκρηκτικών</h2>
+    </div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" id="yl-form-title">Νέο Υλικό</div>
+        <input type="hidden" id="yl-edit-id">
+        <div class="form-row"><div><label>Όνομα Υλικού *</label><input type="text" id="yl-onoma"></div></div>
+        <div class="form-row cols-2">
+          <div><label>Διατομή (mm)</label><input type="number" id="yl-diatomi" placeholder="π.χ. 65"></div>
+          <div><label>Μονάδα Μέτρησης *</label>
+            <select id="yl-monada">
+              <option value="Κιλ">Κιλόγραμμα (Κιλ)</option>
+              <option value="Τεμ">Τεμάχια (Τεμ)</option>
+              <option value="Μετρ">Μέτρα (Μετρ)</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row"><div><label>Παρατηρήσεις</label><input type="text" id="yl-paratirishis"></div></div>
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveYliko()">💾 Αποθήκευση</button>
+          <button class="btn btn-outline" onclick="clearYlikoForm()">✖ Καθαρισμός</button>
+          <button class="btn btn-danger btn-sm" id="yl-del-btn" onclick="deleteYliko()" style="display:none;">🗑 Διαγραφή</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Λίστα Υλικών</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Όνομα</th><th>mm</th><th>Μονάδα</th><th>Παρατηρήσεις</th></tr></thead>
+            <tbody id="yl-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ΠΡΟΜΗΘΕΥΤΕΣ ── -->
+  <div class="page" id="page-promitheftes">
+    <div class="page-header"><h2>Προμηθευτές</h2></div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" id="prom-form-title">Νέος Προμηθευτής</div>
+        <input type="hidden" id="prom-edit-id">
+        <div class="form-row"><div><label>Όνομα *</label><input type="text" id="prom-onoma"></div></div>
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveProm()">💾 Αποθήκευση</button>
+          <button class="btn btn-outline" onclick="clearPromForm()">✖</button>
+          <button class="btn btn-danger btn-sm" id="prom-del-btn" onclick="deleteProm()" style="display:none;">🗑 Διαγραφή</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Λίστα Προμηθευτών</div>
+        <table><thead><tr><th>Όνομα</th></tr></thead><tbody id="prom-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ΑΔΕΙΕΣ ── -->
+  <div class="page" id="page-adeies">
+    <div class="page-header"><h2>Άδειες Αγοράς</h2></div>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title" id="adeia-form-title">Νέα Άδεια</div>
+        <input type="hidden" id="adeia-edit-id">
+        <div class="form-row"><div><label>Αριθμός Άδειας *</label><input type="text" id="adeia-num"></div></div>
+        <div class="form-row"><div><label>Περιγραφή / Αρχή</label><input type="text" id="adeia-perigrafi"></div></div>
+        <div class="form-actions">
+          <button class="btn btn-success" onclick="saveAdeia()">💾 Αποθήκευση</button>
+          <button class="btn btn-outline" onclick="clearAdeiaForm()">✖</button>
+          <button class="btn btn-danger btn-sm" id="adeia-del-btn" onclick="deleteAdeia()" style="display:none;">🗑 Διαγραφή</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Λίστα Αδειών</div>
+        <table><thead><tr><th>Αρ. Άδειας</th><th>Περιγραφή</th></tr></thead><tbody id="adeia-body"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ── CONFIRM MODAL ── -->
+<div class="modal-overlay" id="confirm-modal">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">⚠️ Επιβεβαίωση</div>
+    <p id="confirm-msg"></p>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeConfirm()">Άκυρο</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Διαγραφή</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let allYlika = [], allProm = [], allAdeies = [];
+
+// ── NAVIGATION ────────────────────────────────────────────────────────────────
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    document.getElementById('page-' + el.dataset.page).classList.add('active');
+    onPageLoad(el.dataset.page);
+  });
+});
+
+function onPageLoad(page) {
+  if (page === 'dashboard')     loadDashboard();
+  if (page === 'kiniseis')      { loadDropdowns(); loadKiniseis(); }
+  if (page === 'apothemates')   loadApothemates();
+  if (page === 'export')        loadExportDropdowns();
+  if (page === 'ylika')         loadYlika();
+  if (page === 'promitheftes')  loadProm();
+  if (page === 'adeies')        loadAdeies();
+  if (page === 'pdf-import')    { document.getElementById('pdf-results').style.display='none'; }
+}
+
+// ── API HELPERS ──────────────────────────────────────────────────────────────
+async function api(method, url, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(url, opts);
+  return r.json();
+}
+
+// ── DATE HELPERS ─────────────────────────────────────────────────────────────
+function todayInput() { return new Date().toISOString().slice(0,10); }
+function fmtDate(s) { if (!s) return ''; const [y,m,d] = s.split('-'); return d?`${d}/${m}/${y}`:s; }
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  const [apo, kin] = await Promise.all([
+    fetch('/api/apothemates').then(r=>r.json()),
+    fetch('/api/kiniseis').then(r=>r.json())
+  ]);
+
+  document.getElementById('stat-kiniseis').textContent = kin.length;
+  document.getElementById('stat-eisagogi').textContent = kin.filter(k=>k.tipos==='ΕΙΣΑΓΩΓΗ').length;
+  document.getElementById('stat-exagogi').textContent  = kin.filter(k=>k.tipos==='ΕΞΑΓΩΓΗ').length;
+  document.getElementById('stat-ylika').textContent    = apo.length;
+
+  const apoBody = document.getElementById('dash-apo-body');
+  apoBody.innerHTML = apo.length ? apo.map(r => {
+    const cls = r.ypoloipo > 0 ? 'pos' : r.ypoloipo < 0 ? 'neg' : 'zero';
+    const badge = r.ypoloipo > 0 ? '<span class="badge badge-ok">OK</span>' : r.ypoloipo < 0 ? '<span class="badge badge-neg">ΑΡΝΗΤΙΚΟ</span>' : '<span class="badge badge-low">ΜΗΔΕΝ</span>';
+    return `<tr>
+      <td><strong>${r.onoma}</strong>${r.diatomi_mm?` <small>(${r.diatomi_mm}mm)</small>`:''}</td>
+      <td>${r.monada_metrisis}</td>
+      <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
+      <td class="text-right mono">${r.synolo_exagogon.toFixed(3)}</td>
+      <td class="text-right ${cls}">${r.ypoloipo.toFixed(3)}</td>
+      <td>${badge}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="6" class="text-center" style="padding:24px;color:var(--muted)">Δεν υπάρχουν δεδομένα</td></tr>';
+
+  const kinBody = document.getElementById('dash-kin-body');
+  const last10 = kin.slice(-10).reverse();
+  kinBody.innerHTML = last10.map(k => `<tr>
+    <td class="mono">${k.auxon_arithmos}</td>
+    <td>${fmtDate(k.imerominia)}</td>
+    <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣΑΓΩΓΗ':'📤 ΕΞΑΓΩΓΗ'}</span></td>
+    <td>${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
+    <td class="text-right mono">${k.posotita.toFixed(3)} ${k.monada_metrisis}</td>
+    <td class="mono">${k.arithmos_parstatikos||'—'}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν κινήσεις</td></tr>';
+}
+
+// ── ΑΠΟΘΕΜΑΤΑ ─────────────────────────────────────────────────────────────────
+async function loadApothemates() {
+  const apo = await fetch('/api/apothemates').then(r=>r.json());
+  const body = document.getElementById('apo-body');
+  body.innerHTML = apo.length ? apo.map(r => {
+    const cls = r.ypoloipo > 0 ? 'pos' : r.ypoloipo < 0 ? 'neg' : 'zero';
+    const badge = r.ypoloipo > 0 ? '<span class="badge badge-ok">ΟΚ</span>' : r.ypoloipo < 0 ? '<span class="badge badge-neg">ΑΡΝΗΤΙΚΟ</span>' : '<span class="badge badge-low">ΜΗΔΕΝ</span>';
+    return `<tr>
+      <td><strong>${r.onoma}</strong></td>
+      <td class="mono">${r.diatomi_mm||'—'}</td>
+      <td>${r.monada_metrisis}</td>
+      <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
+      <td class="text-right mono">${r.synolo_exagogon.toFixed(3)}</td>
+      <td class="text-right ${cls} mono">${r.ypoloipo.toFixed(3)}</td>
+      <td class="text-center">${badge}</td>
+    </tr>`;
+  }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';
+}
+
+// ── DROPDOWNS ─────────────────────────────────────────────────────────────────
+async function loadDropdowns() {
+  [allYlika, allProm, allAdeies] = await Promise.all([
+    fetch('/api/ylika').then(r=>r.json()),
+    fetch('/api/promitheftes').then(r=>r.json()),
+    fetch('/api/adeies').then(r=>r.json())
+  ]);
+  fillYlikoSelects();
+  fillPromSelects();
+  fillAdeiesSelects();
+}
+
+function ylikoLabel(y) { return y.onoma + (y.diatomi_mm ? ` (${y.diatomi_mm}mm)` : '') + ` — ${y.monada_metrisis}`; }
+
+function fillYlikoSelects() {
+  const opts = allYlika.map(y => `<option value="${y.id}">${ylikoLabel(y)}</option>`).join('');
+  ['kin-yliko','flt-yliko'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const prev = el.value;
+    el.innerHTML = (id==='flt-yliko'?'<option value="">Όλα</option>':'<option value="">— Επιλογή —</option>') + opts;
+    if (prev) el.value = prev;
+  });
+}
+function fillPromSelects() {
+  const opts = '<option value="">— Κανένας —</option>' + allProm.map(p=>`<option value="${p.id}">${p.onoma}</option>`).join('');
+  const el = document.getElementById('kin-prom');
+  if (el) { const v=el.value; el.innerHTML=opts; if(v) el.value=v; }
+}
+function fillAdeiesSelects() {
+  const opts = '<option value="">— Καμία —</option>' + allAdeies.map(a=>`<option value="${a.id}">${a.arithmos_adeias}</option>`).join('');
+  const el = document.getElementById('kin-adeia');
+  if (el) { const v=el.value; el.innerHTML=opts; if(v) el.value=v; }
+}
+
+// ── ΚΙΝΗΣΕΙΣ ─────────────────────────────────────────────────────────────────
+async function loadKiniseis() {
+  const params = new URLSearchParams();
+  const yl = document.getElementById('flt-yliko')?.value;
+  const tp = document.getElementById('flt-tipos')?.value;
+  const ap = document.getElementById('flt-apo')?.value;
+  const eo = document.getElementById('flt-eos')?.value;
+  if (yl) params.set('yliko_id', yl);
+  if (tp) params.set('tipos', tp);
+  if (ap) params.set('apo', ap);
+  if (eo) params.set('eos', eo);
+
+  const kin = await fetch('/api/kiniseis?' + params).then(r=>r.json());
+  const body = document.getElementById('kin-body');
+
+  if (!kin.length) {
+    body.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📋</div><p>Δεν βρέθηκαν κινήσεις</p></div></td></tr>';
+    return;
+  }
+
+  body.innerHTML = kin.map(k => `<tr>
+    <td class="mono">${k.auxon_arithmos}</td>
+    <td>${fmtDate(k.imerominia)}</td>
+    <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣ':'📤 ΕΞΑ'}</span></td>
+    <td>${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
+    <td class="mono">${k.arithmos_parstatikos||'—'}</td>
+    <td class="text-right mono">${k.posotita.toFixed(3)} ${k.monada_metrisis}</td>
+    <td class="mono">${k.arithmos_adeias||'—'}</td>
+    <td>${k.promitheftis_onoma||'—'}</td>
+    <td>${k.ypografi||'—'}</td>
+    <td class="text-center">
+      <button class="btn btn-outline btn-sm" onclick='editKinisi(${JSON.stringify(k)})'>✏️</button>
+      <button class="btn btn-danger btn-sm" onclick="confirmDelete('kinisi',${k.id})">🗑</button>
+    </td>
+  </tr>`).join('');
+}
+
+function editKinisi(k) {
+  document.getElementById('kin-edit-id').value = k.id;
+  document.getElementById('kin-form-title').textContent = `Επεξεργασία Κίνησης #${k.auxon_arithmos}`;
+  document.getElementById('kin-imerominia').value = k.imerominia;
+  document.getElementById('kin-tipos').value = k.tipos;
+  document.getElementById('kin-yliko').value = k.yliko_id;
+  document.getElementById('kin-posotita').value = k.posotita;
+  document.getElementById('kin-parstatiko').value = k.arithmos_parstatikos||'';
+  document.getElementById('kin-adeia').value = k.adeia_id||'';
+  document.getElementById('kin-prom').value = k.promitheftis_id||'';
+  document.getElementById('kin-paratirishis').value = k.paratirishis||'';
+  document.getElementById('kin-ypografi').value = k.ypografi||'';
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+async function saveKinisi() {
+  const id = document.getElementById('kin-edit-id').value;
+  const body = {
+    imerominia:  document.getElementById('kin-imerominia').value,
+    tipos:       document.getElementById('kin-tipos').value,
+    yliko_id:    parseInt(document.getElementById('kin-yliko').value),
+    posotita:    parseFloat(document.getElementById('kin-posotita').value),
+    arithmos_parstatikos: document.getElementById('kin-parstatiko').value,
+    adeia_id:    document.getElementById('kin-adeia').value || null,
+    promitheftis_id: document.getElementById('kin-prom').value || null,
+    paratirishis: document.getElementById('kin-paratirishis').value,
+    ypografi:    document.getElementById('kin-ypografi').value
+  };
+  if (!body.imerominia || !body.tipos || !body.yliko_id || isNaN(body.posotita)) {
+    alert('Συμπληρώστε τα υποχρεωτικά πεδία (Ημερομηνία, Τύπος, Υλικό, Ποσότητα).');
+    return;
+  }
+  const r = id
+    ? await api('PUT', `/api/kiniseis/${id}`, body)
+    : await api('POST', '/api/kiniseis', body);
+  if (r.ok) { clearKinisiForm(); loadKiniseis(); }
+  else alert('Σφάλμα: ' + r.error);
+}
+
+function clearKinisiForm() {
+  document.getElementById('kin-edit-id').value = '';
+  document.getElementById('kin-form-title').textContent = 'Νέα Καταχώρηση';
+  ['kin-imerominia','kin-posotita','kin-parstatiko','kin-paratirishis','kin-ypografi'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  document.getElementById('kin-imerominia').value = todayInput();
+  document.getElementById('kin-tipos').value = 'ΕΙΣΑΓΩΓΗ';
+  document.getElementById('kin-yliko').value = '';
+  document.getElementById('kin-adeia').value = '';
+  document.getElementById('kin-prom').value = '';
+}
+
+function clearFilters() {
+  ['flt-yliko','flt-tipos','flt-apo','flt-eos'].forEach(id => document.getElementById(id).value='');
+  loadKiniseis();
+}
+
+// ── ΥΛΙΚΑ ────────────────────────────────────────────────────────────────────
+async function loadYlika() {
+  allYlika = await fetch('/api/ylika').then(r=>r.json());
+  const body = document.getElementById('yl-body');
+  body.innerHTML = allYlika.map(y => `<tr style="cursor:pointer" onclick='fillYlikoForm(${JSON.stringify(y)})'>
+    <td><strong>${y.onoma}</strong></td>
+    <td>${y.diatomi_mm||'—'}</td>
+    <td>${y.monada_metrisis}</td>
+    <td>${y.paratirishis||'—'}</td>
+  </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';
+}
+
+function fillYlikoForm(y) {
+  document.getElementById('yl-edit-id').value = y.id;
+  document.getElementById('yl-form-title').textContent = 'Επεξεργασία Υλικού';
+  document.getElementById('yl-onoma').value = y.onoma;
+  document.getElementById('yl-diatomi').value = y.diatomi_mm||'';
+  document.getElementById('yl-monada').value = y.monada_metrisis;
+  document.getElementById('yl-paratirishis').value = y.paratirishis||'';
+  document.getElementById('yl-del-btn').style.display = 'inline-flex';
+}
+
+async function saveYliko() {
+  const id = document.getElementById('yl-edit-id').value;
+  const body = {
+    onoma: document.getElementById('yl-onoma').value.trim(),
+    diatomi_mm: document.getElementById('yl-diatomi').value || null,
+    monada_metrisis: document.getElementById('yl-monada').value,
+    paratirishis: document.getElementById('yl-paratirishis').value
+  };
+  if (!body.onoma) { alert('Το όνομα είναι υποχρεωτικό.'); return; }
+  const r = id ? await api('PUT',`/api/ylika/${id}`,body) : await api('POST','/api/ylika',body);
+  if (r.ok) { clearYlikoForm(); loadYlika(); }
+  else alert('Σφάλμα: ' + r.error);
+}
+
+async function deleteYliko() {
+  const id = document.getElementById('yl-edit-id').value;
+  if (!id) return;
+  confirmDelete('yliko', id);
+}
+
+function clearYlikoForm() {
+  document.getElementById('yl-edit-id').value='';
+  document.getElementById('yl-form-title').textContent='Νέο Υλικό';
+  ['yl-onoma','yl-diatomi','yl-paratirishis'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('yl-del-btn').style.display='none';
+}
+
+// ── ΠΡΟΜΗΘΕΥΤΕΣ ──────────────────────────────────────────────────────────────
+async function loadProm() {
+  allProm = await fetch('/api/promitheftes').then(r=>r.json());
+  const body = document.getElementById('prom-body');
+  body.innerHTML = allProm.map(p=>`<tr style="cursor:pointer" onclick='fillPromForm(${JSON.stringify(p)})'>
+    <td>${p.onoma}</td>
+  </tr>`).join('') || '<tr><td style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
+}
+
+function fillPromForm(p) {
+  document.getElementById('prom-edit-id').value=p.id;
+  document.getElementById('prom-form-title').textContent='Επεξεργασία Προμηθευτή';
+  document.getElementById('prom-onoma').value=p.onoma;
+  document.getElementById('prom-del-btn').style.display='inline-flex';
+}
+
+async function saveProm() {
+  const id=document.getElementById('prom-edit-id').value;
+  const body={onoma:document.getElementById('prom-onoma').value.trim()};
+  if (!body.onoma) { alert('Το όνομα είναι υποχρεωτικό.'); return; }
+  const r=id?await api('PUT',`/api/promitheftes/${id}`,body):await api('POST','/api/promitheftes',body);
+  if (r.ok) { clearPromForm(); loadProm(); }
+  else alert('Σφάλμα: '+r.error);
+}
+
+async function deleteProm() {
+  const id=document.getElementById('prom-edit-id').value;
+  if (id) confirmDelete('prom',id);
+}
+
+function clearPromForm() {
+  document.getElementById('prom-edit-id').value='';
+  document.getElementById('prom-form-title').textContent='Νέος Προμηθευτής';
+  document.getElementById('prom-onoma').value='';
+  document.getElementById('prom-del-btn').style.display='none';
+}
+
+// ── ΑΔΕΙΕΣ ───────────────────────────────────────────────────────────────────
+async function loadAdeies() {
+  allAdeies = await fetch('/api/adeies').then(r=>r.json());
+  const body=document.getElementById('adeia-body');
+  body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" onclick='fillAdeiaForm(${JSON.stringify(a)})'>
+    <td><strong>${a.arithmos_adeias}</strong></td><td>${a.perigrafi||'—'}</td>
+  </tr>`).join('')||'<tr><td colspan="2" style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
+}
+
+function fillAdeiaForm(a) {
+  document.getElementById('adeia-edit-id').value=a.id;
+  document.getElementById('adeia-form-title').textContent='Επεξεργασία Άδειας';
+  document.getElementById('adeia-num').value=a.arithmos_adeias;
+  document.getElementById('adeia-perigrafi').value=a.perigrafi||'';
+  document.getElementById('adeia-del-btn').style.display='inline-flex';
+}
+
+async function saveAdeia() {
+  const id=document.getElementById('adeia-edit-id').value;
+  const body={arithmos_adeias:document.getElementById('adeia-num').value.trim(), perigrafi:document.getElementById('adeia-perigrafi').value};
+  if (!body.arithmos_adeias) { alert('Ο αριθμός άδειας είναι υποχρεωτικός.'); return; }
+  const r=id?await api('PUT',`/api/adeies/${id}`,body):await api('POST','/api/adeies',body);
+  if (r.ok) { clearAdeiaForm(); loadAdeies(); }
+  else alert('Σφάλμα: '+r.error);
+}
+
+async function deleteAdeia() {
+  const id=document.getElementById('adeia-edit-id').value;
+  if (id) confirmDelete('adeia',id);
+}
+
+function clearAdeiaForm() {
+  document.getElementById('adeia-edit-id').value='';
+  document.getElementById('adeia-form-title').textContent='Νέα Άδεια';
+  document.getElementById('adeia-num').value='';
+  document.getElementById('adeia-perigrafi').value='';
+  document.getElementById('adeia-del-btn').style.display='none';
+}
+
+// ── PDF IMPORT ────────────────────────────────────────────────────────────────
+async function parsePdf() {
+  const file = document.getElementById('pdf-file').files[0];
+  if (!file) { alert('Επιλέξτε αρχείο PDF.'); return; }
+  const status = document.getElementById('pdf-status');
+  status.textContent = '⏳ Ανάλυση...';
+
+  const fd = new FormData();
+  fd.append('file', file);
+  const r = await fetch('/api/parse-pdf', {method:'POST', body:fd}).then(x=>x.json());
+  status.textContent = '';
+
+  if (!r.ok) { alert('Σφάλμα: ' + r.error); return; }
+
+  document.getElementById('pdf-raw-text').textContent = r.raw_text || '(Δεν εξήχθη κείμενο)';
+  document.getElementById('pdf-results').style.display = 'block';
+
+  const s = r.suggested;
+  // Μετατροπή ΗΗ/ΜΜ/ΕΕΕΕ σε ΕΕΕΕ-ΜΜ-ΗΗ για input[type=date]
+  if (s.imerominia) {
+    const [d,m,y] = s.imerominia.split('/');
+    document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
+  }
+  document.getElementById('pdf-parstatiko').value = s.arithmos_parstatikos||'';
+  document.getElementById('pdf-adeia-txt').value  = s.adeia||'';
+  document.getElementById('pdf-prom-txt').value   = s.promitheftis||'';
+
+  // Γραμμές υλικών
+  const container = document.getElementById('pdf-grammes-container');
+  if (s.grammes.length) {
+    container.innerHTML = '<div class="card-title" style="margin-top:16px;margin-bottom:10px;">Αναγνωρισμένα Υλικά (επιβεβαίωση)</div>' +
+      s.grammes.map((g,i)=>`
+        <div class="form-row cols-3" style="margin-bottom:8px;">
+          <div><label>Υλικό ${i+1}</label><input type="text" id="pdf-g-onoma-${i}" value="${g.onoma}"></div>
+          <div><label>Ποσότητα</label><input type="number" id="pdf-g-pos-${i}" value="${g.posotita}" step="0.001"></div>
+          <div><label>Μονάδα</label>
+            <select id="pdf-g-mon-${i}">
+              <option ${g.monada==='Κιλ'?'selected':''}>Κιλ</option>
+              <option ${g.monada==='Τεμ'?'selected':''}>Τεμ</option>
+              <option ${g.monada==='Μετρ'?'selected':''}>Μετρ</option>
+            </select>
+          </div>
+        </div>`).join('');
+  } else {
+    container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">⚠️ Δεν αναγνωρίστηκαν αυτόματα υλικά. Συμπληρώστε χειροκίνητα ή χρησιμοποιήστε τη φόρμα Κινήσεων.</div>';
+  }
+  window.pdfGrammesCount = s.grammes.length;
+}
+
+async function submitPdfEntries() {
+  const imerominia = document.getElementById('pdf-imerominia').value;
+  const parstatiko = document.getElementById('pdf-parstatiko').value;
+  const adeiaNum   = document.getElementById('pdf-adeia-txt').value.trim();
+  const promName   = document.getElementById('pdf-prom-txt').value.trim();
+
+  if (!imerominia) { alert('Συμπληρώστε ημερομηνία.'); return; }
+  if (!window.pdfGrammesCount) { alert('Δεν υπάρχουν γραμμές υλικών.'); return; }
+
+  // Εύρεση ή δημιουργία προμηθευτή
+  let promId = null;
+  if (promName) {
+    let p = allProm.find(x=>x.onoma.toLowerCase()===promName.toLowerCase());
+    if (!p) {
+      const r = await api('POST','/api/promitheftes',{onoma:promName});
+      if (!r.ok) { alert('Σφάλμα αποθήκευσης προμηθευτή: '+r.error); return; }
+      allProm = await fetch('/api/promitheftes').then(r=>r.json());
+      p = allProm.find(x=>x.onoma.toLowerCase()===promName.toLowerCase());
+    }
+    promId = p?.id || null;
+  }
+
+  // Εύρεση ή δημιουργία άδειας
+  let adeiaId = null;
+  if (adeiaNum) {
+    let a = allAdeies.find(x=>x.arithmos_adeias===adeiaNum);
+    if (!a) {
+      const r = await api('POST','/api/adeies',{arithmos_adeias:adeiaNum});
+      if (!r.ok) { alert('Σφάλμα αποθήκευσης άδειας: '+r.error); return; }
+      allAdeies = await fetch('/api/adeies').then(r=>r.json());
+      a = allAdeies.find(x=>x.arithmos_adeias===adeiaNum);
+    }
+    adeiaId = a?.id || null;
+  }
+
+  let saved = 0, errors = [];
+  for (let i=0; i<window.pdfGrammesCount; i++) {
+    const onoma = document.getElementById(`pdf-g-onoma-${i}`)?.value?.trim().toUpperCase();
+    const pos   = parseFloat(document.getElementById(`pdf-g-pos-${i}`)?.value);
+    const mon   = document.getElementById(`pdf-g-mon-${i}`)?.value;
+    if (!onoma || isNaN(pos)) continue;
+
+    // Εύρεση ή δημιουργία υλικού
+    let yliko = allYlika.find(y=>y.onoma===onoma);
+    if (!yliko) {
+      const r = await api('POST','/api/ylika',{onoma,monada_metrisis:mon,paratirishis:'Αυτόματη εισαγωγή PDF'});
+      if (!r.ok) { errors.push(onoma+': '+r.error); continue; }
+      allYlika = await fetch('/api/ylika').then(r=>r.json());
+      yliko = allYlika.find(y=>y.onoma===onoma);
+    }
+
+    const r = await api('POST','/api/kiniseis',{
+      imerominia, tipos:'ΕΙΣΑΓΩΓΗ', yliko_id:yliko.id,
+      posotita:pos, arithmos_parstatikos:parstatiko,
+      adeia_id:adeiaId, promitheftis_id:promId,
+      paratirishis:'Εισαγωγή από PDF'
+    });
+    if (r.ok) saved++; else errors.push(onoma+': '+r.error);
+  }
+
+  const alertEl = document.getElementById('pdf-alert');
+  if (errors.length) {
+    alertEl.innerHTML = `<div class="alert alert-error">Σφάλματα: ${errors.join(', ')}</div>`;
+  }
+  if (saved) {
+    alertEl.innerHTML += `<div class="alert alert-success">✅ Καταχωρήθηκαν ${saved} γραμμές επιτυχώς!</div>`;
+  }
+}
+
+// ── EXPORT ───────────────────────────────────────────────────────────────────
+async function loadExportDropdowns() {
+  const ylika = await fetch('/api/ylika').then(r=>r.json());
+  const sel = document.getElementById('exp-yliko');
+  sel.innerHTML = '<option value="">Όλα τα υλικά</option>' +
+    ylika.map(y=>`<option value="${y.id}">${ylikoLabel(y)}</option>`).join('');
+}
+
+function doExport(fmt) {
+  const params = new URLSearchParams();
+  const yl = document.getElementById('exp-yliko').value;
+  const ap = document.getElementById('exp-apo').value;
+  const eo = document.getElementById('exp-eos').value;
+  if (yl) params.set('yliko_id', yl);
+  if (ap) params.set('apo', ap);
+  if (eo) params.set('eos', eo);
+  window.location.href = `/api/export/${fmt}?${params}`;
+}
+
+// ── CONFIRM DELETE ────────────────────────────────────────────────────────────
+let _delType, _delId;
+function confirmDelete(type, id) {
+  _delType=type; _delId=id;
+  const msgs = {
+    kinisi:'Διαγραφή αυτής της κίνησης;',
+    yliko:'Διαγραφή αυτού του υλικού;',
+    prom:'Διαγραφή αυτού του προμηθευτή;',
+    adeia:'Διαγραφή αυτής της άδειας;'
+  };
+  document.getElementById('confirm-msg').textContent = msgs[type] || 'Επιβεβαίωση διαγραφής;';
+  document.getElementById('confirm-modal').classList.add('open');
+}
+
+document.getElementById('confirm-ok-btn').onclick = async () => {
+  const urls = {kinisi:'/api/kiniseis',yliko:'/api/ylika',prom:'/api/promitheftes',adeia:'/api/adeies'};
+  const r = await api('DELETE', `${urls[_delType]}/${_delId}`);
+  closeConfirm();
+  if (!r.ok) { alert('Σφάλμα: '+r.error); return; }
+  if (_delType==='kinisi')   loadKiniseis();
+  if (_delType==='yliko')    { clearYlikoForm(); loadYlika(); }
+  if (_delType==='prom')     { clearPromForm(); loadProm(); }
+  if (_delType==='adeia')    { clearAdeiaForm(); loadAdeies(); }
+};
+
+function closeConfirm() {
+  document.getElementById('confirm-modal').classList.remove('open');
+}
+
+// ── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('kin-imerominia').value = todayInput();
+loadDashboard();
+</script>
+</body>
+</html>
