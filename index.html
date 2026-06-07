@@ -870,7 +870,10 @@ async function autoKataxorisi(btn) {
   };
   try {
     await py('add_kinisi', body);
+    // Αφαίρεσε αυτή τη γραμμή από το banner
     document.getElementById(`ekk-${idx}`)?.remove();
+    // Σημείωσε ότι καταχωρήθηκε για να μην ξαναεμφανιστεί
+    window._ekkData[idx] = null;
     checkBannerEmpty();
     loadKiniseis();
     loadDashboard();
