@@ -1,7 +1,6 @@
 """
 Εξαγωγή βιβλίου εκρηκτικών.
-Διάταξη: αριστερά αγορές/επιστροφές, δεξιά καταναλώσεις.
-Μία γραμμή ανά παραστατικό αγοράς + υπογραμμή επιστροφής.
+Δύο ξεχωριστοί πίνακες δίπλα-δίπλα: αριστερά αγορές/επιστροφές, δεξιά καταναλώσεις.
 """
 import io, os, glob
 from datetime import datetime
@@ -54,7 +53,6 @@ def fmt_num(val):
     return f"{val:,.3f}".replace(',','X').replace('.',',').replace('X','.')
 
 def get_ylika_order(kiniseis):
-    """Επιστρέφει υλικά με σειρά πρώτης εμφάνισης."""
     order = OrderedDict()
     for k in kiniseis:
         yid = k['yliko_id']
@@ -63,35 +61,13 @@ def get_ylika_order(kiniseis):
     return list(order.items())
 
 def build_book_rows(kiniseis):
-    """
-    Επιστρέφει λίστα από εγγραφές βιβλίου:
-    [
-      {
-        'auxon': int,
-        'type': 'agora' | 'epistrofi' | 'katanalosi',
-        'imerominia': str,
-        'parstatiko': str,
-        'adeia': str,
-        'promitheftis': str,
-        'ylika': {yid: posotita},   # αγορά/επιστροφή
-        'katanalosi': {yid: posotita},  # μόνο για katanalosi
-        'paratirishis': str,
-        'aa': int or None,
-      }
-    ]
-    Λογική:
-    - ΕΙΣΑΓΩΓΗ → γραμμή 'agora' με Α/Α
-    - ΕΞΑΓΩΓΗ με παραστατικό → γραμμή 'epistrofi' (υπογραμμή, χωρίς Α/Α)
-    - ΕΞΑΓΩΓΗ χωρίς παραστατικό → γραμμή 'katanalosi' στη δεξιά πλευρά
-    """
-    # Ομαδοποίηση ανά παραστατικό για αγορές
-    agores   = OrderedDict()  # key → row
+    agores     = OrderedDict()
     epistrofes = []
     katanaliseis = []
     aa = 1
 
     for k in kiniseis:
-        yid = k['yliko_id']
+        yid   = k['yliko_id']
         tipos = k['tipos']
         parst = k.get('arithmos_parstatikos') or ''
         imer  = k['imerominia']
@@ -102,73 +78,49 @@ def build_book_rows(kiniseis):
         if tipos == 'ΕΙΣΑΓΩΓΗ':
             key = (imer, parst, adeia, prom)
             if key not in agores:
-                agores[key] = {
-                    'type': 'agora', 'aa': aa,
-                    'imerominia': imer, 'parstatiko': parst,
-                    'adeia': adeia, 'promitheftis': prom,
-                    'ylika': {}, 'paratirishis': par
-                }
+                agores[key] = {'type':'agora','aa':aa,'imerominia':imer,
+                               'parstatiko':parst,'adeia':adeia,'promitheftis':prom,
+                               'ylika':{},'paratirishis':par}
                 aa += 1
-            agores[key]['ylika'][yid] = agores[key]['ylika'].get(yid, 0) + k['posotita']
+            agores[key]['ylika'][yid] = agores[key]['ylika'].get(yid,0) + k['posotita']
 
         elif tipos == 'ΕΞΑΓΩΓΗ' and parst:
-            # Επιστροφή — υπογραμμή
-            key = (imer, parst, adeia, prom)
-            found = None
-            for e in epistrofes:
-                if e['parstatiko'] == parst and e['imerominia'] == imer:
-                    found = e; break
+            found = next((e for e in epistrofes if e['parstatiko']==parst and e['imerominia']==imer), None)
             if not found:
-                found = {
-                    'type': 'epistrofi', 'aa': None,
-                    'imerominia': imer, 'parstatiko': parst,
-                    'adeia': adeia, 'promitheftis': prom,
-                    'ylika': {}, 'paratirishis': 'ΕΠΙΣΤΡΟΦΗ'
-                }
+                found = {'type':'epistrofi','aa':None,'imerominia':imer,
+                         'parstatiko':parst,'adeia':adeia,'promitheftis':prom,
+                         'ylika':{},'paratirishis':'ΕΠΙΣΤΡΟΦΗ'}
                 epistrofes.append(found)
-            found['ylika'][yid] = found['ylika'].get(yid, 0) + k['posotita']
+            found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
         else:
-            # Κατανάλωση
-            key = (imer, parst)
-            found = None
-            for c in katanaliseis:
-                if c['imerominia'] == imer and c['parstatiko'] == parst:
-                    found = c; break
+            found = next((c for c in katanaliseis if c['imerominia']==imer), None)
             if not found:
-                found = {
-                    'type': 'katanalosi', 'aa': None,
-                    'imerominia': imer, 'parstatiko': parst,
-                    'adeia': '', 'promitheftis': '',
-                    'ylika': {}, 'paratirishis': par
-                }
+                found = {'type':'katanalosi','aa':None,'imerominia':imer,
+                         'parstatiko':'','adeia':'','promitheftis':'',
+                         'ylika':{},'paratirishis':par}
                 katanaliseis.append(found)
-            found['ylika'][yid] = found['ylika'].get(yid, 0) + k['posotita']
+            found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
-    # Χτίσε τελική λίστα: αγορά → επιστροφή (αν υπάρχει) → ...
-    # Κατανάλωση αντιστοιχεί σε κάθε αγορά βάσει ημερομηνίας
+    # Συναρμολόγηση: αγορά → επιστροφή ίδιας ημερομηνίας
     rows = []
     epi_used = set()
-    kat_used = set()
-
     for key, agora in agores.items():
         rows.append(agora)
-        # Βρες επιστροφή με ίδια ημερομηνία
         for i, e in enumerate(epistrofes):
             if i not in epi_used and e['imerominia'] == agora['imerominia']:
                 rows.append(e)
                 epi_used.add(i)
                 break
 
-    # Κατανάλωση ξεχωριστά στη δεξιά — δεν εμφανίζεται ως γραμμή αριστερά
-    # αλλά αντιστοιχεί σε γραμμή αγοράς της ίδιας ημερομηνίας
+    # Κατανάλωση ανά ημερομηνία
     kat_by_date = {}
     for k in katanaliseis:
         d = k['imerominia']
         if d not in kat_by_date:
             kat_by_date[d] = {}
         for yid, pos in k['ylika'].items():
-            kat_by_date[d][yid] = kat_by_date[d].get(yid, 0) + pos
+            kat_by_date[d][yid] = kat_by_date[d].get(yid,0) + pos
 
     return rows, kat_by_date
 
@@ -179,7 +131,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
@@ -193,149 +145,158 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     rows, kat_by_date = build_book_rows(kiniseis)
     n = len(ylika_order)
 
-    buf = io.BytesIO()
     pagesize = landscape(A4)
+    page_w   = pagesize[0] - 1.4*cm
+
+    # Υπολογισμός πλατών
+    # Αριστερά: Α/Α(0.7) Ημ(1.6) Παραστ(1.5) Άδεια(1.4) Προμηθ(2.5) + n*yw
+    # Δεξιά:    Ημ.Κατ(1.6) + n*yw + Παρατ(1.8)
+    L_FIXED = [0.7, 1.6, 1.5, 1.4, 2.5]
+    R_FIXED = [1.6, 1.8]
+    SEP     = 0.2
+
+    fixed_total = sum(L_FIXED) + sum(R_FIXED) + SEP
+    yw = max(1.1, (page_w - fixed_total) / (2 * n)) if n else 1.5
+
+    L_WIDTHS = [x*cm for x in L_FIXED] + [yw*cm]*n
+    R_WIDTHS = [R_FIXED[0]*cm] + [yw*cm]*n + [R_FIXED[1]*cm]
+
+    buf = io.BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=pagesize,
                             leftMargin=0.7*cm, rightMargin=0.7*cm,
                             topMargin=1.2*cm, bottomMargin=1.2*cm)
 
-    TS  = ParagraphStyle('t',  fontSize=10, fontName=SFB, alignment=TA_CENTER, spaceAfter=2)
-    SS  = ParagraphStyle('s',  fontSize=6.5,fontName=SF,  alignment=TA_CENTER, spaceAfter=6)
-    HS  = ParagraphStyle('h',  fontSize=5,  fontName=FB,  alignment=TA_CENTER, leading=6)
-    CS  = ParagraphStyle('c',  fontSize=5.5,fontName=F,   alignment=TA_CENTER, leading=6)
-    NS  = ParagraphStyle('n',  fontSize=5,  fontName=F,   alignment=TA_LEFT,   leading=6)
-    RS  = ParagraphStyle('r',  fontSize=5,  fontName=F,   alignment=TA_CENTER, leading=6, textColor=colors.HexColor('#c53030'))
+    TS = ParagraphStyle('t', fontSize=9,  fontName=SFB, alignment=TA_CENTER, spaceAfter=2)
+    SS = ParagraphStyle('s', fontSize=6,  fontName=SF,  alignment=TA_CENTER, spaceAfter=4)
+    HS = ParagraphStyle('h', fontSize=5,  fontName=FB,  alignment=TA_CENTER, leading=6)
+    CS = ParagraphStyle('c', fontSize=5.5,fontName=F,   alignment=TA_CENTER, leading=6)
+    NS = ParagraphStyle('n', fontSize=5,  fontName=F,   alignment=TA_LEFT,   leading=6)
+    ES = ParagraphStyle('e', fontSize=5,  fontName=FB,  alignment=TA_CENTER, leading=6,
+                        textColor=colors.HexColor('#c53030'))
 
-    story = []
-    story.append(Paragraph("ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ", TS))
-    story.append(Paragraph(
-        f"Περίοδος: {period_label}  |  Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}",
-        SS))
+    NAVY  = colors.HexColor('#1a365d')
+    GREEN = colors.HexColor('#2d6a4f')
+    LNAVY = colors.HexColor('#4a7fc1')
+    LGRN  = colors.HexColor('#52b788')
+    ALT   = colors.HexColor('#eef2f7')
+    ALT2  = colors.HexColor('#d8f3dc')
+    RED   = colors.HexColor('#fff0f0')
+    GRID  = colors.HexColor('#aabbd0')
+    GGRN  = colors.HexColor('#8ece9e')
 
-    # ── Πλάτη στηλών ─────────────────────────────────────────────────────────
-    page_w = pagesize[0] - 1.4*cm
-
-    # Αριστερά: Α/Α | Ημ/νία | Παραστ | Άδεια | Προμηθ | [υλικά...]
-    # Δεξιά:    Ημ/νία κατ. | [υλικά...] | Παρατ.
-    # Διαχωριστής: 0.15cm
-    left_fixed  = [0.7, 1.6, 1.5, 1.4, 2.5]   # cm
-    right_fixed = [1.6, 2.0]                    # Ημ/νία κατ. + Παρατ.
-    sep         = 0.15                           # cm διαχωριστής
-
-    left_fixed_w  = sum(left_fixed)
-    right_fixed_w = sum(right_fixed)
-    yliko_space   = page_w - left_fixed_w - right_fixed_w - sep - (0.15 * (n-1) if n > 1 else 0)
-    yw = max(1.2, yliko_space / (2 * n)) if n else 1.5   # cm ανά υλικό
-
-    left_col_w  = [x*cm for x in left_fixed]  + [yw*cm]*n
-    right_col_w = [1.6*cm]                     + [yw*cm]*n + [2.0*cm]
-    sep_col_w   = [sep*cm]
-
-    all_col_w = left_col_w + sep_col_w + right_col_w
-    total_cols_left  = len(left_col_w)
-    total_cols_right = len(right_col_w)
-    sep_col_idx      = total_cols_left
-    total_cols       = len(all_col_w)
-
-    # ── Headers ───────────────────────────────────────────────────────────────
     yliko_hdrs = [Paragraph(f"{on}\n({mo})", HS) for _, (on, mo) in ylika_order]
 
-    left_hdr  = [Paragraph('Α/Α',HS), Paragraph('Ημερ.',HS),
-                 Paragraph('Παραστ.',HS), Paragraph('Αρ.Άδ.',HS),
-                 Paragraph('Προμηθευτής',HS)] + yliko_hdrs
-    sep_hdr   = [Paragraph('',HS)]
-    right_hdr = [Paragraph('Ημ.Κατ.',HS)] + yliko_hdrs + [Paragraph('Παρατ.',HS)]
+    def make_left_table():
+        # Header rows
+        title_row  = [Paragraph('ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + ['']*(len(L_WIDTHS)-1)
+        header_row = [Paragraph('Α/Α',HS), Paragraph('Ημ/νία',HS),
+                      Paragraph('Παραστ.',HS), Paragraph('Αρ.Άδ.',HS),
+                      Paragraph('Προμηθευτής',HS)] + yliko_hdrs
 
-    header_row = left_hdr + sep_hdr + right_hdr
+        data = [title_row, header_row]
+        style = [
+            ('SPAN',         (0,0), (-1,0)),
+            ('BACKGROUND',   (0,0), (-1,0), NAVY),
+            ('BACKGROUND',   (0,1), (-1,1), LNAVY),
+            ('TEXTCOLOR',    (0,0), (-1,1), colors.white),
+            ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
+            ('GRID',         (0,0), (-1,-1), 0.3, GRID),
+            ('TOPPADDING',   (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING',(0,0), (-1,-1), 2),
+            ('LEFTPADDING',  (0,0), (-1,-1), 2),
+            ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        ]
 
-    # ── Section headers ───────────────────────────────────────────────────────
-    # Γραμμή τίτλου "ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ" και "ΚΑΤΑΝΑΛΩΣΕΙΣ"
-    left_title_row  = [Paragraph('ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + ['']*(len(left_col_w)-1)
-    sep_title        = [Paragraph('',HS)]
-    right_title_row = [Paragraph('ΚΑΤΑΝΑΛΩΣΕΙΣ', HS)] + ['']*(len(right_col_w)-1)
-    title_row = left_title_row + sep_title + right_title_row
+        kat_used = set()
+        for ri, row in enumerate(rows, 2):
+            is_epi = row['type'] == 'epistrofi'
+            S = ES if is_epi else CS
 
-    table_data = [title_row, header_row]
-    style_cmds = [
-        # Title row
-        ('BACKGROUND', (0,0), (sep_col_idx-1, 0), colors.HexColor('#1a365d')),
-        ('BACKGROUND', (sep_col_idx+1,0), (-1,0), colors.HexColor('#2d6a4f')),
-        ('TEXTCOLOR',  (0,0), (-1,0), colors.white),
-        ('SPAN',       (0,0), (sep_col_idx-1, 0)),
-        ('SPAN',       (sep_col_idx+1,0), (-1,0)),
-        ('ALIGN',      (0,0), (-1,0), 'CENTER'),
-        # Header row
-        ('BACKGROUND', (0,1), (sep_col_idx-1, 1), colors.HexColor('#4a7fc1')),
-        ('BACKGROUND', (sep_col_idx+1,1), (-1,1), colors.HexColor('#52b788')),
-        ('TEXTCOLOR',  (0,1), (-1,1), colors.white),
-        ('ALIGN',      (0,0), (-1,-1), 'CENTER'),
-        ('VALIGN',     (0,0), (-1,-1), 'MIDDLE'),
-        # Separator column
-        ('BACKGROUND', (sep_col_idx,0), (sep_col_idx,-1), colors.HexColor('#dee2e6')),
-        # Grid
-        ('GRID',       (0,0), (sep_col_idx-1,-1), 0.3, colors.HexColor('#aabbd0')),
-        ('GRID',       (sep_col_idx+1,0), (-1,-1), 0.3, colors.HexColor('#8ece9e')),
-        # Padding
-        ('TOPPADDING',    (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING', (0,0), (-1,-1), 2),
-        ('LEFTPADDING',   (0,0), (-1,-1), 2),
-        ('RIGHTPADDING',  (0,0), (-1,-1), 2),
+            cells = [
+                Paragraph(str(row['aa']) if row['aa'] else '', S),
+                Paragraph(fmt_date(row['imerominia']), S),
+                Paragraph(row['parstatiko'], S),
+                Paragraph(row['adeia'], S),
+                Paragraph(row['promitheftis'], ES if is_epi else NS),
+            ]
+            for yid, _ in ylika_order:
+                v = row['ylika'].get(yid)
+                cells.append(Paragraph(fmt_num(v) if v else '', S))
+            data.append(cells)
+
+            if is_epi:
+                style.append(('BACKGROUND', (0,ri), (-1,ri), RED))
+            elif ri % 2 == 1:
+                style.append(('BACKGROUND', (0,ri), (-1,ri), ALT))
+
+        return Table(data, colWidths=L_WIDTHS, repeatRows=2), style
+
+    def make_right_table():
+        title_row  = [Paragraph('ΚΑΤΑΝΑΛΩΣΕΙΣ', HS)] + ['']*(len(R_WIDTHS)-1)
+        header_row = [Paragraph('Ημ. Κατ.',HS)] + yliko_hdrs + [Paragraph('Παρατ.',HS)]
+
+        data = [title_row, header_row]
+        style = [
+            ('SPAN',         (0,0), (-1,0)),
+            ('BACKGROUND',   (0,0), (-1,0), GREEN),
+            ('BACKGROUND',   (0,1), (-1,1), LGRN),
+            ('TEXTCOLOR',    (0,0), (-1,1), colors.white),
+            ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
+            ('GRID',         (0,0), (-1,-1), 0.3, GGRN),
+            ('TOPPADDING',   (0,0), (-1,-1), 2),
+            ('BOTTOMPADDING',(0,0), (-1,-1), 2),
+            ('LEFTPADDING',  (0,0), (-1,-1), 2),
+            ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        ]
+
+        kat_used = set()
+        for ri, row in enumerate(rows, 2):
+            is_epi = row['type'] == 'epistrofi'
+            imer   = row['imerominia']
+
+            if not is_epi and imer not in kat_used:
+                kat = kat_by_date.get(imer, {})
+                kat_used.add(imer)
+                cells = [Paragraph(fmt_date(imer), CS)]
+                for yid, _ in ylika_order:
+                    v = kat.get(yid)
+                    cells.append(Paragraph(fmt_num(v) if v else '', CS))
+                cells.append(Paragraph('', CS))
+                if ri % 2 == 1:
+                    style.append(('BACKGROUND', (0,ri), (-1,ri), ALT2))
+            else:
+                cells = [Paragraph('', CS)] + [Paragraph('', CS)]*(n+1)
+
+            data.append(cells)
+
+        return Table(data, colWidths=R_WIDTHS, repeatRows=2), style
+
+    left_t,  left_s  = make_left_table()
+    right_t, right_s = make_right_table()
+    left_t.setStyle(TableStyle(left_s))
+    right_t.setStyle(TableStyle(right_s))
+
+    # Outer table: [left | sep | right]
+    outer = Table(
+        [[left_t, '', right_t]],
+        colWidths=[sum(L_WIDTHS), SEP*cm, sum(R_WIDTHS)]
+    )
+    outer.setStyle(TableStyle([
+        ('VALIGN', (0,0), (-1,-1), 'TOP'),
+        ('LEFTPADDING',  (0,0), (-1,-1), 0),
+        ('RIGHTPADDING', (0,0), (-1,-1), 0),
+        ('TOPPADDING',   (0,0), (-1,-1), 0),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 0),
+    ]))
+
+    story = [
+        Paragraph("ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ", TS),
+        Paragraph(f"Περίοδος: {period_label}  |  Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}", SS),
+        outer
     ]
 
-    # ── Data rows ─────────────────────────────────────────────────────────────
-    data_row_idx = 2  # 0=title, 1=header
-    alt = colors.HexColor('#eef2f7')
-    alt2 = colors.HexColor('#d8f3dc')
-
-    # Κατανάλωση — κατανέμεται στις γραμμές αγοράς ίδιας ημερομηνίας
-    kat_used_dates = set()
-
-    for row in rows:
-        is_epi = row['type'] == 'epistrofi'
-        imer   = row['imerominia']
-
-        # Αριστερή πλευρά
-        aa_cell    = Paragraph(str(row['aa']) if row['aa'] else '—', RS if is_epi else CS)
-        imer_cell  = Paragraph(fmt_date(imer), RS if is_epi else CS)
-        parst_cell = Paragraph(row['parstatiko'], RS if is_epi else CS)
-        adeia_cell = Paragraph(row['adeia'], RS if is_epi else CS)
-        prom_cell  = Paragraph(row['promitheftis'], RS if is_epi else NS)
-
-        left_cells = [aa_cell, imer_cell, parst_cell, adeia_cell, prom_cell]
-        for yid, _ in ylika_order:
-            v = row['ylika'].get(yid)
-            style = RS if is_epi else CS
-            left_cells.append(Paragraph(fmt_num(v) if v else '—', style))
-
-        # Δεξιά πλευρά — κατανάλωση
-        if not is_epi and imer not in kat_used_dates:
-            kat = kat_by_date.get(imer, {})
-            kat_used_dates.add(imer)
-            kat_imer = Paragraph(fmt_date(imer), CS)
-            right_cells = [kat_imer]
-            for yid, _ in ylika_order:
-                v = kat.get(yid)
-                right_cells.append(Paragraph(fmt_num(v) if v else '—', CS))
-            right_cells.append(Paragraph('', CS))
-        else:
-            right_cells = [Paragraph('', CS)] + [Paragraph('', CS)]*n + [Paragraph('', CS)]
-
-        data_row = left_cells + [Paragraph('', CS)] + right_cells
-        table_data.append(data_row)
-
-        # Χρώμα γραμμής
-        if is_epi:
-            style_cmds.append(('BACKGROUND', (0, data_row_idx), (sep_col_idx-1, data_row_idx), colors.HexColor('#fff0f0')))
-            style_cmds.append(('TEXTCOLOR',  (0, data_row_idx), (sep_col_idx-1, data_row_idx), colors.HexColor('#c53030')))
-        elif data_row_idx % 2 == 0:
-            style_cmds.append(('BACKGROUND', (0, data_row_idx), (sep_col_idx-1, data_row_idx), alt))
-            style_cmds.append(('BACKGROUND', (sep_col_idx+1, data_row_idx), (-1, data_row_idx), alt2))
-
-        data_row_idx += 1
-
-    t = Table(table_data, colWidths=all_col_w, repeatRows=2)
-    t.setStyle(TableStyle(style_cmds))
-    story.append(t)
     doc.build(story)
     return buf.getvalue()
 
@@ -351,78 +312,79 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     rows, kat_by_date = build_book_rows(kiniseis)
     n = len(ylika_order)
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
+    wb  = openpyxl.Workbook()
+    ws  = wb.active
     ws.title = "Βιβλίο Εκρηκτικών"
 
-    # Στήλες: Α/Α | Ημ | Παραστ | Άδεια | Προμηθ | [υλικά] | | Ημ.Κατ | [υλικά] | Παρατ
     total_left  = 5 + n
     sep_col     = total_left + 1
     total_right = 1 + n + 1
     total_cols  = total_left + 1 + total_right
+    last_col    = get_column_letter(total_cols)
 
     # Τίτλος
-    ws.merge_cells(f'A1:{get_column_letter(total_cols)}1')
+    ws.merge_cells(f'A1:{last_col}1')
     ws['A1'] = "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ"
-    ws['A1'].font = Font(bold=True, size=13)
+    ws['A1'].font = Font(bold=True, size=12)
     ws['A1'].alignment = Alignment(horizontal='center')
 
-    ws.merge_cells(f'A2:{get_column_letter(total_cols)}2')
+    ws.merge_cells(f'A2:{last_col}2')
     ws['A2'] = f"Περίοδος: {period_label}  |  Εκτύπωση: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
     ws['A2'].alignment = Alignment(horizontal='center')
 
     # Section headers
     ws.merge_cells(f'A3:{get_column_letter(total_left)}3')
-    ws['A3'] = "ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ"
-    ws['A3'].fill = PatternFill("solid", fgColor="1A365D")
-    ws['A3'].font = Font(bold=True, color="FFFFFF", size=10)
-    ws['A3'].alignment = Alignment(horizontal='center')
+    c = ws.cell(row=3, column=1, value="ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ")
+    c.fill = PatternFill("solid", fgColor="1A365D")
+    c.font = Font(bold=True, color="FFFFFF", size=10)
+    c.alignment = Alignment(horizontal='center')
 
-    r_start = sep_col + 1
-    ws.merge_cells(f'{get_column_letter(r_start)}3:{get_column_letter(total_cols)}3')
-    c = ws.cell(row=3, column=r_start, value="ΚΑΤΑΝΑΛΩΣΕΙΣ")
+    ws.merge_cells(f'{get_column_letter(sep_col+1)}3:{last_col}3')
+    c = ws.cell(row=3, column=sep_col+1, value="ΚΑΤΑΝΑΛΩΣΕΙΣ")
     c.fill = PatternFill("solid", fgColor="2D6A4F")
     c.font = Font(bold=True, color="FFFFFF", size=10)
     c.alignment = Alignment(horizontal='center')
 
     # Column headers
+    navy_fill  = PatternFill("solid", fgColor="4A7FC1")
+    green_fill = PatternFill("solid", fgColor="52B788")
+    hdr_font   = Font(bold=True, color="FFFFFF", size=9)
+    thin       = Side(style='thin', color="AABBD0")
+    border     = Border(left=thin, right=thin, top=thin, bottom=thin)
+
     left_hdrs  = ['Α/Α','Ημερομηνία','Παραστατικό','Αρ. Άδειας','Προμηθευτής'] + \
                  [f"{on}\n({mo})" for _,(on,mo) in ylika_order]
     right_hdrs = ['Ημ. Κατανάλωσης'] + \
                  [f"{on}\n({mo})" for _,(on,mo) in ylika_order] + ['Παρατηρήσεις']
+    left_widths = [5,12,12,10,20] + [13]*n
 
-    navy_fill  = PatternFill("solid", fgColor="4A7FC1")
-    green_fill = PatternFill("solid", fgColor="52B788")
-    navy_font  = Font(bold=True, color="FFFFFF", size=9)
-    thin       = Side(style='thin', color="AABBD0")
-    border     = Border(left=thin, right=thin, top=thin, bottom=thin)
-
-    for ci, h in enumerate(left_hdrs, 1):
+    for ci, (h, w) in enumerate(zip(left_hdrs, left_widths), 1):
         cell = ws.cell(row=4, column=ci, value=h)
-        cell.fill = navy_fill; cell.font = navy_font
+        cell.fill = navy_fill; cell.font = hdr_font
         cell.alignment = Alignment(horizontal='center', wrap_text=True)
         cell.border = border
-        fixed_widths = [5, 12, 12, 10, 18] + [12]*n
-        ws.column_dimensions[get_column_letter(ci)].width = fixed_widths[ci-1] if ci <= len(fixed_widths) else 12
+        ws.column_dimensions[get_column_letter(ci)].width = w
 
     for ci, h in enumerate(right_hdrs, sep_col+1):
         cell = ws.cell(row=4, column=ci, value=h)
-        cell.fill = green_fill; cell.font = navy_font
+        cell.fill = green_fill; cell.font = hdr_font
         cell.alignment = Alignment(horizontal='center', wrap_text=True)
         cell.border = border
+        ws.column_dimensions[get_column_letter(ci)].width = 13 if ci > sep_col+1 else 16
 
-    ws.row_dimensions[3].height = 20
-    ws.row_dimensions[4].height = 35
+    ws.row_dimensions[3].height = 18
+    ws.row_dimensions[4].height = 32
 
     alt_fill  = PatternFill("solid", fgColor="EEF2F7")
     alt2_fill = PatternFill("solid", fgColor="D8F3DC")
-    red_font  = Font(color="C53030", bold=False, size=9)
-    kat_used_dates = set()
+    red_fill  = PatternFill("solid", fgColor="FFF0F0")
+    red_font  = Font(color="C53030", bold=True, size=9)
+    kat_used  = set()
 
     for ri, row in enumerate(rows, 5):
         is_epi = row['type'] == 'epistrofi'
         imer   = row['imerominia']
-        fill   = alt_fill if ri % 2 == 0 else None
+        fill   = red_fill if is_epi else (alt_fill if ri%2==0 else None)
 
         left_vals = [
             row['aa'] if row['aa'] else '',
@@ -432,27 +394,24 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
         for ci, val in enumerate(left_vals, 1):
             cell = ws.cell(row=ri, column=ci, value=val)
             cell.border = border
-            if is_epi:
-                cell.font = red_font
-                cell.fill = PatternFill("solid", fgColor="FFF0F0")
-            elif fill:
-                cell.fill = fill
-            if ci > 5 and val is not None and isinstance(val, (int,float)):
+            if fill: cell.fill = fill
+            if is_epi: cell.font = red_font
+            if ci > 5 and isinstance(val, (int,float)):
                 cell.number_format = '#,##0.000'
                 cell.alignment = Alignment(horizontal='right')
-            elif ci <= 2:
-                cell.alignment = Alignment(horizontal='center')
+            else:
+                cell.alignment = Alignment(horizontal='center' if ci<=2 else 'left')
 
-        # Κατανάλωση
-        if not is_epi and imer not in kat_used_dates:
+        # Κατανάλωση δεξιά
+        if not is_epi and imer not in kat_used:
             kat = kat_by_date.get(imer, {})
-            kat_used_dates.add(imer)
+            kat_used.add(imer)
             right_vals = [fmt_date(imer)] + [kat.get(yid) for yid,_ in ylika_order] + ['']
             for ci, val in enumerate(right_vals, sep_col+1):
                 cell = ws.cell(row=ri, column=ci, value=val)
                 cell.border = border
-                if fill: cell.fill = alt2_fill
-                if isinstance(val, (int,float)) and val is not None:
+                if ri%2==0: cell.fill = alt2_fill
+                if isinstance(val, (int,float)):
                     cell.number_format = '#,##0.000'
                     cell.alignment = Alignment(horizontal='right')
 
