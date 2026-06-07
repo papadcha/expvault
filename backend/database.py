@@ -182,7 +182,7 @@ def check_parstatiko_exists(arithmos_parstatikos):
 def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
     sql = '''
         SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis,
-               p.onoma as promitheftis_onoma, a.arithmos_adeias
+               p.onoma as promitheftis_onoma, a.arithmos_adeias, a.perigrafi as ekdousa_archi
         FROM kiniseis k
         JOIN ylika y ON k.yliko_id = y.id
         LEFT JOIN promitheftes p ON k.promitheftis_id = p.id
