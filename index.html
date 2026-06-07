@@ -821,8 +821,10 @@ async function checkEkkremotita(yliko_id, imerominia) {
     const r = await py('check_ekkremotita', { yliko_id, imerominia });
     if (!r.ekkremotita) { banner.style.display='none'; banner.innerHTML=''; return; }
 
-    const ekk = r.ekkremes;
-    const html = ekk.map((e, idx) => {
+    // Αποθήκευσε τα δεδομένα globally
+    window._ekkData = r.ekkremes;
+
+    const html = r.ekkremes.map((e, idx) => {
       const tipo_label = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
       const fmt = e.posotita.toFixed(3).replace('.',',');
       return `
@@ -830,7 +832,7 @@ async function checkEkkremotita(yliko_id, imerominia) {
           <strong>⚠️ Εκκρεμεί ${tipo_label}</strong> για <strong>${e.yliko_onoma}</strong>:
           υπολογισμένη ποσότητα <strong>${fmt} ${e.monada}</strong>
           <div style="margin-top:8px;display:flex;gap:8px;">
-            <button class="btn btn-sm btn-accent" onclick="autoKataxorisi(${JSON.stringify(e)}, 'ekk-${idx}')">
+            <button class="btn btn-sm btn-accent" data-idx="${idx}" onclick="autoKataxorisi(this)">
               ✅ Καταχώρηση ${fmt} ${e.monada}
             </button>
             <button class="btn btn-sm btn-outline" onclick="document.getElementById('ekk-${idx}').remove(); checkBannerEmpty()">
@@ -850,24 +852,25 @@ function checkBannerEmpty() {
   if (!banner.querySelector('.alert')) { banner.style.display='none'; banner.innerHTML=''; }
 }
 
-async function autoKataxorisi(ekk, bannerId) {
+async function autoKataxorisi(btn) {
+  const idx = parseInt(btn.dataset.idx);
+  const ekk = window._ekkData[idx];
+  if (!ekk) return;
+
   const body = {
-    imerominia:  ekk.imerominia,
-    tipos:       ekk.tipo,
-    yliko_id:    ekk.yliko_id,
-    posotita:    ekk.posotita,
+    imerominia:       ekk.imerominia,
+    tipos:            ekk.tipo,
+    yliko_id:         ekk.yliko_id,
+    posotita:         ekk.posotita,
     arithmos_parstatikos: '',
-    adeia_id:    null,
-    promitheftis_id: null,
-    paratirishis: 'Αυτόματος υπολογισμός',
-    ypografi:    ''
+    adeia_id:         null,
+    promitheftis_id:  null,
+    paratirishis:     'Αυτόματος υπολογισμός',
+    ypografi:         ''
   };
   try {
     await py('add_kinisi', body);
-    if (bannerId) {
-      const el = document.getElementById(bannerId);
-      if (el) el.remove();
-    }
+    document.getElementById(`ekk-${idx}`)?.remove();
     checkBannerEmpty();
     loadKiniseis();
     loadDashboard();
