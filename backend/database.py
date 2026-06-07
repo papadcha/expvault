@@ -61,6 +61,23 @@ def init_db():
                 next_val INTEGER NOT NULL DEFAULT 1
             );
 
+            CREATE TABLE IF NOT EXISTS ypologismos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parstatiko_agoras TEXT NOT NULL,
+                imerominia_agoras TEXT NOT NULL,
+                senario INTEGER NOT NULL CHECK(senario IN (1,2)),
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS ypologismos_grammes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ypologismos_id INTEGER NOT NULL REFERENCES ypologismos(id) ON DELETE CASCADE,
+                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
+                posotita_agoras REAL NOT NULL DEFAULT 0,
+                posotita_katanalosis REAL NOT NULL DEFAULT 0,
+                posotita_epistrofis REAL NOT NULL DEFAULT 0
+            );
+
             INSERT OR IGNORE INTO auxon_counter(id, next_val) VALUES (1, 1);
         ''')
 
@@ -338,3 +355,96 @@ def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
             "DELETE FROM kiniseis WHERE arithmos_parstatikos=?",
             (arithmos_parstatikos,)
         )
+
+# ─── ΥΠΟΛΟΓΙΣΜΟΣ ─────────────────────────────────────────────────────────────
+
+def save_ypologismos(parstatiko_agoras, imerominia_agoras, senario, grammes):
+    """
+    Αποθηκεύει υπολογισμό. Διαγράφει τυχόν παλιό για το ίδιο παραστατικό.
+    grammes: list of {yliko_id, posotita_agoras, posotita_katanalosis, posotita_epistrofis}
+    """
+    with get_db() as conn:
+        conn.execute("DELETE FROM ypologismos WHERE parstatiko_agoras=?", (parstatiko_agoras,))
+        conn.execute(
+            "INSERT INTO ypologismos(parstatiko_agoras, imerominia_agoras, senario) VALUES(?,?,?)",
+            (parstatiko_agoras, imerominia_agoras, senario)
+        )
+        yid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        for g in grammes:
+            conn.execute(
+                "INSERT INTO ypologismos_grammes(ypologismos_id,yliko_id,posotita_agoras,posotita_katanalosis,posotita_epistrofis) VALUES(?,?,?,?,?)",
+                (yid, g['yliko_id'], g['posotita_agoras'], g['posotita_katanalosis'], g['posotita_epistrofis'])
+            )
+        return yid
+
+def get_ypologismos(parstatiko_agoras):
+    """Επιστρέφει τον υπολογισμό για ένα παραστατικό."""
+    with get_db() as conn:
+        yp = conn.execute(
+            "SELECT * FROM ypologismos WHERE parstatiko_agoras=?", (parstatiko_agoras,)
+        ).fetchone()
+        if not yp:
+            return None
+        grammes = conn.execute('''
+            SELECT g.*, y.onoma as yliko_onoma, y.monada_metrisis
+            FROM ypologismos_grammes g
+            JOIN ylika y ON g.yliko_id = y.id
+            WHERE g.ypologismos_id=?
+        ''', (yp['id'],)).fetchall()
+        return {**dict(yp), 'grammes': [dict(g) for g in grammes]}
+
+def delete_ypologismos(parstatiko_agoras):
+    with get_db() as conn:
+        conn.execute("DELETE FROM ypologismos WHERE parstatiko_agoras=?", (parstatiko_agoras,))
+
+def compare_ypologismos_with_vivlio(parstatiko_agoras):
+    """
+    Συγκρίνει τον υπολογισμό με τα δεδομένα του βιβλίου.
+    Επιστρέφει {ok: bool, differences: list}
+    """
+    yp = get_ypologismos(parstatiko_agoras)
+    if not yp:
+        return {'ok': False, 'error': 'Δεν βρέθηκε υπολογισμός'}
+
+    with get_db() as conn:
+        # Πάρε κινήσεις από το βιβλίο για το ίδιο παραστατικό αγοράς
+        kiniseis = conn.execute('''
+            SELECT k.tipos, k.posotita, k.yliko_id, y.onoma, y.monada_metrisis
+            FROM kiniseis k
+            JOIN ylika y ON k.yliko_id = y.id
+            WHERE k.arithmos_parstatikos=? OR k.yliko_id IN (
+                SELECT yliko_id FROM ypologismos_grammes WHERE ypologismos_id=?
+            )
+        ''', (parstatiko_agoras, yp['id'])).fetchall()
+
+        # Ομαδοποίηση ανά υλικό
+        vivlio = {}
+        for k in kiniseis:
+            yid = k['yliko_id']
+            if yid not in vivlio:
+                vivlio[yid] = {'onoma': k['onoma'], 'monada': k['monada_metrisis'],
+                               'agores': 0, 'katanalosis': 0, 'epistrofes': 0}
+            if k['tipos'] == 'ΕΙΣΑΓΩΓΗ':
+                vivlio[yid]['agores'] += k['posotita']
+            elif k['tipos'] == 'ΚΑΤΑΝΑΛΩΣΗ':
+                vivlio[yid]['katanalosis'] += k['posotita']
+            elif k['tipos'] in ('ΕΠΙΣΤΡΟΦΗ', 'ΕΞΑΓΩΓΗ'):
+                vivlio[yid]['epistrofes'] += k['posotita']
+
+        differences = []
+        for g in yp['grammes']:
+            yid = g['yliko_id']
+            v = vivlio.get(yid, {})
+            kat_vivlio = v.get('katanalosis', 0) or (v.get('agores', 0) - v.get('epistrofes', 0))
+            kat_yp = g['posotita_katanalosis']
+
+            if abs(kat_vivlio - kat_yp) > 0.001:
+                differences.append({
+                    'yliko_onoma': g['yliko_onoma'],
+                    'monada': g['monada_metrisis'],
+                    'katanalosi_ypologistis': kat_yp,
+                    'katanalosi_vivliou': kat_vivlio,
+                    'diafora': round(kat_yp - kat_vivlio, 3)
+                })
+
+        return {'ok': len(differences) == 0, 'differences': differences}

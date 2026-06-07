@@ -104,6 +104,24 @@ def handle(cmd, payload):
     if cmd == 'get_apothemates':
         return database.get_apothemates()
 
+    # ── ΥΠΟΛΟΓΙΣΜΟΣ ──────────────────────────────────────────────────────────
+    if cmd == 'save_ypologismos':
+        yid = database.save_ypologismos(
+            payload['parstatiko_agoras'], payload['imerominia_agoras'],
+            payload['senario'], payload['grammes']
+        )
+        return {'ok': True, 'id': yid}
+
+    if cmd == 'get_ypologismos':
+        return database.get_ypologismos(payload['parstatiko_agoras']) or {}
+
+    if cmd == 'delete_ypologismos':
+        database.delete_ypologismos(payload['parstatiko_agoras'])
+        return {'ok': True}
+
+    if cmd == 'compare_ypologismos':
+        return database.compare_ypologismos_with_vivlio(payload['parstatiko_agoras'])
+
     # ── ΕΛΕΓΧΟΣ ΠΑΡΑΣΤΑΤΙΚΟΥ ─────────────────────────────────────────────────
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
@@ -124,6 +142,13 @@ def handle(cmd, payload):
     if cmd == 'parse_pdf':
         result = pdf_parser.parse_pdf(payload['path'])
         return {'ok': True, **result}
+
+    if cmd == 'export_ypologismos_pdf':
+        pdf = exports.export_ypologismos_pdf(
+            payload['parstatiko_agoras'], payload['senario'], payload['grammes']
+        )
+        with open(payload['out_path'], 'wb') as f: f.write(pdf)
+        return {'ok': True}
 
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
     if cmd == 'export_pdf':

@@ -438,3 +438,79 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     buf = io.BytesIO()
     wb.save(buf)
     return buf.getvalue()
+
+
+# ─── PDF ΥΠΟΛΟΓΙΣΜΟΥ ─────────────────────────────────────────────────────────
+
+def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) -> bytes:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+
+    register_fonts()
+    F  = 'Sans'      if FONT_REGULAR else 'Helvetica'
+    FB = 'Sans-Bold' if FONT_BOLD    else 'Helvetica-Bold'
+
+    buf = __import__('io').BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+
+    TS = ParagraphStyle('t', fontSize=13, fontName=FB, alignment=TA_CENTER, spaceAfter=4)
+    SS = ParagraphStyle('s', fontSize=9,  fontName=F,  alignment=TA_CENTER, spaceAfter=12)
+    HS = ParagraphStyle('h', fontSize=9,  fontName=FB, alignment=TA_CENTER, leading=11)
+    CS = ParagraphStyle('c', fontSize=9,  fontName=F,  alignment=TA_CENTER, leading=11)
+    AS = ParagraphStyle('a', fontSize=10, fontName=FB, alignment=TA_CENTER, leading=12,
+                        textColor=colors.HexColor('#2d6a4f'))
+
+    from datetime import datetime
+    senario_txt = 'Σενάριο 1: Αγορά + Κατανάλωση → Επιστροφή' if senario==1 \
+                  else 'Σενάριο 2: Αγορά + Επιστροφή → Κατανάλωση'
+
+    story = [
+        Paragraph("ΔΕΛΤΙΟ ΥΠΟΛΟΓΙΣΜΟΥ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ", TS),
+        Paragraph(f"Παραστατικό Αγοράς: {parstatiko_agoras}  |  {senario_txt}", SS),
+        Paragraph(f"Ημερομηνία Εκτύπωσης: {datetime.now().strftime('%d/%m/%Y %H:%M')}", SS),
+    ]
+
+    input_lbl  = 'Κατανάλωση' if senario==1 else 'Επιστροφή'
+    result_lbl = 'Επιστροφή'  if senario==1 else 'Κατανάλωση'
+
+    headers = ['Υλικό', 'Μονάδα', 'Αγορά', input_lbl, result_lbl]
+    rows = [headers]
+    for g in grammes:
+        val = g['posotita_epistrofis'] if senario==1 else g['posotita_katanalosis']
+        inp = g['posotita_katanalosis'] if senario==1 else g['posotita_epistrofis']
+        rows.append([
+            g['yliko_onoma'], g['monada'],
+            f"{g['posotita_agoras']:,.3f}".replace(',','X').replace('.',',').replace('X','.'),
+            f"{inp:,.3f}".replace(',','X').replace('.',',').replace('X','.'),
+            f"{val:,.3f}".replace(',','X').replace('.',',').replace('X','.')
+        ])
+
+    col_w = [7*cm, 1.5*cm, 2.5*cm, 2.5*cm, 2.5*cm]
+    t = Table(rows, colWidths=col_w)
+    t.setStyle(TableStyle([
+        ('BACKGROUND',   (0,0), (-1,0), colors.HexColor('#1a365d')),
+        ('TEXTCOLOR',    (0,0), (-1,0), colors.white),
+        ('FONTNAME',     (0,0), (-1,0), FB),
+        ('FONTNAME',     (0,1), (-1,-1), F),
+        ('FONTSIZE',     (0,0), (-1,-1), 9),
+        ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN',        (0,1), (0,-1), 'LEFT'),
+        ('BACKGROUND',   (4,1), (4,-1), colors.HexColor('#e6f7ee')),
+        ('FONTNAME',     (4,1), (4,-1), FB),
+        ('ROWBACKGROUNDS',(0,1),(-1,-1),[colors.white, colors.HexColor('#f7f9fc')]),
+        ('GRID',         (0,0), (-1,-1), 0.5, colors.HexColor('#cbd5e0')),
+        ('TOPPADDING',   (0,0), (-1,-1), 5),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 5),
+    ]))
+    story.append(t)
+    story.append(Spacer(1, 1*cm))
+    story.append(Paragraph(f"Αποτέλεσμα {result_lbl} — Για χρήση κατά την έκδοση παραστατικού", AS))
+
+    doc.build(story)
+    return buf.getvalue()
