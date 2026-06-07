@@ -282,13 +282,15 @@ body.electron .main    { padding-top: 60px; }
       <div class="stat-card"><div class="stat-val" id="stat-ylika">—</div><div class="stat-label">Είδη Υλικών</div></div>
     </div>
     <div class="card">
-      <div class="card-title">Τρέχον Απόθεμα ανά Υλικό</div>
+      <div class="card-title">Έλεγχος Ισορροπίας ανά Υλικό</div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:12px;">Αγορές = Καταναλώσεις + Επιστροφές. Υπόλοιπο = 0 σημαίνει πλήρης εξήγηση.</p>
       <div class="table-wrap">
         <table class="apo-table">
           <thead><tr>
             <th>Υλικό</th><th>Μονάδα</th>
-            <th class="text-right">Σύνολο Εισαγωγών</th>
-            <th class="text-right">Σύνολο Εξαγωγών</th>
+            <th class="text-right">Αγορές</th>
+            <th class="text-right">Καταναλώσεις</th>
+            <th class="text-right">Επιστροφές</th>
             <th class="text-right">Υπόλοιπο</th>
             <th>Κατάσταση</th>
           </tr></thead>
@@ -382,16 +384,17 @@ body.electron .main    { padding-top: 60px; }
   <!-- ── ΑΠΟΘΕΜΑΤΑ ── -->
   <div class="page" id="page-apothemates">
     <div class="page-header">
-      <h2>Τρέχον Απόθεμα</h2>
-      <p>Υπόλοιπα ανά είδος εκρηκτικού (Σύνολο εισαγωγών − Σύνολο εξαγωγών)</p>
+      <h2>Έλεγχος Ισορροπίας</h2>
+      <p>Αγορές = Καταναλώσεις + Επιστροφές. Υπόλοιπο = 0 σημαίνει πλήρης εξήγηση.</p>
     </div>
     <div class="card">
       <div class="table-wrap">
         <table class="apo-table">
           <thead><tr>
-            <th>Υλικό</th><th>Διατομή</th><th>Μονάδα</th>
-            <th class="text-right">Σύνολο Εισαγωγών</th>
-            <th class="text-right">Σύνολο Εξαγωγών</th>
+            <th>Υλικό</th><th>Μονάδα</th>
+            <th class="text-right">Αγορές</th>
+            <th class="text-right">Καταναλώσεις</th>
+            <th class="text-right">Επιστροφές</th>
             <th class="text-right">Υπόλοιπο</th>
             <th class="text-center">Κατάσταση</th>
           </tr></thead>
@@ -627,17 +630,21 @@ async function loadDashboard() {
 
   const apoBody = document.getElementById('dash-apo-body');
   apoBody.innerHTML = apo.length ? apo.map(r => {
-    const cls = r.ypoloipo > 0 ? 'pos' : r.ypoloipo < 0 ? 'neg' : 'zero';
-    const badge = r.ypoloipo > 0 ? '<span class="badge badge-ok">OK</span>' : r.ypoloipo < 0 ? '<span class="badge badge-neg">ΑΡΝΗΤΙΚΟ</span>' : '<span class="badge badge-low">ΜΗΔΕΝ</span>';
+    const yp = r.ypoloipo;
+    const cls   = yp > 0 ? 'pos' : 'zero';
+    const badge = yp > 0
+      ? '<span class="badge badge-neg">⚠️ ΑΔΙΚΑΙΟΛΟΓΗΤΟ</span>'
+      : '<span class="badge badge-ok">✅ ΟΚ</span>';
     return `<tr>
       <td><strong>${r.onoma}</strong>${r.diatomi_mm?` <small>(${r.diatomi_mm}mm)</small>`:''}</td>
       <td>${r.monada_metrisis}</td>
       <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
-      <td class="text-right mono">${r.synolo_exagogon.toFixed(3)}</td>
-      <td class="text-right ${cls}">${r.ypoloipo.toFixed(3)}</td>
+      <td class="text-right mono">${r.synolo_katanalosis.toFixed(3)}</td>
+      <td class="text-right mono">${r.synolo_epistrofon.toFixed(3)}</td>
+      <td class="text-right ${cls}">${yp.toFixed(3)}</td>
       <td>${badge}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="6" class="text-center" style="padding:24px;color:var(--muted)">Δεν υπάρχουν δεδομένα</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="text-center" style="padding:24px;color:var(--muted)">Δεν υπάρχουν δεδομένα</td></tr>';
 
   const kinBody = document.getElementById('dash-kin-body');
   const last10 = kin.slice(-10).reverse();
@@ -656,15 +663,18 @@ async function loadApothemates() {
   const apo = await py('get_apothemates');
   const body = document.getElementById('apo-body');
   body.innerHTML = apo.length ? apo.map(r => {
-    const cls = r.ypoloipo > 0 ? 'pos' : r.ypoloipo < 0 ? 'neg' : 'zero';
-    const badge = r.ypoloipo > 0 ? '<span class="badge badge-ok">ΟΚ</span>' : r.ypoloipo < 0 ? '<span class="badge badge-neg">ΑΡΝΗΤΙΚΟ</span>' : '<span class="badge badge-low">ΜΗΔΕΝ</span>';
+    const yp = r.ypoloipo;
+    const cls   = yp > 0 ? 'pos' : 'zero';
+    const badge = yp > 0
+      ? '<span class="badge badge-neg">⚠️ ΑΔΙΚΑΙΟΛΟΓΗΤΟ</span>'
+      : '<span class="badge badge-ok">✅ ΟΚ</span>';
     return `<tr>
-      <td><strong>${r.onoma}</strong></td>
-      <td class="mono">${r.diatomi_mm||'—'}</td>
+      <td><strong>${r.onoma}</strong>${r.diatomi_mm?` <small>(${r.diatomi_mm}mm)</small>`:''}</td>
       <td>${r.monada_metrisis}</td>
       <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
-      <td class="text-right mono">${r.synolo_exagogon.toFixed(3)}</td>
-      <td class="text-right ${cls} mono">${r.ypoloipo.toFixed(3)}</td>
+      <td class="text-right mono">${r.synolo_katanalosis.toFixed(3)}</td>
+      <td class="text-right mono">${r.synolo_epistrofon.toFixed(3)}</td>
+      <td class="text-right ${cls}">${yp.toFixed(3)}</td>
       <td class="text-center">${badge}</td>
     </tr>`;
   }).join('') : '<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';

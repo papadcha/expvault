@@ -198,9 +198,10 @@ def get_apothemates():
         rows = conn.execute('''
             SELECT y.id, y.onoma, y.diatomi_mm, y.monada_metrisis,
                 IFNULL(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) as synolo_eisagogon,
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ'  THEN k.posotita ELSE 0 END),0) as synolo_exagogon,
+                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='') THEN k.posotita ELSE 0 END),0) as synolo_katanalosis,
+                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos!='' THEN k.posotita ELSE 0 END),0) as synolo_epistrofon,
                 IFNULL(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) -
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ'  THEN k.posotita ELSE 0 END),0) as ypoloipo
+                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) as ypoloipo
             FROM ylika y
             LEFT JOIN kiniseis k ON y.id = k.yliko_id
             GROUP BY y.id ORDER BY y.onoma
