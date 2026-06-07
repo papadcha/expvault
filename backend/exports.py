@@ -63,7 +63,7 @@ def fmt_date(s):
 
 def fmt_num(val):
     if val is None or val == 0: return ''
-    return f"{val:,.3f}".replace(',','X').replace('.',',').replace('X','.')
+    return f"{val:,.2f}".replace(',','X').replace('.',',').replace('X','.')
 
 def get_ylika_order(kiniseis):
     order = OrderedDict()
