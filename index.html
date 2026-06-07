@@ -587,9 +587,9 @@ body.electron .main    { padding-top: 60px; }
     <div class="modal-title">⚠️ Διπλοεγγραφή Παραστατικού</div>
     <p id="diplo-msg" style="margin-bottom:12px;"></p>
     <div id="diplo-list" style="background:#f8f9fa;border-radius:6px;padding:12px;font-size:12px;font-family:monospace;margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+    <p style="font-size:12px;color:var(--danger);">Το παραστατικό έχει ήδη καταχωρηθεί. Αν είναι λάθος, διαγράψτε πρώτα τις υπάρχουσες εγγραφές από το Βιβλίο Κινήσεων.</p>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeDiploModal()">Άκυρο</button>
-      <button class="btn btn-danger" id="diplo-ok-btn">Καταχώρηση Ούτως ή Άλλως</button>
+      <button class="btn btn-primary" onclick="closeDiploModal()">Κλείσιμο</button>
     </div>
   </div>
 </div>
@@ -1072,8 +1072,8 @@ async function submitPdfEntries() {
   if (parstatiko) {
     const existing = await py('check_parstatiko', { arithmos_parstatikos: parstatiko });
     if (existing.length > 0) {
-      const proceed = await showDiploModal(parstatiko, existing);
-      if (!proceed) return;
+      showDiploModal(parstatiko, existing);
+      return;
     }
   }
 
@@ -1166,25 +1166,15 @@ async function doExport(fmt) {
 
 function closeDiploModal() {
   document.getElementById('diplo-modal').classList.remove('open');
-  // Επίλυση του pending promise με false
-  if (window._diploResolve) { window._diploResolve(false); window._diploResolve = null; }
 }
 
 function showDiploModal(parstatiko, existing) {
-  return new Promise(resolve => {
-    window._diploResolve = resolve;
-    document.getElementById('diplo-msg').textContent =
-      `Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:`;
-    document.getElementById('diplo-list').innerHTML = existing.map(e =>
-      `<div>• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})</div>`
-    ).join('');
-    document.getElementById('diplo-ok-btn').onclick = () => {
-      document.getElementById('diplo-modal').classList.remove('open');
-      resolve(true);
-      window._diploResolve = null;
-    };
-    document.getElementById('diplo-modal').classList.add('open');
-  });
+  document.getElementById('diplo-msg').textContent =
+    `Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:`;
+  document.getElementById('diplo-list').innerHTML = existing.map(e =>
+    `<div>• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})</div>`
+  ).join('');
+  document.getElementById('diplo-modal').classList.add('open');
 }
 
 // ── CONFIRM DELETE ────────────────────────────────────────────────────────────
