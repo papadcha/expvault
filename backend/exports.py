@@ -188,7 +188,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, PageBreak
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
     F, FB = register_fonts(font)
     if not FONT_REGULAR:
@@ -203,28 +203,27 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
     TS = ParagraphStyle('t', fontSize=9,  fontName=FB, alignment=TA_CENTER, spaceAfter=2)
     SS = ParagraphStyle('s', fontSize=6,  fontName=F,  alignment=TA_CENTER, spaceAfter=4)
-    HS = ParagraphStyle('h', fontSize=5,  fontName=FB, alignment=TA_CENTER, leading=6)
-    CS = ParagraphStyle('c', fontSize=5.5,fontName=F,  alignment=TA_CENTER, leading=6)
-    NS = ParagraphStyle('n', fontSize=5,  fontName=F,  alignment=TA_LEFT,   leading=6)
-    ES = ParagraphStyle('e', fontSize=5,  fontName=FB, alignment=TA_CENTER, leading=6,
-                        textColor=colors.HexColor('#c53030'))
+    HS = ParagraphStyle('h', fontSize=5.5,fontName=FB, alignment=TA_CENTER, leading=7, textColor=colors.HexColor('#1C252E'))
+    CS = ParagraphStyle('c', fontSize=5.5,fontName=F,  alignment=TA_CENTER, leading=7, textColor=colors.HexColor('#1C252E'))
+    RS = ParagraphStyle('r', fontSize=5.5,fontName=F,  alignment=TA_RIGHT,  leading=7, textColor=colors.HexColor('#1C252E'))
+    NS = ParagraphStyle('n', fontSize=5.5,fontName=F,  alignment=TA_LEFT,   leading=7, textColor=colors.HexColor('#1C252E'))
+    ES = ParagraphStyle('e', fontSize=5.5,fontName=FB, alignment=TA_CENTER, leading=7,
+                        textColor=colors.HexColor('#c0392b'))
+    ER = ParagraphStyle('er',fontSize=5.5,fontName=FB, alignment=TA_RIGHT,  leading=7,
+                        textColor=colors.HexColor('#c0392b'))
 
-    NAVY  = colors.HexColor('#1a365d')
-    GREEN = colors.HexColor('#2d6a4f')
-    LNAVY = colors.HexColor('#4a7fc1')
-    LGRN  = colors.HexColor('#52b788')
-    ALT   = colors.HexColor('#eef2f7')
-    ALT2  = colors.HexColor('#d8f3dc')
-    RED   = colors.HexColor('#fff0f0')
-    GRID  = colors.HexColor('#aabbd0')
-    GGRN  = colors.HexColor('#8ece9e')
+    # Χρώματα — ανοιχτό επαγγελματικό γκρι, ίδια και στις 2 σελίδες
+    HDR_BG = colors.HexColor('#CDD5DB')  # Τίτλος - λίγο σκουρότερο
+    SUB_BG = colors.HexColor('#E4E9ED')
+    HDR_FG = colors.HexColor('#1C252E')
+    ALT_BG = colors.HexColor('#F4F6F8')
+    GRID_C = colors.HexColor('#D1D8DE')
 
     def p(txt, s=None): return Paragraph(str(txt), s or CS)
 
     yliko_hdrs = [p(f"{on}\n({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
-    # Α/Α | Αρ.Άδ./Εκδ.Αρχή | [υλικά] | Ημερ.Αγ./Αρ.Δελτ. | Στοιχεία Προμηθ.
     L_FIXED = [0.6, 2.2, 2.8, 2.5]
     yw_l = max(0.8, (page_w_cm - sum(L_FIXED)) / n) if n else 1.5
     L_WIDTHS = [L_FIXED[0]*cm, L_FIXED[1]*cm] + [yw_l*cm]*n + \
@@ -236,50 +235,55 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
               [p('Ημερ.Αγ./\nΑρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
 
     l_data  = [l_title, l_hdr]
+    n_ylika_cols = len(ylika_order)
+    num_l_start = 2  # col index αρχή αριθμών αριστερά
+    num_l_end   = 2 + n_ylika_cols - 1
+
     l_style = [
         ('SPAN',         (0,0), (-1,0)),
-        ('BACKGROUND',   (0,0), (-1,0), NAVY),
-        ('BACKGROUND',   (0,1), (-1,1), LNAVY),
-        ('TEXTCOLOR',    (0,0), (-1,1), colors.white),
+        ('BACKGROUND',   (0,0), (-1,0), HDR_BG),
+        ('BACKGROUND',   (0,1), (-1,1), SUB_BG),
+        ('TEXTCOLOR',    (0,0), (-1,0), HDR_FG),        # μαύρο στο ανοιχτό
+        ('TEXTCOLOR',    (0,1), (-1,1), colors.black),  # λευκό στο σκούρο
         ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN',        (num_l_start,2), (num_l_end,-1), 'RIGHT'),
         ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
-        ('GRID',         (0,0), (-1,-1), 0.3, GRID),
-        ('TOPPADDING',   (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING',(0,0), (-1,-1), 2),
-        ('LEFTPADDING',  (0,0), (-1,-1), 2),
-        ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        ('GRID',         (0,0), (-1,-1), 0.3, GRID_C),
+        ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
+        ('TOPPADDING',   (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 3),
+        ('LEFTPADDING',  (0,0), (-1,-1), 3),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]
 
     for ri, row in enumerate(rows, 2):
         is_epi = row['type'] == 'epistrofi'
-        S = ES if is_epi else CS
+        txt_s  = ES if is_epi else CS
+        num_s  = ER if is_epi else RS
         adeia_ekd = row['adeia']
         if row.get('ekdousa'):
             adeia_ekd += f"\n{row['ekdousa']}"
 
         cells = [
-            p(str(row['aa']) if row['aa'] else '', S),
-            p(adeia_ekd, ES if is_epi else NS),
+            p(str(row['aa']) if row['aa'] else '', txt_s),
+            p(adeia_ekd, txt_s),
         ]
         for yid, _ in ylika_order:
             v = row['ylika'].get(yid)
-            cells.append(p(fmt_num(v) if v else '—', S))
+            cells.append(p(fmt_num(v) if v else '—', num_s))
         cells += [
-            p(f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", S),
-            p(row['promitheftis'], ES if is_epi else NS),
+            p(f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", txt_s),
+            p(row['promitheftis'], txt_s),
         ]
         l_data.append(cells)
 
-        if is_epi:
-            l_style.append(('BACKGROUND', (0,ri), (-1,ri), RED))
-        elif ri % 2 == 0:
-            l_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT))
+        if ri % 2 == 0 and not is_epi:
+            l_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
 
     left_t = Table(l_data, colWidths=L_WIDTHS, repeatRows=2)
     left_t.setStyle(TableStyle(l_style))
 
     # ── Σελίδα 2: Καταναλώσεις ───────────────────────────────────────────────
-    # Ημ.Εισ.Αποθ. | Ημ.Κατ. | [υλικά] | Παρατηρήσεις
     R_FIXED = [1.5, 1.5, 1.8]
     yw_r = max(0.8, (page_w_cm - sum(R_FIXED)) / n) if n else 1.5
     R_WIDTHS = [R_FIXED[0]*cm, R_FIXED[1]*cm] + [yw_r*cm]*n + [R_FIXED[2]*cm]
@@ -292,19 +296,21 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     r_data  = [r_title, r_hdr]
     r_style = [
         ('SPAN',         (0,0), (-1,0)),
-        ('BACKGROUND',   (0,0), (-1,0), GREEN),
-        ('BACKGROUND',   (0,1), (-1,1), LGRN),
-        ('TEXTCOLOR',    (0,0), (-1,1), colors.white),
+        ('BACKGROUND',   (0,0), (-1,0), HDR_BG),
+        ('BACKGROUND',   (0,1), (-1,1), SUB_BG),
+        ('TEXTCOLOR',    (0,0), (-1,0), HDR_FG),
+        ('TEXTCOLOR',    (0,1), (-1,1), colors.black),
         ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN',        (2,2), (1+n_ylika_cols,-1), 'RIGHT'),
         ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
-        ('GRID',         (0,0), (-1,-1), 0.3, GGRN),
-        ('TOPPADDING',   (0,0), (-1,-1), 2),
-        ('BOTTOMPADDING',(0,0), (-1,-1), 2),
-        ('LEFTPADDING',  (0,0), (-1,-1), 2),
-        ('RIGHTPADDING', (0,0), (-1,-1), 2),
+        ('GRID',         (0,0), (-1,-1), 0.3, GRID_C),
+        ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
+        ('TOPPADDING',   (0,0), (-1,-1), 3),
+        ('BOTTOMPADDING',(0,0), (-1,-1), 3),
+        ('LEFTPADDING',  (0,0), (-1,-1), 3),
+        ('RIGHTPADDING', (0,0), (-1,-1), 4),
     ]
 
-    # Για κάθε γραμμή αγοράς → αντίστοιχη γραμμή κατανάλωσης
     kat_used = set()
     for ri, row in enumerate(rows, 2):
         is_epi = row['type'] == 'epistrofi'
@@ -316,10 +322,10 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             cells = [p(fmt_date(imer), CS), p(fmt_date(imer), CS)]
             for yid, _ in ylika_order:
                 v = kat.get('ylika', {}).get(yid)
-                cells.append(p(fmt_num(v) if v else '—', CS))
+                cells.append(p(fmt_num(v) if v else '—', RS))
             cells.append(p(kat.get('paratirishis',''), CS))
             if ri % 2 == 0:
-                r_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT2))
+                r_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
         else:
             cells = [p('',CS), p('',CS)] + [p('',CS)]*n + [p('',CS)]
 
@@ -464,7 +470,7 @@ def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) 
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import ParagraphStyle
-    from reportlab.lib.enums import TA_CENTER, TA_LEFT
+    from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
     register_fonts()
     F  = 'Sans'      if FONT_REGULAR else 'Helvetica'
