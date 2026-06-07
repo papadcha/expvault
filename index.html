@@ -427,7 +427,16 @@ body.electron .main    { padding-top: 60px; }
           <div id="pdf-alert"></div>
           <div class="form-row cols-2">
             <div><label>Ημερομηνία *</label><input type="date" id="pdf-imerominia"></div>
+            <div><label>Τύπος Κίνησης *</label>
+              <select id="pdf-tipos">
+                <option value="ΕΙΣΑΓΩΓΗ">📥 Εισαγωγή (Αγορά)</option>
+                <option value="ΕΞΑΓΩΓΗ">📤 Εξαγωγή (Επιστροφή)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row cols-2">
             <div><label>Αρ. Παραστατικού</label><input type="text" id="pdf-parstatiko"></div>
+            <div></div>
           </div>
           <div class="form-row cols-2">
             <div><label>Άδεια (αριθμός)</label><input type="text" id="pdf-adeia-txt" placeholder="π.χ. 40923"></div>
@@ -943,6 +952,7 @@ async function parsePdf() {
       const [d,m,y] = s.imerominia.split('/');
       document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
     }
+    document.getElementById('pdf-tipos').value   = s.tipos || 'ΕΙΣΑΓΩΓΗ';
     document.getElementById('pdf-parstatiko').value = s.arithmos_parstatikos||'';
     document.getElementById('pdf-adeia-txt').value  = s.adeia||'';
     document.getElementById('pdf-ekdousa-txt').value = s.ekdousa_archi||'';
@@ -971,6 +981,7 @@ async function parsePdf() {
 
 async function submitPdfEntries() {
   const imerominia = document.getElementById('pdf-imerominia').value;
+  const tipos      = document.getElementById('pdf-tipos').value;
   const parstatiko = document.getElementById('pdf-parstatiko').value;
   const adeiaNum    = document.getElementById('pdf-adeia-txt').value.trim();
   const ekdousaArchi = document.getElementById('pdf-ekdousa-txt').value.trim();
@@ -1014,7 +1025,7 @@ async function submitPdfEntries() {
     }
     if (!yliko) { errors.push(onoma+': δεν βρέθηκε'); continue; }
     try {
-      await py('add_kinisi', {imerominia, tipos:'ΕΙΣΑΓΩΓΗ', yliko_id:yliko.id,
+      await py('add_kinisi', {imerominia, tipos, yliko_id:yliko.id,
         posotita:pos, arithmos_parstatikos:parstatiko,
         adeia_id:adeiaId, promitheftis_id:promId, paratirishis:'Εισαγωγή από PDF'});
       saved++;

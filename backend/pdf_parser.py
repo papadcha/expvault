@@ -32,8 +32,17 @@ def parse_pdf(filepath: str) -> dict:
         'promitheftis': '',
         'adeia': '',
         'ekdousa_archi': '',
+        'tipos': 'ΕΙΣΑΓΩΓΗ',  # default
         'grammes': []
     }
+
+    lines = raw_text.split('\n')
+
+    # ── Τύπος εγγράφου (Εισαγωγή ή Επιστροφή/Εξαγωγή) ───────────────────────
+    for line in lines:
+        if re.search(r'Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Επιστροφή|ΕΠΙΣΤΡΟΦΗ|Πιστ\.\s*Τιμ', line, re.IGNORECASE):
+            suggested['tipos'] = 'ΕΞΑΓΩΓΗ'
+            break
 
     lines = raw_text.split('\n')
 
@@ -50,7 +59,7 @@ def parse_pdf(filepath: str) -> dict:
             break
 
     # ── Αριθμός παραστατικού ─────────────────────────────────────────────────
-    tim_pat = re.compile(r'(?:Τιμολόγιο|ΤΙΜΟΛΟΓΙΟ|Δελτίο|ΔΕΛΤΙΟ)\s+\w+\s+(\d+)', re.IGNORECASE)
+    tim_pat = re.compile(r'(?:Τιμολόγιο|ΤΙΜΟΛΟΓΙΟ|Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Δελτίο|ΔΕΛΤΙΟ)\s+\w+\s+(\d+)', re.IGNORECASE)
     for line in lines:
         m = tim_pat.search(line)
         if m:
