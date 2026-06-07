@@ -118,6 +118,8 @@ def build_book_rows(kiniseis):
         rows.append(agora)
         for i, e in enumerate(epistrofes):
             if i not in epi_used and e['imerominia'] == agora['imerominia']:
+                e['aa'] = aa  # Δίνει Α/Α στην επιστροφή
+                aa += 1
                 rows.append(e)
                 epi_used.add(i)
                 break
