@@ -43,12 +43,15 @@ def register_fonts(font_name='iosevka'):
     from reportlab.pdfbase.ttfonts import TTFont
     reg  = find_font(FONT_SETS.get(font_name, FONT_SETS['iosevka']))
     bold = find_font(FONT_SETS_BOLD.get(font_name, FONT_SETS_BOLD['iosevka']))
-    # Πάντα καταχωρεί ξανά με το νέο font
+    fname = f'Font_{font_name}'
+    fbold = f'Font_{font_name}_Bold'
     try:
+        pdfmetrics.getFont(fname)
+    except:
         if reg:
-            pdfmetrics.registerFont(TTFont('Sans',      reg))
-            pdfmetrics.registerFont(TTFont('Sans-Bold', bold or reg))
-    except: pass
+            pdfmetrics.registerFont(TTFont(fname, reg))
+            pdfmetrics.registerFont(TTFont(fbold, bold or reg))
+    return fname, fbold
 
 def fmt_date(s):
     if not s: return ''
@@ -187,9 +190,9 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-    register_fonts(font)
-    F  = 'Sans'      if FONT_REGULAR else 'Helvetica'
-    FB = 'Sans-Bold' if FONT_BOLD    else 'Helvetica-Bold'
+    F, FB = register_fonts(font)
+    if not FONT_REGULAR:
+        F, FB = 'Helvetica', 'Helvetica-Bold'
 
     ylika_order = get_ylika_order(kiniseis)
     rows, kat_by_date = build_book_rows(kiniseis)
