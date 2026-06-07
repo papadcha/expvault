@@ -148,15 +148,14 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     pagesize = landscape(A4)
     page_w   = pagesize[0] - 1.4*cm
 
-    # Υπολογισμός πλατών
-    # Αριστερά: Α/Α(0.7) Ημ(1.6) Παραστ(1.5) Άδεια(1.4) Προμηθ(2.5) + n*yw
-    # Δεξιά:    Ημ.Κατ(1.6) + n*yw + Παρατ(1.8)
-    L_FIXED = [0.7, 1.6, 1.5, 1.4, 2.5]
-    R_FIXED = [1.6, 1.8]
-    SEP     = 0.2
+    # Υπολογισμός πλατών — page_w σε points, fixed_total σε cm → μετατροπή
+    L_FIXED = [0.6, 1.5, 1.3, 1.2, 2.2]
+    R_FIXED = [1.5, 1.5]
+    SEP     = 0.15
 
-    fixed_total = sum(L_FIXED) + sum(R_FIXED) + SEP
-    yw = max(1.1, (page_w - fixed_total) / (2 * n)) if n else 1.5
+    fixed_total_cm = sum(L_FIXED) + sum(R_FIXED) + SEP
+    available_cm   = page_w / cm  # μετατροπή points → cm
+    yw = max(0.9, (available_cm - fixed_total_cm) / (2 * n)) if n else 1.5
 
     L_WIDTHS = [x*cm for x in L_FIXED] + [yw*cm]*n
     R_WIDTHS = [R_FIXED[0]*cm] + [yw*cm]*n + [R_FIXED[1]*cm]
