@@ -821,6 +821,8 @@ async function checkEkkremotita(yliko_id, imerominia) {
     const r = await py('check_ekkremotita', { yliko_id, imerominia });
     if (!r.ekkremotita) { banner.style.display='none'; banner.innerHTML=''; return; }
 
+    window._ekkData = r.ekkremes;
+
     const lines = r.ekkremes.map(e => {
       const tipo_label = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
       const fmt = e.posotita.toFixed(3).replace('.',',');
@@ -829,19 +831,57 @@ async function checkEkkremotita(yliko_id, imerominia) {
 
     banner.innerHTML = `
       <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;">
-        <strong>⚠️ Εκκρεμείς καταχωρήσεις — καταχωρήστε χειροκίνητα από το Βιβλίο Κινήσεων:</strong>
+        <strong>⚠️ Εκκρεμείς καταχωρήσεις:</strong>
         <div style="margin:8px 0;font-size:12px;">${lines}</div>
-        <button class="btn btn-sm btn-outline" style="margin-top:4px;" onclick="document.getElementById('ekkremotita-banner').style.display='none';document.getElementById('ekkremotita-banner').innerHTML='';">
-          ✖ Κλείσιμο
-        </button>
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button class="btn btn-sm btn-accent" id="ekk-save-btn">✅ Καταχώρηση Όλων</button>
+          <button class="btn btn-sm btn-outline" id="ekk-close-btn">✖ Κλείσιμο</button>
+        </div>
       </div>`;
     banner.style.display = 'block';
+
+    document.getElementById('ekk-save-btn').addEventListener('click', autoKataxorisiAll);
+    document.getElementById('ekk-close-btn').addEventListener('click', () => {
+      banner.style.display='none'; banner.innerHTML='';
+    });
   } catch(e) { banner.style.display='none'; }
 }
 
 function checkBannerEmpty() {}
 async function autoKataxorisi(btn) {}
-async function autoKataxorisiAll() {}
+
+async function autoKataxorisiAll() {
+  const banner = document.getElementById('ekkremotita-banner');
+  const data = window._ekkData || [];
+  if (!data.length) return;
+
+  banner.innerHTML = '<div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;">⏳ Καταχώρηση σε εξέλιξη...</div>';
+
+  let errors = [];
+  for (const ekk of data) {
+    if (!ekk) continue;
+    try {
+      await py('add_kinisi', {
+        imerominia:           ekk.imerominia,
+        tipos:                ekk.tipo,
+        yliko_id:             ekk.yliko_id,
+        posotita:             ekk.posotita,
+        arithmos_parstatikos: '',
+        adeia_id:             null,
+        promitheftis_id:      null,
+        paratirishis:         'Αυτόματος υπολογισμός',
+        ypografi:             ''
+      });
+    } catch(e) { errors.push(ekk.yliko_onoma + ': ' + e.message); }
+  }
+
+  window._ekkData = [];
+  banner.style.display = 'none';
+  banner.innerHTML = '';
+  loadKiniseis();
+  loadDashboard();
+  if (errors.length) alert('Σφάλματα: ' + errors.join(', '));
+}
 
 function clearKinisiForm() {
   document.getElementById('kin-edit-id').value = '';
