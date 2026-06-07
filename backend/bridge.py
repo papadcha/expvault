@@ -108,6 +108,10 @@ def handle(cmd, payload):
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
 
+    if cmd == 'delete_kiniseis_by_parstatiko':
+        database.delete_kiniseis_by_parstatiko(payload.get('arithmos_parstatikos'))
+        return {'ok': True}
+
     # ── ΕΛΕΓΧΟΣ ΕΚΚΡΕΜΟΤΗΤΑΣ ─────────────────────────────────────────────────
     if cmd == 'check_ekkremotita':
         return database.check_ekkremotita(

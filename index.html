@@ -415,8 +415,7 @@ body.electron .main    { padding-top: 60px; }
     <div class="card">
       <div class="card-title">Φόρτωση PDF</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-        <input type="file" id="pdf-file" accept=".pdf" style="width:auto;">
-        <button class="btn btn-accent" onclick="parsePdf()">⚡ Ανάλυση PDF</button>
+        <button class="btn btn-accent" onclick="parsePdf()">📂 Επιλογή & Ανάλυση PDF</button>
         <span id="pdf-status" style="font-size:13px;color:var(--muted);"></span>
       </div>
     </div>
@@ -587,8 +586,9 @@ body.electron .main    { padding-top: 60px; }
     <div class="modal-title">⚠️ Διπλοεγγραφή Παραστατικού</div>
     <p id="diplo-msg" style="margin-bottom:12px;"></p>
     <div id="diplo-list" style="background:#f8f9fa;border-radius:6px;padding:12px;font-size:12px;font-family:monospace;margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
-    <p style="font-size:12px;color:var(--danger);">Το παραστατικό έχει ήδη καταχωρηθεί. Αν είναι λάθος, διαγράψτε πρώτα τις υπάρχουσες εγγραφές από το Βιβλίο Κινήσεων.</p>
+    <p style="font-size:12px;color:var(--danger);margin-bottom:12px;">Αν είναι λάθος καταχώρηση, μπορείς να διαγράψεις όλες τις εγγραφές του παραστατικού:</p>
     <div class="modal-actions">
+      <button class="btn btn-danger" id="diplo-del-btn" onclick="deleteParstatiko()">🗑 Διαγραφή Όλων</button>
       <button class="btn btn-primary" onclick="closeDiploModal()">Κλείσιμο</button>
     </div>
   </div>
@@ -1169,12 +1169,26 @@ function closeDiploModal() {
 }
 
 function showDiploModal(parstatiko, existing) {
+  window._diploParstatiko = parstatiko;
   document.getElementById('diplo-msg').textContent =
     `Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:`;
   document.getElementById('diplo-list').innerHTML = existing.map(e =>
     `<div>• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})</div>`
   ).join('');
   document.getElementById('diplo-modal').classList.add('open');
+}
+
+async function deleteParstatiko() {
+  const parstatiko = window._diploParstatiko;
+  if (!parstatiko) return;
+  try {
+    await py('delete_kiniseis_by_parstatiko', { arithmos_parstatikos: parstatiko });
+    closeDiploModal();
+    loadKiniseis();
+    document.getElementById('export-msg') &&
+      (document.getElementById('export-msg').innerHTML =
+        `<div class="alert alert-success">✅ Διαγράφηκαν όλες οι εγγραφές του παραστατικού "${parstatiko}"</div>`);
+  } catch(e) { alert('Σφάλμα διαγραφής: ' + e.message); }
 }
 
 // ── CONFIRM DELETE ────────────────────────────────────────────────────────────

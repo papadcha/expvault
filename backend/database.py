@@ -321,3 +321,11 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
             return {'ekkremotita': False}
 
         return {'ekkremotita': True, 'ekkremes': ekkremotes}
+
+def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
+    """Διαγράφει όλες τις κινήσεις με συγκεκριμένο παραστατικό."""
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM kiniseis WHERE arithmos_parstatikos=?",
+            (arithmos_parstatikos,)
+        )
