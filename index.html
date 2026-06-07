@@ -1122,7 +1122,18 @@ async function submitPdfEntries() {
   const alertEl = document.getElementById('pdf-alert');
   alertEl.innerHTML = '';
   if (errors.length) alertEl.innerHTML += `<div class="alert alert-error">Σφάλματα: ${errors.join(', ')}</div>`;
-  if (saved) alertEl.innerHTML += `<div class="alert alert-success">✅ Καταχωρήθηκαν ${saved} γραμμές!</div>`;
+  if (saved) {
+    alertEl.innerHTML += `<div class="alert alert-success">✅ Καταχωρήθηκαν ${saved} γραμμές!</div>`;
+    // Έλεγχος εκκρεμότητας για κάθε υλικό που καταχωρήθηκε
+    const bannerEl = document.getElementById('ekkremotita-banner');
+    if (bannerEl) {
+      await checkEkkremotita(null, imerominia);
+      if (bannerEl.style.display !== 'none') {
+        // Μετακίνησε το banner κοντά στα αποτελέσματα PDF
+        alertEl.appendChild(bannerEl.cloneNode(true));
+      }
+    }
+  }
 }
 
 // ── EXPORT ───────────────────────────────────────────────────────────────────
