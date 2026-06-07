@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain, globalShortcut } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -148,14 +148,12 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  globalShortcut.register('CommandOrControl+Q', () => app.quit());
   setupIPC();
   startBridge();
   createWindow();
 });
 
 app.on('window-all-closed', () => {
-  globalShortcut.unregisterAll();
   if (pythonProcess) {
     pythonProcess.stdin.end();
     pythonProcess.kill('SIGTERM');
