@@ -581,6 +581,19 @@ body.electron .main    { padding-top: 60px; }
   </div>
 </div>
 
+<!-- ── ΔΙΠΛΟΕΓΓΡΑΦΗ MODAL ── -->
+<div class="modal-overlay" id="diplo-modal">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-title">⚠️ Διπλοεγγραφή Παραστατικού</div>
+    <p id="diplo-msg" style="margin-bottom:12px;"></p>
+    <div id="diplo-list" style="background:#f8f9fa;border-radius:6px;padding:12px;font-size:12px;font-family:monospace;margin-bottom:12px;max-height:200px;overflow-y:auto;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeDiploModal()">Άκυρο</button>
+      <button class="btn btn-danger" id="diplo-ok-btn">Καταχώρηση Ούτως ή Άλλως</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let allYlika = [], allProm = [], allAdeies = [];
@@ -1059,12 +1072,7 @@ async function submitPdfEntries() {
   if (parstatiko) {
     const existing = await py('check_parstatiko', { arithmos_parstatikos: parstatiko });
     if (existing.length > 0) {
-      const lines = existing.map(e =>
-        `• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})`
-      ).join('\n');
-      const proceed = confirm(
-        `⚠️ Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:\n\n${lines}\n\nΣυνέχεια;`
-      );
+      const proceed = await showDiploModal(parstatiko, existing);
       if (!proceed) return;
     }
   }
@@ -1154,6 +1162,29 @@ async function doExport(fmt) {
     btn.textContent = origText;
     btn.disabled = false;
   }
+}
+
+function closeDiploModal() {
+  document.getElementById('diplo-modal').classList.remove('open');
+  // Επίλυση του pending promise με false
+  if (window._diploResolve) { window._diploResolve(false); window._diploResolve = null; }
+}
+
+function showDiploModal(parstatiko, existing) {
+  return new Promise(resolve => {
+    window._diploResolve = resolve;
+    document.getElementById('diplo-msg').textContent =
+      `Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:`;
+    document.getElementById('diplo-list').innerHTML = existing.map(e =>
+      `<div>• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})</div>`
+    ).join('');
+    document.getElementById('diplo-ok-btn').onclick = () => {
+      document.getElementById('diplo-modal').classList.remove('open');
+      resolve(true);
+      window._diploResolve = null;
+    };
+    document.getElementById('diplo-modal').classList.add('open');
+  });
 }
 
 // ── CONFIRM DELETE ────────────────────────────────────────────────────────────
