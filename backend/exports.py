@@ -24,18 +24,31 @@ def find_font(names):
             if os.path.exists(direct): return direct
     return None
 
-FONT_REGULAR = find_font(['Iosevka-Regular.ttc','JetBrainsMono-Regular.ttf','LiberationSans-Regular.ttf','FreeSans.ttf'])
-FONT_BOLD    = find_font(['Iosevka-Bold.ttc','JetBrainsMono-Bold.ttf','LiberationSans-Bold.ttf','FreeSansBold.ttf'])
+FONT_SETS = {
+    'iosevka':    ['Iosevka-Regular.ttc', 'JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf'],
+    'jetbrains':  ['JetBrainsMono-Regular.ttf', 'Iosevka-Regular.ttc', 'LiberationMono-Regular.ttf'],
+    'liberation': ['LiberationMono-Regular.ttf', 'FreeMono.ttf'],
+}
+FONT_SETS_BOLD = {
+    'iosevka':    ['Iosevka-Bold.ttc', 'JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf'],
+    'jetbrains':  ['JetBrainsMono-Bold.ttf', 'Iosevka-Bold.ttc', 'LiberationMono-Bold.ttf'],
+    'liberation': ['LiberationMono-Bold.ttf', 'FreeMonoBold.ttf'],
+}
 
-def register_fonts():
+FONT_REGULAR = find_font(FONT_SETS['iosevka'])
+FONT_BOLD    = find_font(FONT_SETS_BOLD['iosevka'])
+
+def register_fonts(font_name='iosevka'):
     from reportlab.pdfbase import pdfmetrics
     from reportlab.pdfbase.ttfonts import TTFont
+    reg  = find_font(FONT_SETS.get(font_name, FONT_SETS['iosevka']))
+    bold = find_font(FONT_SETS_BOLD.get(font_name, FONT_SETS_BOLD['iosevka']))
+    # Πάντα καταχωρεί ξανά με το νέο font
     try:
-        pdfmetrics.getFont('Sans')
-    except:
-        if FONT_REGULAR:
-            pdfmetrics.registerFont(TTFont('Sans',      FONT_REGULAR))
-            pdfmetrics.registerFont(TTFont('Sans-Bold', FONT_BOLD or FONT_REGULAR))
+        if reg:
+            pdfmetrics.registerFont(TTFont('Sans',      reg))
+            pdfmetrics.registerFont(TTFont('Sans-Bold', bold or reg))
+    except: pass
 
 def fmt_date(s):
     if not s: return ''
@@ -166,7 +179,7 @@ def build_book_rows(kiniseis):
 
 # ─── PDF ─────────────────────────────────────────────────────────────────────
 
-def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
+def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka') -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
@@ -174,7 +187,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT
 
-    register_fonts()
+    register_fonts(font)
     F  = 'Sans'      if FONT_REGULAR else 'Helvetica'
     FB = 'Sans-Bold' if FONT_BOLD    else 'Helvetica-Bold'
 

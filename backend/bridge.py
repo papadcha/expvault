@@ -157,7 +157,7 @@ def handle(cmd, payload):
             apo=payload.get('apo'),
             eos=payload.get('eos')
         )
-        data = exports.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'))
+        data = exports.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)
