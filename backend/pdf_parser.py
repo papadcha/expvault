@@ -78,20 +78,31 @@ def parse_pdf(filepath: str) -> dict:
                     suggested['adeia'] = m.group(1)
             break
 
-    # ── Προμηθευτής ───────────────────────────────────────────────────────────
-    known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
-    for sup in known:
-        for line in lines:
-            if sup in line.upper():
-                if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ']):
-                    continue
-                # Εξαγωγή μόνο του τμήματος με τον προμηθευτή
-                idx = line.upper().find(sup)
-                clean = line[idx:].strip()[:40]
-                suggested['promitheftis'] = clean
+    # ── Προμηθευτής / Αποστολέας ─────────────────────────────────────────────
+    if suggested['tipos'] == 'ΕΞΑΓΩΓΗ':
+        # Επιστροφή: ο "προμηθευτής" είναι ο πελάτης — βρίσκεται μετά τον κωδικό πελάτη
+        for i, line in enumerate(lines):
+            if re.match(r'^\d{5}\s*$', line.strip()):  # Κωδικός πελάτη (5ψήφιος)
+                # Το όνομα είναι στην αμέσως επόμενη γραμμή
+                if i + 1 < len(lines):
+                    candidate = lines[i+1].strip()
+                    if len(candidate) > 5 and re.search(r'[Α-Ω]{3}', candidate):
+                        suggested['promitheftis'] = candidate[:50]
+                        break
+    else:
+        # Αγορά: ο προμηθευτής είναι η εταιρεία εκρηκτικών
+        known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
+        for sup in known:
+            for line in lines:
+                if sup in line.upper():
+                    if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ']):
+                        continue
+                    idx = line.upper().find(sup)
+                    clean = line[idx:].strip()[:40]
+                    suggested['promitheftis'] = clean
+                    break
+            if suggested['promitheftis']:
                 break
-        if suggested['promitheftis']:
-            break
 
     # ── Υλικά — Πραγματική μορφή EpsilonNet ──────────────────────────────────
     # "ΤΙΜΗ ΑΞΙΑ ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00"
