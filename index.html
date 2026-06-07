@@ -821,64 +821,27 @@ async function checkEkkremotita(yliko_id, imerominia) {
     const r = await py('check_ekkremotita', { yliko_id, imerominia });
     if (!r.ekkremotita) { banner.style.display='none'; banner.innerHTML=''; return; }
 
-    // Αποθήκευσε τα δεδομένα globally
-    window._ekkData = r.ekkremes;
-
-    const html = r.ekkremes.map((e, idx) => {
+    const lines = r.ekkremes.map(e => {
       const tipo_label = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
       const fmt = e.posotita.toFixed(3).replace('.',',');
-      return `
-        <div class="alert" id="ekk-${idx}" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-bottom:8px;">
-          <strong>⚠️ Εκκρεμεί ${tipo_label}</strong> για <strong>${e.yliko_onoma}</strong>:
-          υπολογισμένη ποσότητα <strong>${fmt} ${e.monada}</strong>
-          <div style="margin-top:8px;display:flex;gap:8px;">
-            <button class="btn btn-sm btn-accent" data-idx="${idx}" onclick="autoKataxorisi(this)">
-              ✅ Καταχώρηση ${fmt} ${e.monada}
-            </button>
-            <button class="btn btn-sm btn-outline" onclick="document.getElementById('ekk-${idx}').remove(); checkBannerEmpty()">
-              ✏️ Χειροκίνητα
-            </button>
-          </div>
-        </div>`;
+      return `<div>• ${tipo_label} <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
     }).join('');
 
-    banner.innerHTML = html;
+    banner.innerHTML = `
+      <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;">
+        <strong>⚠️ Εκκρεμείς καταχωρήσεις — καταχωρήστε χειροκίνητα από το Βιβλίο Κινήσεων:</strong>
+        <div style="margin:8px 0;font-size:12px;">${lines}</div>
+        <button class="btn btn-sm btn-outline" style="margin-top:4px;" onclick="document.getElementById('ekkremotita-banner').style.display='none';document.getElementById('ekkremotita-banner').innerHTML='';">
+          ✖ Κλείσιμο
+        </button>
+      </div>`;
     banner.style.display = 'block';
   } catch(e) { banner.style.display='none'; }
 }
 
-function checkBannerEmpty() {
-  const banner = document.getElementById('ekkremotita-banner');
-  if (!banner.querySelector('.alert')) { banner.style.display='none'; banner.innerHTML=''; }
-}
-
-async function autoKataxorisi(btn) {
-  const idx = parseInt(btn.dataset.idx);
-  const ekk = window._ekkData[idx];
-  if (!ekk) return;
-
-  const body = {
-    imerominia:       ekk.imerominia,
-    tipos:            ekk.tipo,
-    yliko_id:         ekk.yliko_id,
-    posotita:         ekk.posotita,
-    arithmos_parstatikos: '',
-    adeia_id:         null,
-    promitheftis_id:  null,
-    paratirishis:     'Αυτόματος υπολογισμός',
-    ypografi:         ''
-  };
-  try {
-    await py('add_kinisi', body);
-    // Αφαίρεσε αυτή τη γραμμή από το banner
-    document.getElementById(`ekk-${idx}`)?.remove();
-    // Σημείωσε ότι καταχωρήθηκε για να μην ξαναεμφανιστεί
-    window._ekkData[idx] = null;
-    checkBannerEmpty();
-    loadKiniseis();
-    loadDashboard();
-  } catch(e) { alert('Σφάλμα: ' + e.message); }
-}
+function checkBannerEmpty() {}
+async function autoKataxorisi(btn) {}
+async function autoKataxorisiAll() {}
 
 function clearKinisiForm() {
   document.getElementById('kin-edit-id').value = '';
