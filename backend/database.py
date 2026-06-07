@@ -80,6 +80,13 @@ def get_all_ylika():
 
 def add_yliko(onoma, diatomi_mm, monada, paratirishis):
     with get_db() as conn:
+        # Έλεγχος αν υπάρχει ήδη (case-insensitive)
+        existing = conn.execute(
+            "SELECT id FROM ylika WHERE UPPER(onoma)=UPPER(?) AND (diatomi_mm IS ? OR diatomi_mm=?)",
+            (onoma.upper(), diatomi_mm, diatomi_mm)
+        ).fetchone()
+        if existing:
+            return existing[0]  # Επιστρέφει υπάρχον id
         conn.execute(
             "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis) VALUES(?,?,?,?)",
             (onoma.upper(), diatomi_mm or None, monada, paratirishis or None))
@@ -215,8 +222,10 @@ def get_apothemates():
                 IFNULL(SUM(CASE WHEN k.tipos='ΚΑΤΑΝΑΛΩΣΗ' OR (k.tipos='ΕΞΑΓΩΓΗ' AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='')) THEN k.posotita ELSE 0 END),0) as katanalosi_xeirokiniti,
                 IFNULL(SUM(CASE WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' OR (k.tipos='ΕΞΑΓΩΓΗ' AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos!='') THEN k.posotita ELSE 0 END),0) as epistrofi_xeirokiniti
             FROM ylika y
-            LEFT JOIN kiniseis k ON y.id = k.yliko_id
-            GROUP BY y.id ORDER BY y.onoma
+            INNER JOIN kiniseis k ON y.id = k.yliko_id
+            GROUP BY y.id
+            HAVING synolo_eisagogon > 0
+            ORDER BY y.onoma
         ''').fetchall()
 
         result = []
