@@ -38,10 +38,10 @@ def parse_pdf(filepath: str) -> dict:
 
     lines = raw_text.split('\n')
 
-    # ── Τύπος εγγράφου (Εισαγωγή ή Επιστροφή/Εξαγωγή) ───────────────────────
+    # ── Τύπος εγγράφου ────────────────────────────────────────────────────────
     for line in lines:
         if re.search(r'Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Επιστροφή|ΕΠΙΣΤΡΟΦΗ|Πιστ\.\s*Τιμ', line, re.IGNORECASE):
-            suggested['tipos'] = 'ΕΞΑΓΩΓΗ'
+            suggested['tipos'] = 'ΕΠΙΣΤΡΟΦΗ'
             break
 
     lines = raw_text.split('\n')

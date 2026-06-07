@@ -104,6 +104,14 @@ def handle(cmd, payload):
     if cmd == 'get_apothemates':
         return database.get_apothemates()
 
+    # ── ΕΛΕΓΧΟΣ ΕΚΚΡΕΜΟΤΗΤΑΣ ─────────────────────────────────────────────────
+    if cmd == 'check_ekkremotita':
+        return database.check_ekkremotita(
+            payload.get('yliko_id'),
+            payload.get('imerominia'),
+            payload.get('parstatiko')
+        )
+
     # ── PDF PARSER ────────────────────────────────────────────────────────────
     if cmd == 'parse_pdf':
         result = pdf_parser.parse_pdf(payload['path'])

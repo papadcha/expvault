@@ -85,7 +85,7 @@ def build_book_rows(kiniseis):
                 aa += 1
             agores[key]['ylika'][yid] = agores[key]['ylika'].get(yid,0) + k['posotita']
 
-        elif tipos == 'ΕΞΑΓΩΓΗ' and parst:
+        elif tipos in ('ΕΠΙΣΤΡΟΦΗ', 'ΕΞΑΓΩΓΗ') and parst:
             found = next((e for e in epistrofes
                          if e['parstatiko']==parst and e['imerominia']==imer), None)
             if not found:
@@ -99,6 +99,7 @@ def build_book_rows(kiniseis):
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
         else:
+            # ΚΑΤΑΝΑΛΩΣΗ ή ΕΞΑΓΩΓΗ χωρίς παραστατικό
             found = next((c for c in katanaliseis if c['imerominia']==imer), None)
             if not found:
                 found = {

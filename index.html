@@ -327,7 +327,8 @@ body.electron .main    { padding-top: 60px; }
         <div><label>Τύπος *</label>
           <select id="kin-tipos">
             <option value="ΕΙΣΑΓΩΓΗ">📥 Εισαγωγή (Αγορά)</option>
-            <option value="ΕΞΑΓΩΓΗ">📤 Εξαγωγή (Ανάλωση)</option>
+            <option value="ΚΑΤΑΝΑΛΩΣΗ">🔥 Κατανάλωση</option>
+            <option value="ΕΠΙΣΤΡΟΦΗ">🔄 Επιστροφή</option>
           </select>
         </div>
         <div><label>Είδος Εκρηκτικού *</label><select id="kin-yliko"><option value="">— Επιλογή —</option></select></div>
@@ -346,6 +347,7 @@ body.electron .main    { padding-top: 60px; }
         <button class="btn btn-success" onclick="saveKinisi()">💾 Αποθήκευση</button>
         <button class="btn btn-outline" onclick="clearKinisiForm()">✖ Καθαρισμός</button>
       </div>
+      <div id="ekkremotita-banner" style="display:none;margin-top:12px;"></div>
     </div>
 
     <!-- Φίλτρα -->
@@ -433,7 +435,8 @@ body.electron .main    { padding-top: 60px; }
             <div><label>Τύπος Κίνησης *</label>
               <select id="pdf-tipos">
                 <option value="ΕΙΣΑΓΩΓΗ">📥 Εισαγωγή (Αγορά)</option>
-                <option value="ΕΞΑΓΩΓΗ">📤 Εξαγωγή (Επιστροφή)</option>
+                <option value="ΚΑΤΑΝΑΛΩΣΗ">🔥 Κατανάλωση</option>
+                <option value="ΕΠΙΣΤΡΟΦΗ">🔄 Επιστροφή</option>
               </select>
             </div>
           </div>
@@ -792,7 +795,60 @@ async function saveKinisi() {
   try {
     if (id) await py('update_kinisi', { id: parseInt(id), ...body });
     else     await py('add_kinisi', body);
-    clearKinisiForm(); loadKiniseis();
+    clearKinisiForm();
+    loadKiniseis();
+    // Έλεγχος εκκρεμότητας
+    await checkEkkremotita(body.yliko_id, body.imerominia);
+  } catch(e) { alert('Σφάλμα: ' + e.message); }
+}
+
+async function checkEkkremotita(yliko_id, imerominia) {
+  const banner = document.getElementById('ekkremotita-banner');
+  try {
+    const r = await py('check_ekkremotita', { yliko_id, imerominia });
+    if (!r.ekkremotita) { banner.style.display='none'; return; }
+
+    const ekk = r.ekkremes;
+    const html = ekk.map(e => {
+      const tipo_label = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
+      const fmt = e.posotita.toFixed(3).replace('.',',');
+      return `
+        <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-bottom:8px;">
+          <strong>⚠️ Εκκρεμεί ${tipo_label}</strong> για <strong>${e.yliko_onoma}</strong>:
+          υπολογισμένη ποσότητα <strong>${fmt} ${e.monada}</strong>
+          <div style="margin-top:8px;display:flex;gap:8px;">
+            <button class="btn btn-sm btn-accent" onclick="autoKataxorisi(${JSON.stringify(e)})">
+              ✅ Καταχώρηση ${fmt} ${e.monada}
+            </button>
+            <button class="btn btn-sm btn-outline" onclick="this.closest('.alert').remove()">
+              ✏️ Χειροκίνητα
+            </button>
+          </div>
+        </div>`;
+    }).join('');
+
+    banner.innerHTML = html;
+    banner.style.display = 'block';
+  } catch(e) { banner.style.display='none'; }
+}
+
+async function autoKataxorisi(ekk) {
+  const body = {
+    imerominia:  ekk.imerominia,
+    tipos:       ekk.tipo,
+    yliko_id:    ekk.yliko_id,
+    posotita:    ekk.posotita,
+    arithmos_parstatikos: '',
+    adeia_id:    null,
+    promitheftis_id: null,
+    paratirishis: 'Αυτόματος υπολογισμός',
+    ypografi:    ''
+  };
+  try {
+    await py('add_kinisi', body);
+    document.getElementById('ekkremotita-banner').style.display='none';
+    loadKiniseis();
+    alert(`✅ Καταχωρήθηκε ${ekk.tipo}: ${ekk.posotita.toFixed(3)} ${ekk.monada}`);
   } catch(e) { alert('Σφάλμα: ' + e.message); }
 }
 

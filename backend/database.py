@@ -45,7 +45,7 @@ def init_db():
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 auxon_arithmos INTEGER NOT NULL,
                 imerominia TEXT NOT NULL,
-                tipos TEXT NOT NULL CHECK(tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΞΑΓΩΓΗ')),
+                tipos TEXT NOT NULL CHECK(tipos IN ('ΕΙΣΑΓΩΓΗ','ΚΑΤΑΝΑΛΩΣΗ','ΕΠΙΣΤΡΟΦΗ','ΕΞΑΓΩΓΗ')),
                 yliko_id INTEGER NOT NULL REFERENCES ylika(id),
                 posotita REAL NOT NULL CHECK(posotita > 0),
                 arithmos_parstatikos TEXT,
@@ -198,8 +198,8 @@ def get_apothemates():
         rows = conn.execute('''
             SELECT y.id, y.onoma, y.diatomi_mm, y.monada_metrisis,
                 IFNULL(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) as synolo_eisagogon,
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='') THEN k.posotita ELSE 0 END),0) as katanalosi_xeirokiniti,
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos!='' THEN k.posotita ELSE 0 END),0) as epistrofi_xeirokiniti
+                IFNULL(SUM(CASE WHEN k.tipos='ΚΑΤΑΝΑΛΩΣΗ' OR (k.tipos='ΕΞΑΓΩΓΗ' AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='')) THEN k.posotita ELSE 0 END),0) as katanalosi_xeirokiniti,
+                IFNULL(SUM(CASE WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' OR (k.tipos='ΕΞΑΓΩΓΗ' AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos!='') THEN k.posotita ELSE 0 END),0) as epistrofi_xeirokiniti
             FROM ylika y
             LEFT JOIN kiniseis k ON y.id = k.yliko_id
             GROUP BY y.id ORDER BY y.onoma
@@ -208,19 +208,102 @@ def get_apothemates():
         result = []
         for r in rows:
             d = dict(r)
-            agores    = d['synolo_eisagogon']
-            kat_xeir  = d['katanalosi_xeirokiniti']   # χειροκίνητη κατανάλωση
-            epi_xeir  = d['epistrofi_xeirokiniti']    # χειροκίνητη επιστροφή
+            agores   = d['synolo_eisagogon']
+            kat_xeir = d['katanalosi_xeirokiniti']
+            epi_xeir = d['epistrofi_xeirokiniti']
 
             if kat_xeir > 0 and epi_xeir == 0:
                 # Σενάριο 2: έχει κατανάλωση → υπολόγισε επιστροφή
                 d['synolo_katanalosis'] = kat_xeir
                 d['synolo_epistrofon']  = max(0.0, agores - kat_xeir)
             else:
-                # Σενάριο 1 (default): έχει επιστροφή (ή τίποτα) → υπολόγισε κατανάλωση
+                # Σενάριο 1: έχει επιστροφή (ή τίποτα) → υπολόγισε κατανάλωση
                 d['synolo_epistrofon']  = epi_xeir
                 d['synolo_katanalosis'] = max(0.0, agores - epi_xeir)
 
             d['ypoloipo'] = round(agores - d['synolo_katanalosis'] - d['synolo_epistrofon'], 6)
             result.append(d)
         return result
+
+# ─── ΕΛΕΓΧΟΣ ΕΚΚΡΕΜΟΤΗΤΑΣ ────────────────────────────────────────────────────
+
+def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
+    """
+    Ελέγχει αν μετά από μια καταχώρηση υπάρχει εκκρεμότητα (λείπει η 3η κίνηση).
+    Επιστρέφει dict με:
+      - ekkremotita: bool
+      - tipo: 'ΚΑΤΑΝΑΛΩΣΗ' ή 'ΕΠΙΣΤΡΟΦΗ' (τι λείπει)
+      - yliko_id, yliko_onoma, monada
+      - posotita: η υπολογισμένη ποσότητα που λείπει
+      - imerominia, parstatiko: στοιχεία σχετικής αγοράς
+    """
+    with get_db() as conn:
+        # Πάρε όλες τις κινήσεις του υλικού για αυτή την ημερομηνία
+        sql = '''
+            SELECT k.tipos, k.posotita, k.arithmos_parstatikos,
+                   k.imerominia, k.yliko_id, y.onoma, y.monada_metrisis
+            FROM kiniseis k
+            JOIN ylika y ON k.yliko_id = y.id
+            WHERE 1=1
+        '''
+        params = []
+        if yliko_id:
+            sql += ' AND k.yliko_id=?'; params.append(yliko_id)
+        if imerominia:
+            sql += ' AND k.imerominia=?'; params.append(imerominia)
+
+        rows = conn.execute(sql, params).fetchall()
+        if not rows:
+            return {'ekkremotita': False}
+
+        # Ομαδοποίηση ανά υλικό
+        by_yliko = {}
+        for r in rows:
+            yid = r['yliko_id']
+            if yid not in by_yliko:
+                by_yliko[yid] = {
+                    'yliko_id': yid,
+                    'yliko_onoma': r['onoma'],
+                    'monada': r['monada_metrisis'],
+                    'imerominia': r['imerominia'],
+                    'agores': 0, 'katanalosis': 0, 'epistrofes': 0
+                }
+            t = r['tipos']
+            if t == 'ΕΙΣΑΓΩΓΗ':
+                by_yliko[yid]['agores'] += r['posotita']
+            elif t == 'ΚΑΤΑΝΑΛΩΣΗ':
+                by_yliko[yid]['katanalosis'] += r['posotita']
+            elif t == 'ΕΠΙΣΤΡΟΦΗ' or (t == 'ΕΞΑΓΩΓΗ' and r['arithmos_parstatikos']):
+                by_yliko[yid]['epistrofes'] += r['posotita']
+
+        # Έλεγχος για κάθε υλικό
+        ekkremotes = []
+        for yid, d in by_yliko.items():
+            agores = d['agores']
+            kat    = d['katanalosis']
+            epi    = d['epistrofes']
+
+            if agores == 0:
+                continue
+
+            if kat == 0 and epi == 0:
+                # Δεν έχει ούτε κατανάλωση ούτε επιστροφή — εκκρεμεί και τα δύο
+                ekkremotes.append({**d, 'tipo': 'ΚΑΤΑΝΑΛΩΣΗ',
+                                   'posotita': agores, 'ekkremotita': True})
+            elif kat > 0 and epi == 0:
+                # Σενάριο 2: λείπει επιστροφή
+                ep_ypol = round(agores - kat, 6)
+                if ep_ypol > 0:
+                    ekkremotes.append({**d, 'tipo': 'ΕΠΙΣΤΡΟΦΗ',
+                                       'posotita': ep_ypol, 'ekkremotita': True})
+            elif epi > 0 and kat == 0:
+                # Σενάριο 1: λείπει κατανάλωση
+                kat_ypol = round(agores - epi, 6)
+                if kat_ypol > 0:
+                    ekkremotes.append({**d, 'tipo': 'ΚΑΤΑΝΑΛΩΣΗ',
+                                       'posotita': kat_ypol, 'ekkremotita': True})
+
+        if not ekkremotes:
+            return {'ekkremotita': False}
+
+        return {'ekkremotita': True, 'ekkremes': ekkremotes}
