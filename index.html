@@ -1055,6 +1055,20 @@ async function submitPdfEntries() {
   if (!imerominia) { alert('Συμπληρώστε ημερομηνία.'); return; }
   if (!window.pdfGrammesCount) { alert('Δεν υπάρχουν γραμμές υλικών.'); return; }
 
+  // Έλεγχος διπλοεγγραφής παραστατικού
+  if (parstatiko) {
+    const existing = await py('check_parstatiko', { arithmos_parstatikos: parstatiko });
+    if (existing.length > 0) {
+      const lines = existing.map(e =>
+        `• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})`
+      ).join('\n');
+      const proceed = confirm(
+        `⚠️ Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:\n\n${lines}\n\nΣυνέχεια;`
+      );
+      if (!proceed) return;
+    }
+  }
+
   let promId = null;
   if (promName) {
     let p = allProm.find(x=>x.onoma.toLowerCase()===promName.toLowerCase());

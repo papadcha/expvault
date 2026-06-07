@@ -139,6 +139,20 @@ def delete_adeia(id):
             raise ValueError("Η άδεια χρησιμοποιείται σε κινήσεις.")
         conn.execute("DELETE FROM adeies WHERE id=?", (id,))
 
+def check_parstatiko_exists(arithmos_parstatikos):
+    """Ελέγχει αν παραστατικό υπάρχει ήδη στη βάση."""
+    if not arithmos_parstatikos:
+        return []
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT k.imerominia, k.tipos, y.onoma as yliko_onoma, k.posotita, y.monada_metrisis
+            FROM kiniseis k
+            JOIN ylika y ON k.yliko_id = y.id
+            WHERE k.arithmos_parstatikos = ?
+            ORDER BY k.imerominia
+        ''', (arithmos_parstatikos,)).fetchall()
+        return [dict(r) for r in rows]
+
 # ─── ΚΙΝΗΣΕΙΣ ────────────────────────────────────────────────────────────────
 
 def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):

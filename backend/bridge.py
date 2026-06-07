@@ -104,6 +104,10 @@ def handle(cmd, payload):
     if cmd == 'get_apothemates':
         return database.get_apothemates()
 
+    # ── ΕΛΕΓΧΟΣ ΠΑΡΑΣΤΑΤΙΚΟΥ ─────────────────────────────────────────────────
+    if cmd == 'check_parstatiko':
+        return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
+
     # ── ΕΛΕΓΧΟΣ ΕΚΚΡΕΜΟΤΗΤΑΣ ─────────────────────────────────────────────────
     if cmd == 'check_ekkremotita':
         return database.check_ekkremotita(
