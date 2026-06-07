@@ -1,105 +1,213 @@
-# Βιβλίο Εκρηκτικών Υλών — Electron + Flask
+# ExpVault — Βιβλίο Εκρηκτικών Υλών
 
-## Δομή Project
+Εφαρμογή διαχείρισης βιβλίου αγοράς και κατανάλωσης εκρηκτικών υλών λατομείου. Παράγει νόμιμη εκτύπωση 2 σελίδων (αγορές/επιστροφές + καταναλώσεις) και υποστηρίζει αυτόματη εισαγωγή από PDF τιμολόγια NITROCHEM/EpsilonNet.
+
+---
+
+## Αρχιτεκτονική
 
 ```
-vivlio-ekrktikon/
-├── main.js          ← Electron main process
-├── preload.js       ← Electron preload (window controls)
-├── package.json     ← npm config + electron-builder
-├── assets/
-│   ├── icon.png     ← 512x512 PNG (Linux + fallback)
-│   ├── icon.ico     ← Windows icon
-│   └── icon.icns    ← macOS icon
-└── backend/         ← Ο φάκελος με τον Flask κώδικα
-    ├── app.py
-    ├── database.py
-    ├── pdf_parser.py
-    ├── exports.py
-    ├── templates/
-    │   └── index.html
-    └── venv/        ← Python virtual environment (δεν ανεβαίνει στο git)
+Electron (UI)  ←→  Python IPC Bridge (stdin/stdout JSON)  ←→  SQLite
 ```
 
-## Εγκατάσταση (Development)
+| Αρχείο | Ρόλος |
+|--------|-------|
+| `main.js` | Electron main process, spawns bridge.py |
+| `preload.js` | Exposes `window.api` στο renderer |
+| `index.html` | SPA frontend (root του project) |
+| `backend/bridge.py` | Python IPC handler |
+| `backend/database.py` | SQLite operations |
+| `backend/exports.py` | PDF/Excel export |
+| `backend/pdf_parser.py` | NITROCHEM/EpsilonNet PDF parser |
+| `backend/expvault.db` | Βάση δεδομένων |
 
-### 1. Python backend
+---
+
+## Προαπαιτούμενα
+
+### Linux (Arch/Ubuntu/Debian)
+
 ```bash
-cd backend
-python3 -m venv venv
+# Node.js & Electron
+sudo pacman -S nodejs npm           # Arch
+sudo apt install nodejs npm         # Ubuntu/Debian
+npm install -g electron
 
-# Linux / macOS:
-source venv/bin/activate
-# Windows:
-venv\Scripts\activate
+# Python
+sudo pacman -S python python-pip    # Arch
+sudo apt install python3 python3-pip  # Ubuntu/Debian
 
-pip install flask pypdf openpyxl reportlab
+# Python βιβλιοθήκες
+pip install pypdf reportlab openpyxl --break-system-packages
+
+# Fonts (για PDF export)
+sudo pacman -S ttf-liberation       # Arch
+sudo apt install fonts-liberation   # Ubuntu/Debian
+# Προαιρετικά: ttf-jetbrains-mono, ttc-iosevka
 ```
 
-### 2. Node / Electron
+### Windows
+
+```powershell
+# Node.js: κατέβασε από https://nodejs.org
+npm install -g electron
+
+# Python: κατέβασε από https://python.org
+pip install pypdf reportlab openpyxl
+
+# Fonts: εγκατάσταση Liberation Fonts από https://github.com/liberationfonts/liberation-fonts
+```
+
+### macOS
+
 ```bash
-# Στον root φάκελο:
+# Homebrew (αν δεν υπάρχει): https://brew.sh
+brew install node python
+
+# Electron
+npm install -g electron
+
+# Python βιβλιοθήκες
+pip3 install pypdf reportlab openpyxl
+
+# Fonts
+brew install --cask font-liberation
+# Προαιρετικά: brew install --cask font-jetbrains-mono
+```
+
+---
+
+## Εγκατάσταση & Εκκίνηση
+
+```bash
+git clone <repo-url>
+cd expvault
 npm install
+electron .
 ```
-
-### 3. Εκτέλεση
-```bash
-npm start
-```
-
-Το Electron ξεκινά → spawns το Flask → φορτώνει http://localhost:5000
 
 ---
 
-## Build (Παραγωγή)
+## Βάση Δεδομένων
 
-### Windows (.exe installer)
-```bash
-npm run dist:win
-```
+| Πίνακας | Περιγραφή |
+|---------|-----------|
+| `ylika` | Είδη εκρηκτικών υλών |
+| `promitheftes` | Προμηθευτές (NITROCHEM κ.ά.) |
+| `adeies` | Άδειες + εκδούσα αρχή |
+| `kiniseis` | Κινήσεις βιβλίου |
+| `auxon_counter` | Αυξών αριθμός κινήσεων |
+| `ypologismos` | Προσωρινοί υπολογισμοί επιστροφής/κατανάλωσης |
+| `ypologismos_grammes` | Γραμμές υπολογισμού ανά υλικό |
 
-### Linux (.AppImage)
-```bash
-npm run dist:linux
-```
+### Τύποι κινήσεων (`kiniseis.tipos`)
 
-### macOS (.dmg)
-```bash
-npm run dist:mac
-```
-
-Τα αρχεία βγαίνουν στον φάκελο `dist/`.
-
-> **Σημείωση για packaging:** Το electron-builder θα πρέπει να συμπεριλάβει
-> και το venv ή να χρησιμοποιήσεις PyInstaller για να φτιάξεις ένα
-> standalone Python executable. Δες παρακάτω.
+| Τύπος | Περιγραφή |
+|-------|-----------|
+| `ΕΙΣΑΓΩΓΗ` | Αγορά από NITROCHEM (αυτόματα ή χειροκίνητα) |
+| `ΚΑΤΑΝΑΛΩΣΗ` | Κατανάλωση (χειροκίνητη από χειριστή) |
+| `ΕΠΙΣΤΡΟΦΗ` | Επιστροφή (ΔΑ ΛΑΤΟΜΕΙΑ ΓΑΛΑΤΙΣΤΑΣ ή πιστωτικό NITROCHEM) |
 
 ---
 
-## Packaging Python (για standalone .exe / AppImage)
+## Ροή Εργασίας
 
-Αντί να απαιτείς Python εγκατεστημένη στον υπολογιστή του χρήστη,
-μπόρεσε να χρησιμοποιήσεις PyInstaller:
+### Σενάριο 1: Αγορά + Κατανάλωση → Επιστροφή
 
-```bash
-cd backend
-pip install pyinstaller
-pyinstaller --onefile --name flask_backend app.py
-```
+1. Εισαγωγή PDF τιμολογίου αγοράς → `ΕΙΣΑΓΩΓΗ`
+2. Χειροκίνητη καταχώρηση κατανάλωσης → `ΚΑΤΑΝΑΛΩΣΗ`
+3. **Υπολογιστής**: Επιστροφή = Αγορά − Κατανάλωση → παράγει PDF για έκδοση ΔΑ
+4. Εισαγωγή PDF πιστωτικού/ΔΑ επιστροφής → `ΕΠΙΣΤΡΟΦΗ`
 
-Μετά αντικατέστησε στο `main.js` το `getPythonPath()` ώστε να δείχνει
-στο `backend/dist/flask_backend` (ή `.exe` σε Windows).
+### Σενάριο 2: Αγορά + Επιστροφή → Κατανάλωση
+
+1. Εισαγωγή PDF τιμολογίου αγοράς → `ΕΙΣΑΓΩΓΗ`
+2. Εισαγωγή PDF πιστωτικού επιστροφής → `ΕΠΙΣΤΡΟΦΗ`
+3. **Υπολογιστής**: Κατανάλωση = Αγορά − Επιστροφή (αυτόματος υπολογισμός)
 
 ---
 
-## .gitignore
+## PDF Parser (NITROCHEM/EpsilonNet)
 
+**Αναγνωρίζει αυτόματα:**
+- Ημερομηνία, αριθμό παραστατικού
+- Αριθμό άδειας (πριν από `Δ.Α. ...`)
+- Εκδούσα αρχή (`Δ.Α. ΧΑΛΚΙΔΙΚΗΣ` κ.ά.)
+- Προμηθευτή (NITROCHEM για αγορές, ΛΑΤΟΜΕΙΑ ΓΑΛΑΤΙΣΤΑΣ για επιστροφές)
+- Τύπο εγγράφου: `Τιμολόγιο Πώλησης` → `ΕΙΣΑΓΩΓΗ`, `Πιστωτικό Τιμολόγιο` → `ΕΠΙΣΤΡΟΦΗ`
+- Υλικά με ποσότητα και μονάδα
+
+**Μορφή γραμμής EpsilonNet:**
 ```
-node_modules/
-dist/
-backend/venv/
-backend/*.db
-backend/__pycache__/
-*.pyc
-*.log
+ΤΙΜΗ ΑΞΙΑ ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00
+π.χ.: 1,30 2.600,00 40000000 ΠΕΤΡΑΜΜΩΝΙΤΗΣ (AN-FO) Κιλ 2.000,000 0,00
+```
+
+---
+
+## PDF Export (Βιβλίο)
+
+Εξάγει **2 σελίδες landscape A4** με επιλογή font:
+
+**Σελίδα 1 — Αγορές/Επιστροφές:**
+`Α/Α | Αρ.Άδ./Εκδ.Αρχή | [υλικά] | Ημερ.Αγ./Αρ.Δελτ. | Στοιχεία Προμηθευτή`
+
+**Σελίδα 2 — Καταναλώσεις:**
+`Ημερ.Εισαγ.Αποθ. | Ημερ.Κατανάλ. | [υλικά] | Παρατηρήσεις`
+
+- Δυναμικές στήλες ανά υλικό
+- Επιστροφές με κόκκινο text
+- Αυτόματος υπολογισμός κατανάλωσης (Αγορά − Επιστροφή)
+- Επιλογή font: Iosevka / JetBrains Mono / Liberation Mono
+
+---
+
+## Εκκρεμή (TODO)
+
+- [ ] Καλύτερο UX στα "Είδη Εκρηκτικών"
+- [ ] Εξαγωγή σε .docx
+- [ ] Banner εκκρεμότητας + καταχώρηση από Υπολογισμό
+- [ ] Parser δελτίου επιστροφής ΛΑΤΟΜΕΙΑ ΓΑΛΑΤΙΣΤΑΣ
+- [ ] Διαφοροποίηση ΔΑ ΛΑΤΟΜΕΙΑ ΓΑΛΑΤΙΣΤΑΣ από προμηθευτή αγοράς
+- [ ] Αποθήκευση προτίμησης font
+
+---
+
+## Χρήσιμες Εντολές
+
+```bash
+# Καθαρισμός Electron cache
+rm -rf ~/.config/expvault
+
+# Migration βάσης (νέοι τύποι kiniseis)
+cd backend && python3 -c "
+import sqlite3
+conn = sqlite3.connect('expvault.db')
+conn.executescript('''
+  PRAGMA foreign_keys=OFF;
+  CREATE TABLE kiniseis_new (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    auxon_arithmos INTEGER NOT NULL,
+    imerominia TEXT NOT NULL,
+    tipos TEXT NOT NULL CHECK(tipos IN (\"ΕΙΣΑΓΩΓΗ\",\"ΚΑΤΑΝΑΛΩΣΗ\",\"ΕΠΙΣΤΡΟΦΗ\",\"ΕΞΑΓΩΓΗ\")),
+    yliko_id INTEGER NOT NULL REFERENCES ylika(id),
+    posotita REAL NOT NULL CHECK(posotita > 0),
+    arithmos_parstatikos TEXT,
+    adeia_id INTEGER REFERENCES adeies(id),
+    promitheftis_id INTEGER REFERENCES promitheftes(id),
+    paratirishis TEXT,
+    ypografi TEXT,
+    created_at TEXT DEFAULT (datetime(\"now\"))
+  );
+  INSERT INTO kiniseis_new SELECT * FROM kiniseis;
+  DROP TABLE kiniseis;
+  ALTER TABLE kiniseis_new RENAME TO kiniseis;
+  PRAGMA foreign_keys=ON;
+''')
+conn.commit()
+conn.close()
+"
+
+# Deploy (αντιγράφει από ~/Downloads και κάνει git push)
+./deploy.sh "Περιγραφή αλλαγής"
 ```
