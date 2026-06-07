@@ -198,12 +198,29 @@ def get_apothemates():
         rows = conn.execute('''
             SELECT y.id, y.onoma, y.diatomi_mm, y.monada_metrisis,
                 IFNULL(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) as synolo_eisagogon,
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='') THEN k.posotita ELSE 0 END),0) as synolo_katanalosis,
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos!='' THEN k.posotita ELSE 0 END),0) as synolo_epistrofon,
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) -
-                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' THEN k.posotita ELSE 0 END),0) as ypoloipo
+                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='') THEN k.posotita ELSE 0 END),0) as katanalosi_xeirokiniti,
+                IFNULL(SUM(CASE WHEN k.tipos='ΕΞΑΓΩΓΗ' AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos!='' THEN k.posotita ELSE 0 END),0) as epistrofi_xeirokiniti
             FROM ylika y
             LEFT JOIN kiniseis k ON y.id = k.yliko_id
             GROUP BY y.id ORDER BY y.onoma
         ''').fetchall()
-        return [dict(r) for r in rows]
+
+        result = []
+        for r in rows:
+            d = dict(r)
+            agores    = d['synolo_eisagogon']
+            kat_xeir  = d['katanalosi_xeirokiniti']   # χειροκίνητη κατανάλωση
+            epi_xeir  = d['epistrofi_xeirokiniti']    # χειροκίνητη επιστροφή
+
+            if kat_xeir > 0 and epi_xeir == 0:
+                # Σενάριο 2: έχει κατανάλωση → υπολόγισε επιστροφή
+                d['synolo_katanalosis'] = kat_xeir
+                d['synolo_epistrofon']  = max(0.0, agores - kat_xeir)
+            else:
+                # Σενάριο 1 (default): έχει επιστροφή (ή τίποτα) → υπολόγισε κατανάλωση
+                d['synolo_epistrofon']  = epi_xeir
+                d['synolo_katanalosis'] = max(0.0, agores - epi_xeir)
+
+            d['ypoloipo'] = round(agores - d['synolo_katanalosis'] - d['synolo_epistrofon'], 6)
+            result.append(d)
+        return result
