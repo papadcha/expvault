@@ -229,6 +229,14 @@ def delete_kinisi(id):
     with get_db() as conn:
         conn.execute("DELETE FROM kiniseis WHERE id=?", (id,))
 
+def get_last_eisagogi_parstatiko():
+    """Επιστρέφει το τελευταίο παραστατικό ΕΙΣΑΓΩΓΗΣ."""
+    with get_db() as conn:
+        row = conn.execute(
+            "SELECT arithmos_parstatikos, imerominia FROM kiniseis WHERE tipos='ΕΙΣΑΓΩΓΗ' AND arithmos_parstatikos IS NOT NULL ORDER BY auxon_arithmos DESC LIMIT 1"
+        ).fetchone()
+        return dict(row) if row else {}
+
 def batch_update_parstatiko(old_parst, new_parst=None, new_date=None):
     """Μαζική ενημέρωση παραστατικού/ημερομηνίας σε όλες τις κινήσεις."""
     with get_db() as conn:
@@ -313,6 +321,10 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
             sql += ' AND k.yliko_id=?'; params.append(yliko_id)
         if imerominia:
             sql += ' AND k.imerominia=?'; params.append(imerominia)
+        if parstatiko:
+            # Φίλτρο: υλικά που ανήκουν στο συγκεκριμένο παραστατικό αγοράς
+            sql += ' AND k.yliko_id IN (SELECT yliko_id FROM kiniseis WHERE arithmos_parstatikos=? AND tipos='ΕΙΣΑΓΩΓΗ')'
+            params.append(parstatiko)
 
         rows = conn.execute(sql, params).fetchall()
         if not rows:

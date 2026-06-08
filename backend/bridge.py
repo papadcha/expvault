@@ -146,6 +146,9 @@ def handle(cmd, payload):
             payload.get('parstatiko')
         )
 
+    if cmd == 'get_last_eisagogi_parstatiko':
+        return database.get_last_eisagogi_parstatiko()
+
     # ── PDF PARSER ────────────────────────────────────────────────────────────
     if cmd == 'parse_pdf':
         result = pdf_parser.parse_pdf(payload['path'])
