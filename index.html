@@ -350,7 +350,6 @@ body.electron .main    { padding-top: 60px; }
       <div class="form-actions">
         <button class="btn btn-success" onclick="saveKinisi()">💾 Αποθήκευση</button>
         <button class="btn btn-outline" onclick="clearKinisiForm()">✖ Καθαρισμός</button>
-          <button class="btn btn-outline" onclick="openBatchEdit()" style="margin-left:auto;">✏️ Μαζική Διόρθωση</button>
       </div>
       <div id="ekkremotita-banner" style="display:none;margin-top:12px;"></div>
     </div>
@@ -676,10 +675,6 @@ body.electron .main    { padding-top: 60px; }
 </div>
 
 
-<!-- ── ΜΑΖΙΚΗ ΔΙΟΡΘΩΣΗ ΠΑΡΑΣΤΑΤΙΚΟΥ MODAL ── -->
-<div class="modal-overlay" id="batch-edit-modal">
-  <div class="modal" style="max-width:480px;">
-    <div class="modal-title">✏️ Μαζική Διόρθωση Παραστατικού</div>
     <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Αλλαγή αρ. παραστατικού ή ημερομηνίας σε όλες τις κινήσεις ταυτόχρονα.</p>
     <div class="form-row">
       <div>
@@ -1544,59 +1539,6 @@ async function exportYpologismosPdf() {
   });
   document.getElementById('export-msg') &&
     (document.getElementById('export-msg').innerHTML = `<div class="alert alert-success">✅ ${savePath}</div>`);
-}
-
-// ── ΜΑΖΙΚΗ ΔΙΟΡΘΩΣΗ ΠΑΡΑΣΤΑΤΙΚΟΥ ────────────────────────────────────────────
-
-async function openBatchEdit() {
-  // Φόρτωσε διαθέσιμα παραστατικά
-  const kin = await py('get_kiniseis', {});
-  const parstatika = [...new Set(kin.map(k => k.arithmos_parstatikos).filter(Boolean))].sort();
-  const sel = document.getElementById('batch-from-parst');
-  sel.innerHTML = '<option value="">— Επιλογή —</option>' +
-    parstatika.map(p => `<option value="${p}">${p}</option>`).join('');
-  document.getElementById('batch-new-parst').value = '';
-  document.getElementById('batch-new-date').value = '';
-  document.getElementById('batch-preview').innerHTML = '';
-  sel.onchange = updateBatchPreview;
-  document.getElementById('batch-edit-modal').classList.add('open');
-}
-
-async function updateBatchPreview() {
-  const parst = document.getElementById('batch-from-parst').value;
-  const div = document.getElementById('batch-preview');
-  if (!parst) { div.innerHTML = ''; return; }
-  div.innerHTML = '⏳ Φόρτωση...';
-  const rows = await py('get_kiniseis', {});
-  const filtered = rows.filter(k => k.arithmos_parstatikos === parst);
-  div.innerHTML =
-    `<strong>${filtered.length} κινήσεις</strong> με παραστατικό <strong>"${parst}"</strong>` +
-    (filtered[0] ? ` — ${fmtDate(filtered[0].imerominia)}` : '');
-}
-
-async function doBatchEdit() {
-  const fromParst = document.getElementById('batch-from-parst').value;
-  const newParst  = document.getElementById('batch-new-parst').value.trim();
-  const newDate   = document.getElementById('batch-new-date').value;
-
-  if (!fromParst) { alert('Επιλέξτε παραστατικό'); return; }
-  if (!newParst && !newDate) { alert('Συμπληρώστε νέο παραστατικό ή νέα ημερομηνία'); return; }
-
-  try {
-    const r = await py('batch_update_parstatiko', {
-      old_parst: fromParst,
-      new_parst: newParst || null,
-      new_date:  newDate  || null
-    });
-    closeBatchEdit();
-    alert(`✅ Ενημερώθηκαν ${r.updated} κινήσεις`);
-    await loadKiniseis();
-    await loadDashboard();
-  } catch(e) { alert('Σφάλμα: ' + e.message); }
-}
-
-function closeBatchEdit() {
-  document.getElementById('batch-edit-modal').classList.remove('open');
 }
 
 // ── CONFIRM DELETE ────────────────────────────────────────────────────────────

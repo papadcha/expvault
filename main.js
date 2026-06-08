@@ -79,26 +79,16 @@ function callPython(cmd, payload = {}) {
     const id = ++reqCounter;
     pendingRequests[id] = { resolve, reject };
     const msg = JSON.stringify({ id, cmd, payload });
-    console.log(`[IPC →] #${id} ${cmd}`);
     if (bridgeReady) pythonProcess.stdin.write(msg + '\n');
     else queuedMessages.push(msg);
     setTimeout(() => {
       if (pendingRequests[id]) {
         delete pendingRequests[id];
-        console.error(`[IPC TIMEOUT] #${id} ${cmd}`);
         reject(new Error(`Timeout: ${cmd}`));
       }
-    }, 10000);  // 10sec timeout για γρήγορο εντοπισμό
+    }, 120000);
   });
 }
-
-// Log όλων των pending requests κάθε 3 δευτερόλεπτα
-setInterval(() => {
-  const ids = Object.keys(pendingRequests);
-  if (ids.length > 0) {
-    console.warn(`[IPC PENDING] ${ids.length} requests:`, ids.map(id => pendingRequests[id]?.cmd || id));
-  }
-}, 3000);
 
 function setupIPC() {
   ipcMain.handle('python', async (event, cmd, payload) => {
@@ -154,7 +144,6 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.webContents.openDevTools({ mode: 'detach' });
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
