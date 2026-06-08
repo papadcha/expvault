@@ -323,7 +323,7 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
             sql += ' AND k.imerominia=?'; params.append(imerominia)
         if parstatiko:
             # Φίλτρο: υλικά που ανήκουν στο συγκεκριμένο παραστατικό αγοράς
-            sql += ' AND k.yliko_id IN (SELECT yliko_id FROM kiniseis WHERE arithmos_parstatikos=? AND tipos='ΕΙΣΑΓΩΓΗ')'
+            sql += " AND k.yliko_id IN (SELECT yliko_id FROM kiniseis WHERE arithmos_parstatikos=? AND tipos='ΕΙΣΑΓΩΓΗ')"
             params.append(parstatiko)
 
         rows = conn.execute(sql, params).fetchall()
