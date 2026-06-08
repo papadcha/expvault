@@ -1564,12 +1564,14 @@ async function openBatchEdit() {
 
 async function updateBatchPreview() {
   const parst = document.getElementById('batch-from-parst').value;
-  if (!parst) { document.getElementById('batch-preview').innerHTML = ''; return; }
-  const kin = await py('get_kiniseis', {});
-  const rows = kin.filter(k => k.arithmos_parstatikos === parst);
-  document.getElementById('batch-preview').innerHTML =
-    `<strong>${rows.length} κινήσεις</strong> με παραστατικό <strong>"${parst}"</strong>` +
-    (rows[0] ? ` — ${fmtDate(rows[0].imerominia)}` : '');
+  const div = document.getElementById('batch-preview');
+  if (!parst) { div.innerHTML = ''; return; }
+  div.innerHTML = '⏳ Φόρτωση...';
+  const rows = await py('get_kiniseis', {});
+  const filtered = rows.filter(k => k.arithmos_parstatikos === parst);
+  div.innerHTML =
+    `<strong>${filtered.length} κινήσεις</strong> με παραστατικό <strong>"${parst}"</strong>` +
+    (filtered[0] ? ` — ${fmtDate(filtered[0].imerominia)}` : '');
 }
 
 async function doBatchEdit() {
@@ -1581,28 +1583,15 @@ async function doBatchEdit() {
   if (!newParst && !newDate) { alert('Συμπληρώστε νέο παραστατικό ή νέα ημερομηνία'); return; }
 
   try {
-    const kin = await py('get_kiniseis', {});
-    const rows = kin.filter(k => k.arithmos_parstatikos === fromParst);
-    if (!rows.length) { alert('Δεν βρέθηκαν κινήσεις'); return; }
-
-    for (const k of rows) {
-      await py('update_kinisi', {
-        id: k.id,
-        imerominia:           newDate   ? newDate   : k.imerominia,
-        tipos:                k.tipos,
-        yliko_id:             k.yliko_id,
-        posotita:             k.posotita,
-        arithmos_parstatikos: newParst  ? newParst  : k.arithmos_parstatikos,
-        adeia_id:             k.adeia_id,
-        promitheftis_id:      k.promitheftis_id,
-        paratirishis:         k.paratirishis,
-        ypografi:             k.ypografi
-      });
-    }
+    const r = await py('batch_update_parstatiko', {
+      old_parst: fromParst,
+      new_parst: newParst || null,
+      new_date:  newDate  || null
+    });
     closeBatchEdit();
     loadKiniseis();
     loadDashboard();
-    alert(`✅ Ενημερώθηκαν ${rows.length} κινήσεις`);
+    alert(`✅ Ενημερώθηκαν ${r.updated} κινήσεις`);
   } catch(e) { alert('Σφάλμα: ' + e.message); }
 }
 

@@ -100,6 +100,14 @@ def handle(cmd, payload):
         database.delete_kinisi(payload['id'])
         return {'ok': True}
 
+    if cmd == 'batch_update_parstatiko':
+        n = database.batch_update_parstatiko(
+            payload['old_parst'],
+            payload.get('new_parst'),
+            payload.get('new_date')
+        )
+        return {'ok': True, 'updated': n}
+
     # ── ΑΠΟΘΕΜΑΤΑ ────────────────────────────────────────────────────────────
     if cmd == 'get_apothemates':
         return database.get_apothemates()

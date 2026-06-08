@@ -229,6 +229,28 @@ def delete_kinisi(id):
     with get_db() as conn:
         conn.execute("DELETE FROM kiniseis WHERE id=?", (id,))
 
+def batch_update_parstatiko(old_parst, new_parst=None, new_date=None):
+    """Μαζική ενημέρωση παραστατικού/ημερομηνίας σε όλες τις κινήσεις."""
+    with get_db() as conn:
+        if new_parst and new_date:
+            conn.execute(
+                "UPDATE kiniseis SET arithmos_parstatikos=?, imerominia=? WHERE arithmos_parstatikos=?",
+                (new_parst, new_date, old_parst)
+            )
+        elif new_parst:
+            conn.execute(
+                "UPDATE kiniseis SET arithmos_parstatikos=? WHERE arithmos_parstatikos=?",
+                (new_parst, old_parst)
+            )
+        elif new_date:
+            conn.execute(
+                "UPDATE kiniseis SET imerominia=? WHERE arithmos_parstatikos=?",
+                (new_date, old_parst)
+            )
+        return conn.execute(
+            "SELECT changes()"
+        ).fetchone()[0]
+
 # ─── ΥΠΟΛΟΙΠΑ ────────────────────────────────────────────────────────────────
 
 def get_apothemates():
