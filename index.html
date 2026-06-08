@@ -984,6 +984,9 @@ async function autoKataxorisiAll() {
   window._ekkData = [];
   banner.style.display = 'none';
   banner.innerHTML = '';
+  // Καθάρισε και το alertEl του PDF import αν υπάρχει
+  const pdfAlert = document.getElementById('pdf-alert');
+  if (pdfAlert) pdfAlert.innerHTML = '<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;">✅ Όλες οι καταχωρήσεις ολοκληρώθηκαν.</div>';
   if (errors.length) alert('Σφάλματα: ' + errors.join(', '));
   await loadKiniseis();
   await loadDashboard();
