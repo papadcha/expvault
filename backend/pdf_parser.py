@@ -59,7 +59,7 @@ def parse_pdf(filepath: str) -> dict:
     # ── Σχετ. Παραστατικό → Αρ. Παραστατικού + Ημερομηνία ───────────────────
     # Μορφή: "ΔΙΧΝ - 19586 - 5/1/2026"  ή  "ΑΙΧΝ - 12345 - 12/3/2026"
     sxet_pat = re.compile(
-        r'([Α-ΩA-Z]{2,5}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
+        r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
         re.IGNORECASE
     )
     for line in lines:
@@ -108,18 +108,30 @@ def parse_pdf(filepath: str) -> dict:
             suggested['adeia'] = m.group(1)
 
     # ── Προμηθευτής ───────────────────────────────────────────────────────────
-    known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
-    for sup in known:
-        for line in lines:
-            if sup in line.upper():
-                if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ', 'ΛΟΦΙΣΚΟΣ']):
-                    continue
-                idx = line.upper().find(sup)
-                clean = line[idx:].strip()[:40]
-                suggested['promitheftis'] = clean
+    if suggested['tipos'] == 'ΕΠΙΣΤΡΟΦΗ':
+        # Πιστωτικό: ο "προμηθευτής" είναι ο πελάτης (αυτός που επιστρέφει)
+        # Βρίσκεται μετά τον κωδικό πελάτη (5ψήφιος αριθμός μόνος του σε γραμμή)
+        for i, line in enumerate(lines):
+            if re.match(r'^\d{5}$', line.strip()):
+                if i + 1 < len(lines):
+                    candidate = lines[i+1].strip()
+                    if len(candidate) > 5 and re.search(r'[Α-Ω]{3}', candidate):
+                        suggested['promitheftis'] = candidate[:60]
+                        break
+    else:
+        # Αγορά: ο προμηθευτής είναι η εταιρεία εκρηκτικών
+        known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
+        for sup in known:
+            for line in lines:
+                if sup in line.upper():
+                    if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ', 'ΛΟΦΙΣΚΟΣ']):
+                        continue
+                    idx = line.upper().find(sup)
+                    clean = line[idx:].strip()[:40]
+                    suggested['promitheftis'] = clean
+                    break
+            if suggested['promitheftis']:
                 break
-        if suggested['promitheftis']:
-            break
 
     # ── Υλικά — Πραγματική μορφή EpsilonNet digital PDF ──────────────────────
     # Μορφή: "ΤΙΜΗ ΑΞΙΑκολλητά ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00"
