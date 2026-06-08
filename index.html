@@ -989,9 +989,9 @@ async function autoKataxorisiAll() {
   window._ekkData = [];
   banner.style.display = 'none';
   banner.innerHTML = '';
-  loadKiniseis();
-  loadDashboard();
   if (errors.length) alert('Σφάλματα: ' + errors.join(', '));
+  await loadKiniseis();
+  await loadDashboard();
 }
 
 function clearKinisiForm() {
@@ -1589,9 +1589,9 @@ async function doBatchEdit() {
       new_date:  newDate  || null
     });
     closeBatchEdit();
-    loadKiniseis();
-    loadDashboard();
     alert(`✅ Ενημερώθηκαν ${r.updated} κινήσεις`);
+    await loadKiniseis();
+    await loadDashboard();
   } catch(e) { alert('Σφάλμα: ' + e.message); }
 }
 
