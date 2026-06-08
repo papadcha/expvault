@@ -1,8 +1,11 @@
 """
 PDF parser για τιμολόγια εκρηκτικών NITROCHEM/EpsilonNet.
-Πραγματική μορφή γραμμής:
-  ΤΙΜΗ ΑΞΙΑ ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00
-π.χ.: "1,30 2.600,00 40000000 ΠΕΤΡΑΜΜΩΝΙΤΗΣ (AN-FO) Κιλ 2.000,000 0,00"
+Πραγματική μορφή γραμμής (digital PDF):
+  ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ ΤΙΜΗ 0,00 ΑΞΙΑ
+π.χ.: "40000000 ΠΕΤΡΑΜΜΩΝΙΤΗΣ (AN-FO) Κιλ 3.100,000 1,30 0,00 4.030,00"
+
+Αρ. Παραστατικού = Σχετ. Παραστ. (π.χ. "ΔΙΧΝ - 19586")
+Ημερομηνία       = η ημερομηνία δίπλα στο Σχετ. Παραστ. (π.χ. "5/1/2026")
 """
 import re
 
@@ -24,6 +27,15 @@ def extract_text_from_pdf(filepath: str) -> str:
     return "\n".join(pages)
 
 
+def _normalize_date(d: str) -> str:
+    """Μετατρέπει ημερομηνία σε DD/MM/YYYY."""
+    for sep in ['-', '.']: d = d.replace(sep, '/')
+    parts = d.split('/')
+    if len(parts) == 3:
+        return f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{parts[2]}"
+    return d
+
+
 def parse_pdf(filepath: str) -> dict:
     raw_text = extract_text_from_pdf(filepath)
     suggested = {
@@ -40,80 +52,86 @@ def parse_pdf(filepath: str) -> dict:
 
     # ── Τύπος εγγράφου ────────────────────────────────────────────────────────
     for line in lines:
-        if re.search(r'Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Επιστροφή|ΕΠΙΣΤΡΟΦΗ|Πιστ\.\s*Τιμ', line, re.IGNORECASE):
+        if re.search(r'Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Πιστ\.\s*Τιμ', line, re.IGNORECASE):
             suggested['tipos'] = 'ΕΠΙΣΤΡΟΦΗ'
             break
 
-    lines = raw_text.split('\n')
-
-    # ── Ημερομηνία ────────────────────────────────────────────────────────────
-    date_pat = re.compile(r'\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})\b')
+    # ── Σχετ. Παραστατικό → Αρ. Παραστατικού + Ημερομηνία ───────────────────
+    # Μορφή: "ΔΙΧΝ - 19586 - 5/1/2026"  ή  "ΑΙΧΝ - 12345 - 12/3/2026"
+    sxet_pat = re.compile(
+        r'([Α-ΩA-Z]{2,5}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
+        re.IGNORECASE
+    )
     for line in lines:
-        m = date_pat.search(line)
+        m = sxet_pat.search(line)
         if m:
-            d = m.group(1)
-            for sep in ['-', '.']: d = d.replace(sep, '/')
-            parts = d.split('/')
-            if len(parts) == 3:
-                suggested['imerominia'] = f"{parts[0].zfill(2)}/{parts[1].zfill(2)}/{parts[2]}"
+            suggested['arithmos_parstatikos'] = m.group(1).strip()
+            suggested['imerominia'] = _normalize_date(m.group(2))
             break
 
-    # ── Αριθμός παραστατικού ─────────────────────────────────────────────────
-    tim_pat = re.compile(r'(?:Τιμολόγιο|ΤΙΜΟΛΟΓΙΟ|Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Δελτίο|ΔΕΛΤΙΟ)\s+\w+\s+(\d+)', re.IGNORECASE)
-    for line in lines:
-        m = tim_pat.search(line)
-        if m:
-            suggested['arithmos_parstatikos'] = m.group(1)
-            break
+    # Fallback: αν δεν βρέθηκε σχετ. παραστατικό, πάρε τον αριθμό τιμολογίου
+    if not suggested['arithmos_parstatikos']:
+        tim_pat = re.compile(
+            r'(?:Τιμολόγιο|ΤΙΜΟΛΟΓΙΟ|Πιστωτικό|ΠΙΣΤΩΤΙΚΟ|Δελτίο|ΔΕΛΤΙΟ)\s+\w+\s+(\d+)',
+            re.IGNORECASE
+        )
+        for line in lines:
+            m = tim_pat.search(line)
+            if m:
+                suggested['arithmos_parstatikos'] = m.group(1)
+                break
+
+    # Fallback ημερομηνίας: πρώτη ημερομηνία στο κείμενο
+    if not suggested['imerominia']:
+        date_pat = re.compile(r'\b(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})\b')
+        for line in lines:
+            m = date_pat.search(line)
+            if m:
+                suggested['imerominia'] = _normalize_date(m.group(1))
+                break
 
     # ── Άδεια + Εκδούσα Αρχή ─────────────────────────────────────────────────
-    # Το αρ. άδειας είναι στη γραμμή πριν το "Δ.Α. ..."
-    # Το "Δ.Α. ΧΑΛΚΙΔΙΚΗΣ" είναι η εκδούσα αρχή
     for i, line in enumerate(lines):
-        if re.search(r'^Δ\.Α\.\s+\w+', line.strip(), re.IGNORECASE):
-            suggested['ekdousa_archi'] = line.strip()
+        stripped = line.strip()
+        # Εκδούσα αρχή: "Δ.Α. ΧΑΛΚΙΔΙΚΗΣ" ή "Δ.Α. ΘΕΣΣΑΛΟΝΙΚΗΣ" κλπ
+        if re.search(r'Δ\.Α\.\s+\w+', stripped, re.IGNORECASE):
+            suggested['ekdousa_archi'] = stripped
+            # Η άδεια είναι στην προηγούμενη γραμμή (standalone αριθμός)
             if i > 0:
                 m = re.match(r'^\s*(\d{4,6})\s*$', lines[i-1])
                 if m:
                     suggested['adeia'] = m.group(1)
             break
+        # Fallback: "Αρ. Αδείας: 40923"
+        m = re.search(r'Αρ\.\s*Αδείας[:\s]+(\d{4,6})', stripped, re.IGNORECASE)
+        if m and not suggested['adeia']:
+            suggested['adeia'] = m.group(1)
 
-    # ── Προμηθευτής / Αποστολέας ─────────────────────────────────────────────
-    if suggested['tipos'] == 'ΕΞΑΓΩΓΗ':
-        # Επιστροφή: ο "προμηθευτής" είναι ο πελάτης — βρίσκεται μετά τον κωδικό πελάτη
-        for i, line in enumerate(lines):
-            if re.match(r'^\d{5}\s*$', line.strip()):  # Κωδικός πελάτη (5ψήφιος)
-                # Το όνομα είναι στην αμέσως επόμενη γραμμή
-                if i + 1 < len(lines):
-                    candidate = lines[i+1].strip()
-                    if len(candidate) > 5 and re.search(r'[Α-Ω]{3}', candidate):
-                        suggested['promitheftis'] = candidate[:50]
-                        break
-    else:
-        # Αγορά: ο προμηθευτής είναι η εταιρεία εκρηκτικών
-        known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
-        for sup in known:
-            for line in lines:
-                if sup in line.upper():
-                    if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ']):
-                        continue
-                    idx = line.upper().find(sup)
-                    clean = line[idx:].strip()[:40]
-                    suggested['promitheftis'] = clean
-                    break
-            if suggested['promitheftis']:
+    # ── Προμηθευτής ───────────────────────────────────────────────────────────
+    known = ['NITROCHEM', 'DYNO NOBEL', 'ORICA', 'MAXAM', 'AUSTIN', 'ΕΛΒΙΕΜ', 'ELVIEM', 'ΕΠΕΚ', 'ΕΚΑΒΕ']
+    for sup in known:
+        for line in lines:
+            if sup in line.upper():
+                if any(x in line for x in ['ΤΗΛ', 'FAX', 'email', '@', 'Α.Φ.Μ', 'ΛΟΦΙΣΚΟΣ']):
+                    continue
+                idx = line.upper().find(sup)
+                clean = line[idx:].strip()[:40]
+                suggested['promitheftis'] = clean
                 break
+        if suggested['promitheftis']:
+            break
 
-    # ── Υλικά — Πραγματική μορφή EpsilonNet ──────────────────────────────────
-    # "ΤΙΜΗ ΑΞΙΑ ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00"
+    # ── Υλικά — Πραγματική μορφή EpsilonNet digital PDF ──────────────────────
+    # Μορφή: "ΤΙΜΗ ΑΞΙΑκολλητά ΚΩΔΙΚΟΣ ΠΕΡΙΓΡΑΦΗ ΜΜ ΠΟΣΟΤΗΤΑ 0,00"
+    # π.χ.:  "1,30 4.030,0040000000 ΠΕΤΡΑΜΜΩΝΙΤΗΣ (AN-FO) Κιλ 3.100,000 0,00"
     item_pat = re.compile(
         r'^[\d,]+\s+'                               # Τιμή
-        r'[\d\.,]+\s*'                              # Αξία (κολλητή με κωδικό)
+        r'[\d\.,]+'                                 # Αξία (κολλητή με κωδικό)
         r'(\d{6,9})\s+'                             # Κωδικός
-        r'(.+?)\s+'                                 # Περιγραφή
+        r'(.+?)\s+'                                  # Περιγραφή
         r'(Κιλ|Τεμ|Μετρ|Κιλά|Τεμάχια|Μέτρα)\s+'   # Μονάδα
-        r'([\d\.]+,\d+)\s+'                         # Ποσότητα
-        r'0,00\s*$',                                # 0,00 στο τέλος
+        r'([\d\.]+,\d+)\s+'                        # Ποσότητα
+        r'0,00\s*$',                                 # τέλος
         re.IGNORECASE
     )
 

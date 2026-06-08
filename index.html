@@ -120,6 +120,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 }
 .badge-in  { background: #d4edda; color: #155724; }
 .badge-out { background: #fde8e8; color: #7b1c1c; }
+.badge-kat { background: #fff3cd; color: #856404; }
 .badge-ok  { background: #d4edda; color: #155724; }
 .badge-low { background: #fff3cd; color: #856404; }
 .badge-neg { background: #fde8e8; color: #7b1c1c; }
@@ -349,6 +350,7 @@ body.electron .main    { padding-top: 60px; }
       <div class="form-actions">
         <button class="btn btn-success" onclick="saveKinisi()">💾 Αποθήκευση</button>
         <button class="btn btn-outline" onclick="clearKinisiForm()">✖ Καθαρισμός</button>
+          <button class="btn btn-outline" onclick="openBatchEdit()" style="margin-left:auto;">✏️ Μαζική Διόρθωση</button>
       </div>
       <div id="ekkremotita-banner" style="display:none;margin-top:12px;"></div>
     </div>
@@ -673,6 +675,35 @@ body.electron .main    { padding-top: 60px; }
   </div>
 </div>
 
+
+<!-- ── ΜΑΖΙΚΗ ΔΙΟΡΘΩΣΗ ΠΑΡΑΣΤΑΤΙΚΟΥ MODAL ── -->
+<div class="modal-overlay" id="batch-edit-modal">
+  <div class="modal" style="max-width:480px;">
+    <div class="modal-title">✏️ Μαζική Διόρθωση Παραστατικού</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Αλλαγή αρ. παραστατικού ή ημερομηνίας σε όλες τις κινήσεις ταυτόχρονα.</p>
+    <div class="form-row">
+      <div>
+        <label>Τρέχον Παραστατικό *</label>
+        <select id="batch-from-parst" style="width:100%;"></select>
+      </div>
+    </div>
+    <div class="form-row cols-2">
+      <div>
+        <label>Νέο Παραστατικό</label>
+        <input type="text" id="batch-new-parst" placeholder="π.χ. ΔΙΧΝ - 19586">
+      </div>
+      <div>
+        <label>Νέα Ημερομηνία</label>
+        <input type="date" id="batch-new-date">
+      </div>
+    </div>
+    <div id="batch-preview" style="background:var(--surface2);border-radius:6px;padding:10px;font-size:12px;margin:8px 0;min-height:32px;"></div>
+    <div class="modal-actions">
+      <button class="btn btn-success" onclick="doBatchEdit()">✅ Εφαρμογή</button>
+      <button class="btn btn-outline" onclick="closeBatchEdit()">Άκυρο</button>
+    </div>
+  </div>
+</div>
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let allYlika = [], allProm = [], allAdeies = [];
@@ -747,7 +778,7 @@ async function loadDashboard() {
   kinBody.innerHTML = last10.map(k => `<tr>
     <td class="mono">${k.auxon_arithmos}</td>
     <td>${fmtDate(k.imerominia)}</td>
-    <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣΑΓΩΓΗ':'📤 ΕΞΑΓΩΓΗ'}</span></td>
+    <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'badge-kat':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣΑΓΩΓΗ':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'🔥 ΚΑΤΑΝΑΛΩΣΗ':k.tipos==='ΕΠΙΣΤΡΟΦΗ'?'🔄 ΕΠΙΣΤΡΟΦΗ':'📤 ΕΞΑΓΩΓΗ'}</span></td>
     <td>${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
     <td class="text-right mono">${k.posotita.toFixed(3)} ${k.monada_metrisis}</td>
     <td class="mono">${k.arithmos_parstatikos||'—'}</td>
@@ -839,7 +870,7 @@ async function loadKiniseis() {
   body.innerHTML = kin.map(k => `<tr>
     <td class="mono">${k.auxon_arithmos}</td>
     <td>${fmtDate(k.imerominia)}</td>
-    <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣ':'📤 ΕΞΑ'}</span></td>
+    <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'badge-kat':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣ':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'🔥 ΚΑΤ':k.tipos==='ΕΠΙΣΤΡΟΦΗ'?'🔄 ΕΠΙ':'📤 ΕΞΑ'}</span></td>
     <td>${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
     <td class="mono">${k.arithmos_parstatikos||'—'}</td>
     <td class="text-right mono">${k.posotita.toFixed(3)} ${k.monada_metrisis}</td>
@@ -1513,6 +1544,70 @@ async function exportYpologismosPdf() {
   });
   document.getElementById('export-msg') &&
     (document.getElementById('export-msg').innerHTML = `<div class="alert alert-success">✅ ${savePath}</div>`);
+}
+
+// ── ΜΑΖΙΚΗ ΔΙΟΡΘΩΣΗ ΠΑΡΑΣΤΑΤΙΚΟΥ ────────────────────────────────────────────
+
+async function openBatchEdit() {
+  // Φόρτωσε διαθέσιμα παραστατικά
+  const kin = await py('get_kiniseis', {});
+  const parstatika = [...new Set(kin.map(k => k.arithmos_parstatikos).filter(Boolean))].sort();
+  const sel = document.getElementById('batch-from-parst');
+  sel.innerHTML = '<option value="">— Επιλογή —</option>' +
+    parstatika.map(p => `<option value="${p}">${p}</option>`).join('');
+  document.getElementById('batch-new-parst').value = '';
+  document.getElementById('batch-new-date').value = '';
+  document.getElementById('batch-preview').innerHTML = '';
+  sel.onchange = updateBatchPreview;
+  document.getElementById('batch-edit-modal').classList.add('open');
+}
+
+async function updateBatchPreview() {
+  const parst = document.getElementById('batch-from-parst').value;
+  if (!parst) { document.getElementById('batch-preview').innerHTML = ''; return; }
+  const kin = await py('get_kiniseis', {});
+  const rows = kin.filter(k => k.arithmos_parstatikos === parst);
+  document.getElementById('batch-preview').innerHTML =
+    `<strong>${rows.length} κινήσεις</strong> με παραστατικό <strong>"${parst}"</strong>` +
+    (rows[0] ? ` — ${fmtDate(rows[0].imerominia)}` : '');
+}
+
+async function doBatchEdit() {
+  const fromParst = document.getElementById('batch-from-parst').value;
+  const newParst  = document.getElementById('batch-new-parst').value.trim();
+  const newDate   = document.getElementById('batch-new-date').value;
+
+  if (!fromParst) { alert('Επιλέξτε παραστατικό'); return; }
+  if (!newParst && !newDate) { alert('Συμπληρώστε νέο παραστατικό ή νέα ημερομηνία'); return; }
+
+  try {
+    const kin = await py('get_kiniseis', {});
+    const rows = kin.filter(k => k.arithmos_parstatikos === fromParst);
+    if (!rows.length) { alert('Δεν βρέθηκαν κινήσεις'); return; }
+
+    for (const k of rows) {
+      await py('update_kinisi', {
+        id: k.id,
+        imerominia:           newDate   ? newDate   : k.imerominia,
+        tipos:                k.tipos,
+        yliko_id:             k.yliko_id,
+        posotita:             k.posotita,
+        arithmos_parstatikos: newParst  ? newParst  : k.arithmos_parstatikos,
+        adeia_id:             k.adeia_id,
+        promitheftis_id:      k.promitheftis_id,
+        paratirishis:         k.paratirishis,
+        ypografi:             k.ypografi
+      });
+    }
+    closeBatchEdit();
+    loadKiniseis();
+    loadDashboard();
+    alert(`✅ Ενημερώθηκαν ${rows.length} κινήσεις`);
+  } catch(e) { alert('Σφάλμα: ' + e.message); }
+}
+
+function closeBatchEdit() {
+  document.getElementById('batch-edit-modal').classList.remove('open');
 }
 
 // ── CONFIRM DELETE ────────────────────────────────────────────────────────────

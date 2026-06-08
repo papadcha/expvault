@@ -85,7 +85,9 @@ def build_book_rows(kiniseis):
         parst = k.get('arithmos_parstatikos') or ''
         imer  = k['imerominia']
         adeia = k.get('arithmos_adeias') or ''
-        ekd   = k.get('ekdousa_archi') or ''        prom  = k.get('promitheftis_onoma') or ''
+        ekd   = k.get('ekdousa_archi') or ''
+        prom  = k.get('promitheftis_onoma') or ''
+        prom  = k.get('promitheftis_onoma') or ''
         par   = k.get('paratirishis') or ''
 
         if tipos == 'ΕΙΣΑΓΩΓΗ':
