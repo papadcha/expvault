@@ -127,25 +127,34 @@ def build_book_rows(kiniseis):
                 katanaliseis.append(found)
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
-    # Χτίζουμε τις γραμμές: αγορά → αμέσως μετά η επιστροφή της (αν υπάρχει)
-    # Κριτήριο συσχέτισης: η επιστροφή έχει ημερομηνία ΜΕΤΑ την αγορά
-    # και τα υλικά της είναι υποσύνολο της αγοράς
-    rows = []
-    epi_used = set()
+    # Χτίζουμε τις γραμμές χρονολογικά:
+    # Ταξινομούμε αγορές + επιστροφές μαζί κατά ημερομηνία
+    # Κάθε επιστροφή εισάγεται αμέσως μετά την αγορά με την οποία χρονολογικά συσχετίζεται
+
     agora_list = list(agores.values())
 
-    for agora in agora_list:
-        agora['aa'] = agora['aa']  # ήδη έχει aa
-        rows.append(agora)
-        # Βρες επιστροφές που αφορούν αυτή την αγορά:
-        # 1) έχουν κοινά υλικά με την αγορά
-        # 2) δεν έχουν χρησιμοποιηθεί ήδη
-        # 3) η ημερομηνία τους είναι >= ημερομηνία αγοράς
-        for i, e in enumerate(epistrofes):
-            if i in epi_used:
-                continue
+    # Για κάθε επιστροφή, βρες την αμέσως προηγούμενη αγορά χρονολογικά
+    # που έχει κοινά υλικά
+    epi_to_agora = {}  # index επιστροφής → index αγοράς
+    for i, e in enumerate(epistrofes):
+        best_agora_idx = None
+        best_agora_date = None
+        for j, agora in enumerate(agora_list):
             common = set(e['ylika'].keys()) & set(agora['ylika'].keys())
-            if common and e['imerominia'] >= agora['imerominia']:
+            if common and agora['imerominia'] <= e['imerominia']:
+                if best_agora_date is None or agora['imerominia'] > best_agora_date:
+                    best_agora_date = agora['imerominia']
+                    best_agora_idx = j
+        if best_agora_idx is not None:
+            epi_to_agora[i] = best_agora_idx
+
+    # Χτίσε τις γραμμές: για κάθε αγορά, βάλε αμέσως μετά τις επιστροφές της
+    rows = []
+    epi_used = set()
+    for j, agora in enumerate(agora_list):
+        rows.append(agora)
+        for i, e in enumerate(epistrofes):
+            if i not in epi_used and epi_to_agora.get(i) == j:
                 e['aa'] = aa
                 aa += 1
                 rows.append(e)
