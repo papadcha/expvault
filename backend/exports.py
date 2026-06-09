@@ -115,12 +115,14 @@ def build_book_rows(kiniseis):
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
         else:
-            # ΚΑΤΑΝΑΛΩΣΗ ή ΕΞΑΓΩΓΗ χωρίς παραστατικό
-            found = next((c for c in katanaliseis if c['imerominia']==imer), None)
+            # ΚΑΤΑΝΑΛΩΣΗ — ομαδοποίηση ανά parstatiko (αν υπάρχει) ή imerominia
+            kat_key = parst if parst else imer
+            found = next((c for c in katanaliseis if c['kat_key']==kat_key), None)
             if not found:
                 found = {
                     'type':'katanalosi', 'aa':None,
-                    'imerominia':imer, 'parstatiko':'',
+                    'imerominia':imer, 'parstatiko':parst or '',
+                    'kat_key': kat_key,
                     'adeia':'', 'ekdousa':'', 'promitheftis':'',
                     'ylika':{}, 'paratirishis':par
                 }
@@ -170,45 +172,49 @@ def build_book_rows(kiniseis):
     for i, row in enumerate(rows, 1):
         row['aa'] = i
 
-    # Κατανάλωση ανά ημερομηνία — αν δεν υπάρχει χειροκίνητη, υπολογίζει αυτόματα
-    kat_by_date = {}
+    # ── Κατανάλωση ανά parstatiko αγοράς ──────────────────────────────────────
+    # kat_by_parst: κλειδί = parstatiko αγοράς
+    kat_by_parst = {}
 
-    # Πρώτα βάλε τις χειροκίνητες καταναλώσεις
+    # Χειροκίνητες καταναλώσεις με parstatiko
     for k in katanaliseis:
-        d = k['imerominia']
-        if d not in kat_by_date:
-            kat_by_date[d] = {'ylika':{}, 'paratirishis':k['paratirishis'], 'auto':False}
+        key = k['parstatiko'] if k['parstatiko'] else k['imerominia']
+        if key not in kat_by_parst:
+            kat_by_parst[key] = {'ylika':{}, 'paratirishis':k['paratirishis'], 'imerominia':k['imerominia'], 'auto':False}
         for yid, pos in k['ylika'].items():
-            kat_by_date[d]['ylika'][yid] = kat_by_date[d]['ylika'].get(yid,0) + pos
+            kat_by_parst[key]['ylika'][yid] = kat_by_parst[key]['ylika'].get(yid,0) + pos
 
-    # Για κάθε αγορά που δεν έχει χειροκίνητη κατανάλωση → υπολόγισε αυτόματα
-    # Συγκέντρωσε όλες τις επιστροφές ανά υλικό (ανεξαρτήτως ημερομηνίας)
-    epi_by_yliko = {}
-    for e in epistrofes:
-        for yid, pos in e['ylika'].items():
-            epi_by_yliko[yid] = epi_by_yliko.get(yid, 0) + pos
+    # Για κάθε αγορά χωρίς χειροκίνητη κατανάλωση → αυτόματος υπολογισμός
+    # Επιστροφές ανά αγορά (από epi_to_agora)
+    epi_by_agora = {}  # parstatiko αγοράς → {yid: posotita}
+    for i, e in enumerate(epistrofes):
+        agora_idx = epi_to_agora.get(i)
+        if agora_idx is not None:
+            agora_parst = agora_list[agora_idx]['parstatiko']
+            if agora_parst not in epi_by_agora:
+                epi_by_agora[agora_parst] = {}
+            for yid, pos in e['ylika'].items():
+                epi_by_agora[agora_parst][yid] = epi_by_agora[agora_parst].get(yid,0) + pos
 
-    # Συγκέντρωσε όλες τις χειροκίνητες καταναλώσεις ανά υλικό
-    kat_by_yliko = {}
-    for k in katanaliseis:
-        for yid, pos in k['ylika'].items():
-            kat_by_yliko[yid] = kat_by_yliko.get(yid, 0) + pos
-
-    for key, agora in agores.items():
-        d = agora['imerominia']
-        if d not in kat_by_date:
-            # Δεν υπάρχει χειροκίνητη → υπολόγισε: Αγορά − Επιστροφή
+    for agora in agora_list:
+        ap = agora['parstatiko']
+        if ap not in kat_by_parst:
+            # Δεν υπάρχει χειροκίνητη → υπολόγισε: Αγορά − Επιστροφές αυτής της αγοράς
+            epi = epi_by_agora.get(ap, {})
             auto_ylika = {}
             for yid, pos in agora['ylika'].items():
-                ep  = epi_by_yliko.get(yid, 0)
-                kat = kat_by_yliko.get(yid, 0)
-                katanalosi = pos - ep - kat
+                katanalosi = pos - epi.get(yid, 0)
                 if katanalosi > 0:
                     auto_ylika[yid] = katanalosi
             if auto_ylika:
-                kat_by_date[d] = {'ylika': auto_ylika, 'paratirishis': 'Αυτόματος υπολογισμός', 'auto': True}
+                kat_by_parst[ap] = {
+                    'ylika': auto_ylika,
+                    'paratirishis': 'Αυτόματος υπολογισμός',
+                    'imerominia': agora['imerominia'],
+                    'auto': True
+                }
 
-    return rows, kat_by_date
+    return rows, kat_by_parst
 
 
 # ─── PDF ─────────────────────────────────────────────────────────────────────
@@ -226,7 +232,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         F, FB = 'Helvetica', 'Helvetica-Bold'
 
     ylika_order = get_ylika_order(kiniseis)
-    rows, kat_by_date = build_book_rows(kiniseis)
+    rows, kat_by_parst = build_book_rows(kiniseis)
     n = len(ylika_order)
 
     pagesize  = landscape(A4)
@@ -351,12 +357,14 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     kat_used = set()
     for ri, row in enumerate(rows, 2):
         is_epi = row['type'] == 'epistrofi'
+        ap     = row.get('parstatiko', '')
         imer   = row['imerominia']
 
-        if not is_epi and imer not in kat_used:
-            kat = kat_by_date.get(imer, {})
-            kat_used.add(imer)
-            cells = [p(fmt_date(imer), CS), p(fmt_date(imer), CS)]
+        if not is_epi and ap not in kat_used:
+            kat = kat_by_parst.get(ap, kat_by_parst.get(imer, {}))
+            kat_used.add(ap)
+            kat_imer = kat.get('imerominia', imer)
+            cells = [p(fmt_date(kat_imer), CS), p(fmt_date(kat_imer), CS)]
             for yid, _ in ylika_order:
                 v = kat.get('ylika', {}).get(yid)
                 cells.append(p(fmt_num(v) if v else '—', RS))
@@ -388,7 +396,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     from openpyxl.utils import get_column_letter
 
     ylika_order = get_ylika_order(kiniseis)
-    rows, kat_by_date = build_book_rows(kiniseis)
+    rows, kat_by_parst = build_book_rows(kiniseis)
     n = len(ylika_order)
 
     wb = openpyxl.Workbook()
@@ -476,12 +484,14 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
     kat_used = set()
     for ri, row in enumerate(rows,3):
         is_epi = row['type'] == 'epistrofi'
+        ap     = row.get('parstatiko', '')
         imer   = row['imerominia']
-        if not is_epi and imer not in kat_used:
-            kat = kat_by_date.get(imer,{})
-            kat_used.add(imer)
+        if not is_epi and ap not in kat_used:
+            kat = kat_by_parst.get(ap, kat_by_parst.get(imer, {}))
+            kat_used.add(ap)
+            kat_imer = kat.get('imerominia', imer)
             fill = alt2_fill if ri%2==0 else None
-            vals = [fmt_date(imer), fmt_date(imer)] + \
+            vals = [fmt_date(kat_imer), fmt_date(kat_imer)] + \
                    [kat.get('ylika',{}).get(yid) for yid,_ in ylika_order] + \
                    [kat.get('paratirishis','')]
             for ci,val in enumerate(vals,1):
