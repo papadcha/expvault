@@ -308,7 +308,13 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         if ri % 2 == 0 and not is_epi:
             l_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
 
-    left_t = Table(l_data, colWidths=L_WIDTHS, repeatRows=2)
+    # Σταθερό ύψος γραμμών — ίδιο και στους 2 πίνακες για αντικρυστή εμφάνιση
+    ROW_H = 22  # points — αρκετό για 2 γραμμές κειμένου
+    HDR_H = 28  # header
+    n_data_rows = len(l_data) - 2  # εκτός header
+    row_heights = [HDR_H, HDR_H] + [ROW_H] * n_data_rows
+
+    left_t = Table(l_data, colWidths=L_WIDTHS, repeatRows=2, rowHeights=row_heights)
     left_t.setStyle(TableStyle(l_style))
 
     # ── Σελίδα 2: Καταναλώσεις ───────────────────────────────────────────────
@@ -359,7 +365,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
         r_data.append(cells)
 
-    right_t = Table(r_data, colWidths=R_WIDTHS, repeatRows=2)
+    right_t = Table(r_data, colWidths=R_WIDTHS, repeatRows=2, rowHeights=row_heights)
     right_t.setStyle(TableStyle(r_style))
 
     # ── Build ─────────────────────────────────────────────────────────────────
