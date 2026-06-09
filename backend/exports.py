@@ -182,7 +182,7 @@ def build_book_rows(kiniseis):
     for k in katanaliseis:
         key = k['parstatiko'] if k['parstatiko'] else k['imerominia']
         if key not in kat_by_parst:
-            kat_by_parst[key] = {'ylika':{}, 'paratirishis':k['paratirishis'], 'imerominia':k['imerominia'], 'auto':False}
+            kat_by_parst[key] = {'ylika':{}, 'paratirishis':k['paratirishis'], 'imerominia':k['imerominia'], 'auto':False, 'auxon': k.get('auxon_arithmos', 0)}
         for yid, pos in k['ylika'].items():
             kat_by_parst[key]['ylika'][yid] = kat_by_parst[key]['ylika'].get(yid,0) + pos
 
@@ -225,15 +225,23 @@ def build_book_rows(kiniseis):
                     'auto': True
                 }
         else:
-            # Υπάρχει χειροκίνητη → αφαίρεσε τις επιστροφές
+            # Υπάρχει χειροκίνητη κατανάλωση
+            # Αφαίρεσε επιστροφές ΜΟΝΟ αν η κατανάλωση καταχωρήθηκε ΠΡΙΝ την επιστροφή
+            # (δηλαδή η κατανάλωση δεν έχει ήδη αφαιρέσει την επιστροφή)
             if epi:
-                for yid, epi_pos in epi.items():
-                    if yid in kat_by_parst[ap]['ylika']:
-                        new_pos = kat_by_parst[ap]['ylika'][yid] - epi_pos
-                        if new_pos > 0:
-                            kat_by_parst[ap]['ylika'][yid] = new_pos
-                        else:
-                            del kat_by_parst[ap]['ylika'][yid]
+                # Βρες min auxon κατανάλωσης vs min auxon επιστροφής
+                kat_auxon = kat_by_parst[ap].get('auxon', 999999)
+                epi_auxons = [e.get('auxon', 0) for e in epistrofes if e.get('agora_ref') == ap]
+                min_epi_auxon = min(epi_auxons) if epi_auxons else 999999
+                # Αφαίρεσε μόνο αν η κατανάλωση έγινε ΠΡΙΝ την επιστροφή
+                if kat_auxon < min_epi_auxon:
+                    for yid, epi_pos in epi.items():
+                        if yid in kat_by_parst[ap]['ylika']:
+                            new_pos = kat_by_parst[ap]['ylika'][yid] - epi_pos
+                            if new_pos > 0:
+                                kat_by_parst[ap]['ylika'][yid] = new_pos
+                            else:
+                                del kat_by_parst[ap]['ylika'][yid]
 
     return rows, kat_by_parst
 
