@@ -85,9 +85,7 @@ def build_book_rows(kiniseis):
         parst = k.get('arithmos_parstatikos') or ''
         imer  = k['imerominia']
         adeia = k.get('arithmos_adeias') or ''
-        ekd   = k.get('ekdousa_archi') or ''
-        prom  = k.get('promitheftis_onoma') or ''
-        prom  = k.get('promitheftis_onoma') or ''
+        ekd   = k.get('ekdousa_archi') or ''        prom  = k.get('promitheftis_onoma') or ''
         par   = k.get('paratirishis') or ''
 
         if tipos == 'ΕΙΣΑΓΩΓΗ':
@@ -128,18 +126,28 @@ def build_book_rows(kiniseis):
                 katanaliseis.append(found)
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
-    # Αγορά → επιστροφή ίδιας ημερομηνίας (αν υπάρχει)
+    # Αγορά → επιστροφές που αφορούν αυτή την αγορά (ανεξαρτήτως ημερομηνίας)
+    # Κριτήριο: τα yliko_ids της επιστροφής είναι υποσύνολο της αγοράς
     rows = []
     epi_used = set()
     for key, agora in agores.items():
         rows.append(agora)
         for i, e in enumerate(epistrofes):
-            if i not in epi_used and e['imerominia'] == agora['imerominia']:
-                e['aa'] = aa  # Δίνει Α/Α στην επιστροφή
-                aa += 1
-                rows.append(e)
-                epi_used.add(i)
-                break
+            if i not in epi_used:
+                # Η επιστροφή αφορά αυτή την αγορά αν έχει κοινά υλικά
+                common = set(e['ylika'].keys()) & set(agora['ylika'].keys())
+                if common:
+                    e['aa'] = aa
+                    aa += 1
+                    rows.append(e)
+                    epi_used.add(i)
+
+    # Επιστροφές που δεν συσχετίστηκαν — βάλτε τες στο τέλος
+    for i, e in enumerate(epistrofes):
+        if i not in epi_used:
+            e['aa'] = aa
+            aa += 1
+            rows.append(e)
 
     # Κατανάλωση ανά ημερομηνία — αν δεν υπάρχει χειροκίνητη, υπολογίζει αυτόματα
     kat_by_date = {}
@@ -153,30 +161,31 @@ def build_book_rows(kiniseis):
             kat_by_date[d]['ylika'][yid] = kat_by_date[d]['ylika'].get(yid,0) + pos
 
     # Για κάθε αγορά που δεν έχει χειροκίνητη κατανάλωση → υπολόγισε αυτόματα
-    epi_by_date = {}
+    # Συγκέντρωσε όλες τις επιστροφές ανά υλικό (ανεξαρτήτως ημερομηνίας)
+    epi_by_yliko = {}
     for e in epistrofes:
-        d = e['imerominia']
-        if d not in epi_by_date:
-            epi_by_date[d] = {}
         for yid, pos in e['ylika'].items():
-            epi_by_date[d][yid] = epi_by_date[d].get(yid,0) + pos
+            epi_by_yliko[yid] = epi_by_yliko.get(yid, 0) + pos
+
+    # Συγκέντρωσε όλες τις χειροκίνητες καταναλώσεις ανά υλικό
+    kat_by_yliko = {}
+    for k in katanaliseis:
+        for yid, pos in k['ylika'].items():
+            kat_by_yliko[yid] = kat_by_yliko.get(yid, 0) + pos
 
     for key, agora in agores.items():
         d = agora['imerominia']
         if d not in kat_by_date:
             # Δεν υπάρχει χειροκίνητη → υπολόγισε: Αγορά − Επιστροφή
-            epi = epi_by_date.get(d, {})
             auto_ylika = {}
             for yid, pos in agora['ylika'].items():
-                ep = epi.get(yid, 0)
-                katanalosi = pos - ep
+                ep  = epi_by_yliko.get(yid, 0)
+                kat = kat_by_yliko.get(yid, 0)
+                katanalosi = pos - ep - kat
                 if katanalosi > 0:
-                    auto_ylika[yid] = auto_ylika.get(yid, 0) + katanalosi
+                    auto_ylika[yid] = katanalosi
             if auto_ylika:
-                if d not in kat_by_date:
-                    kat_by_date[d] = {'ylika':{}, 'paratirishis':'', 'auto':True}
-                for yid, pos in auto_ylika.items():
-                    kat_by_date[d]['ylika'][yid] = kat_by_date[d]['ylika'].get(yid,0) + pos
+                kat_by_date[d] = {'ylika': auto_ylika, 'paratirishis': 'Αυτόματος υπολογισμός', 'auto': True}
 
     return rows, kat_by_date
 
