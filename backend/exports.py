@@ -109,7 +109,8 @@ def build_book_rows(kiniseis):
                     'imerominia':imer, 'parstatiko':parst,
                     'adeia':adeia, 'ekdousa':ekd, 'promitheftis':prom,
                     'ylika':{}, 'paratirishis':'ΕΠΙΣΤΡΟΦΗ',
-                    'auxon': k.get('auxon_arithmos', 0)
+                    'auxon': k.get('auxon_arithmos', 0),
+                    'agora_ref': k.get('agora_ref') or ''
                 }
                 epistrofes.append(found)
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
@@ -186,12 +187,21 @@ def build_book_rows(kiniseis):
             kat_by_parst[key]['ylika'][yid] = kat_by_parst[key]['ylika'].get(yid,0) + pos
 
     # Για κάθε αγορά χωρίς χειροκίνητη κατανάλωση → αυτόματος υπολογισμός
-    # Επιστροφές ανά αγορά (από epi_to_agora)
+    # Επιστροφές ανά αγορά — χρήση agora_ref για ακριβή συσχέτιση
     epi_by_agora = {}  # parstatiko αγοράς → {yid: posotita}
-    for i, e in enumerate(epistrofes):
-        agora_idx = epi_to_agora.get(i)
-        if agora_idx is not None:
-            agora_parst = agora_list[agora_idx]['parstatiko']
+    for e in epistrofes:
+        # Προτεραιότητα στο agora_ref, fallback στον αλγόριθμο auxon
+        agora_parst = e.get('agora_ref') or ''
+        if not agora_parst:
+            # Fallback: αμέσως προηγούμενη αγορά βάσει auxon
+            best = None
+            for agora in agora_list:
+                common = set(e['ylika'].keys()) & set(agora['ylika'].keys())
+                if common and agora['auxon'] < e['auxon']:
+                    if best is None or agora['auxon'] > best['auxon']:
+                        best = agora
+            agora_parst = best['parstatiko'] if best else ''
+        if agora_parst:
             if agora_parst not in epi_by_agora:
                 epi_by_agora[agora_parst] = {}
             for yid, pos in e['ylika'].items():
