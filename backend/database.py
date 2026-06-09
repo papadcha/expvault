@@ -322,48 +322,41 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
         if imerominia:
             sql += ' AND k.imerominia=?'; params.append(imerominia)
         if parstatiko:
-            # Φίλτρο: υλικά που ανήκουν στο συγκεκριμένο παραστατικό αγοράς
-            sql += " AND k.yliko_id IN (SELECT yliko_id FROM kiniseis WHERE arithmos_parstatikos=? AND tipos='ΕΙΣΑΓΩΓΗ')"
-            params.append(parstatiko)
+            # Όταν έχουμε parstatiko: φέρνουμε ΜΟΝΟ κινήσεις που σχετίζονται άμεσα
+            # - ΕΙΣΑΓΩΓΕΣ με αυτό το parstatiko
+            # - ΚΑΤΑΝΑΛΩΣΕΙΣ με αυτό το parstatiko
+            # - ΕΠΙΣΤΡΟΦΕΣ των υλικών αυτής της αγοράς (ΔΕ/ΔΑΠ κλπ)
+            sql += """ AND (
+                (k.tipos='ΕΙΣΑΓΩΓΗ' AND k.arithmos_parstatikos=?) OR
+                (k.tipos='ΚΑΤΑΝΑΛΩΣΗ' AND k.arithmos_parstatikos=?) OR
+                (k.tipos='ΕΠΙΣΤΡΟΦΗ' AND k.yliko_id IN (
+                    SELECT yliko_id FROM kiniseis
+                    WHERE arithmos_parstatikos=? AND tipos='ΕΙΣΑΓΩΓΗ'
+                ) AND (k.arithmos_parstatikos NOT LIKE 'ΔΙΧΝ%'))
+            )"""
+            params.extend([parstatiko, parstatiko, parstatiko])
 
         rows = conn.execute(sql, params).fetchall()
         if not rows:
             return {'ekkremotita': False}
 
         # Ομαδοποίηση ανά υλικό
-        # Όταν έχουμε parstatiko φίλτρο:
-        # - ΕΙΣΑΓΩΓΕΣ: μόνο του συγκεκριμένου parstatiko
-        # - ΚΑΤΑΝΑΛΩΣΕΙΣ: μόνο με το συγκεκριμένο parstatiko
-        # - ΕΠΙΣΤΡΟΦΕΣ: μόνο με το συγκεκριμένο parstatiko (ΔΕ/ΔΑΠ)
         by_yliko = {}
         for r in rows:
             yid = r['yliko_id']
             t = r['tipos']
             rp = r['arithmos_parstatikos']
 
-            # Φίλτρο ανά parstatiko αγοράς
-            if parstatiko:
-                if t == 'ΕΙΣΑΓΩΓΗ' and rp != parstatiko:
-                    continue
-                if t == 'ΚΑΤΑΝΑΛΩΣΗ' and rp != parstatiko:
-                    continue
-                # Για ΕΠΙΣΤΡΟΦΕΣ: δέχεται μόνο επιστροφές που αφορούν αυτή την αγορά
-                # Δηλαδή ΔΕ/ΔΑΠ που καταχωρήθηκαν με parstatiko = αυτή η αγορά
-                # Απορρίπτει επιστροφές με parstatiko = κάποια αγορά (ΔΙΧΝ-...)
-                if t == 'ΕΠΙΣΤΡΟΦΗ' and rp and rp.startswith('ΔΙΧΝ') and rp != parstatiko:
-                    continue
-
             if yid not in by_yliko:
                 by_yliko[yid] = {
                     'yliko_id': yid,
                     'yliko_onoma': r['onoma'],
                     'monada': r['monada_metrisis'],
-                    'imerominia': '',  # θα οριστεί από ΕΙΣΑΓΩΓΗ
+                    'imerominia': '',
                     'agores': 0, 'katanalosis': 0, 'epistrofes': 0
                 }
             if t == 'ΕΙΣΑΓΩΓΗ':
                 by_yliko[yid]['agores'] += r['posotita']
-                # Ημερομηνία κατανάλωσης = ημερομηνία αγοράς
                 if not by_yliko[yid]['imerominia']:
                     by_yliko[yid]['imerominia'] = r['imerominia']
             elif t == 'ΚΑΤΑΝΑΛΩΣΗ':
