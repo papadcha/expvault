@@ -57,17 +57,38 @@ def parse_pdf(filepath: str) -> dict:
             break
 
     # ── Σχετ. Παραστατικό → Αρ. Παραστατικού + Ημερομηνία ───────────────────
-    # Μορφή: "ΔΙΧΝ - 19586 - 5/1/2026"  ή  "ΑΙΧΝ - 12345 - 12/3/2026"
-    sxet_pat = re.compile(
-        r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
-        re.IGNORECASE
-    )
+    # Για πιστωτικά: προτεραιότητα στο ΔΑΠ (Δελτίο Αποστολής Παραλήπτη)
+    # Μορφή ΔΑΠ: "ΔΑΠ 1" ή "ΔΑΠ 12"
+    dap_pat = re.compile(r'^ΔΑΠ\s+(\d+)\s*$', re.IGNORECASE)
     for line in lines:
-        m = sxet_pat.search(line)
+        m = dap_pat.match(line.strip())
         if m:
-            suggested['arithmos_parstatikos'] = m.group(1).strip()
-            suggested['imerominia'] = _normalize_date(m.group(2))
+            suggested['arithmos_parstatikos'] = f"ΔΑΠ {m.group(1)}"
             break
+
+    # Αν δεν βρέθηκε ΔΑΠ, πάρε το Σχετ. Παραστ.
+    # Μορφή: "ΔΙΧΝ - 19586 - 5/1/2026"  ή  "ΔΕΠ0 - 4223 - 7/1/2026"
+    if not suggested['arithmos_parstatikos']:
+        sxet_pat = re.compile(
+            r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
+            re.IGNORECASE
+        )
+        for line in lines:
+            m = sxet_pat.search(line)
+            if m:
+                suggested['arithmos_parstatikos'] = m.group(1).strip()
+                suggested['imerominia'] = _normalize_date(m.group(2))
+                break
+    else:
+        sxet_pat = re.compile(
+            r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
+            re.IGNORECASE
+        )
+        for line in lines:
+            m = sxet_pat.search(line)
+            if m:
+                suggested['imerominia'] = _normalize_date(m.group(2))
+                break
 
     # Fallback: αν δεν βρέθηκε σχετ. παραστατικό, πάρε τον αριθμό τιμολογίου
     if not suggested['arithmos_parstatikos']:
