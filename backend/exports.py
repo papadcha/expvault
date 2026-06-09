@@ -178,9 +178,14 @@ def build_book_rows(kiniseis):
     # kat_by_parst: κλειδί = parstatiko αγοράς
     kat_by_parst = {}
 
-    # Χειροκίνητες καταναλώσεις με parstatiko
+    # Χάρτης ημερομηνία → parstatiko αγοράς (για συσχέτιση ΚΑΤΑΝΑΛΩΣΗ χωρίς parstatiko)
+    agora_by_date = {}
+    for agora in agora_list:
+        agora_by_date[agora['imerominia']] = agora['parstatiko']
+
+    # Καταναλώσεις — συσχέτισε με αγορά βάσει ημερομηνίας αν δεν έχουν parstatiko
     for k in katanaliseis:
-        key = k['parstatiko'] if k['parstatiko'] else k['imerominia']
+        key = k['parstatiko'] if k['parstatiko'] else agora_by_date.get(k['imerominia'], k['imerominia'])
         if key not in kat_by_parst:
             kat_by_parst[key] = {'ylika':{}, 'paratirishis':k['paratirishis'], 'imerominia':k['imerominia'], 'auto':False, 'auxon': k.get('auxon_arithmos', 0)}
         for yid, pos in k['ylika'].items():
