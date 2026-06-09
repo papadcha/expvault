@@ -331,9 +331,28 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
             return {'ekkremotita': False}
 
         # Ομαδοποίηση ανά υλικό
+        # Όταν έχουμε parstatiko φίλτρο:
+        # - ΕΙΣΑΓΩΓΕΣ: μόνο του συγκεκριμένου parstatiko
+        # - ΚΑΤΑΝΑΛΩΣΕΙΣ: μόνο με το συγκεκριμένο parstatiko
+        # - ΕΠΙΣΤΡΟΦΕΣ: μόνο με το συγκεκριμένο parstatiko (ΔΕ/ΔΑΠ)
         by_yliko = {}
         for r in rows:
             yid = r['yliko_id']
+            t = r['tipos']
+            rp = r['arithmos_parstatikos']
+
+            # Φίλτρο ανά parstatiko αγοράς
+            if parstatiko:
+                if t == 'ΕΙΣΑΓΩΓΗ' and rp != parstatiko:
+                    continue
+                if t == 'ΚΑΤΑΝΑΛΩΣΗ' and rp != parstatiko:
+                    continue
+                # Για ΕΠΙΣΤΡΟΦΕΣ: δέχεται μόνο επιστροφές που αφορούν αυτή την αγορά
+                # Δηλαδή ΔΕ/ΔΑΠ που καταχωρήθηκαν με parstatiko = αυτή η αγορά
+                # Απορρίπτει επιστροφές με parstatiko = κάποια αγορά (ΔΙΧΝ-...)
+                if t == 'ΕΠΙΣΤΡΟΦΗ' and rp and rp.startswith('ΔΙΧΝ') and rp != parstatiko:
+                    continue
+
             if yid not in by_yliko:
                 by_yliko[yid] = {
                     'yliko_id': yid,
@@ -342,12 +361,11 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
                     'imerominia': r['imerominia'],
                     'agores': 0, 'katanalosis': 0, 'epistrofes': 0
                 }
-            t = r['tipos']
             if t == 'ΕΙΣΑΓΩΓΗ':
                 by_yliko[yid]['agores'] += r['posotita']
             elif t == 'ΚΑΤΑΝΑΛΩΣΗ':
                 by_yliko[yid]['katanalosis'] += r['posotita']
-            elif t == 'ΕΠΙΣΤΡΟΦΗ' or (t == 'ΕΞΑΓΩΓΗ' and r['arithmos_parstatikos']):
+            elif t == 'ΕΠΙΣΤΡΟΦΗ' or (t == 'ΕΞΑΓΩΓΗ' and rp):
                 by_yliko[yid]['epistrofes'] += r['posotita']
 
         # Έλεγχος για κάθε υλικό
