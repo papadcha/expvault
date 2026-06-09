@@ -967,12 +967,15 @@ async function autoKataxorisiAll() {
   for (const ekk of data) {
     if (!ekk) continue;
     try {
+      // Χρήση parstatiko από το window._ekkParstatiko (αγορά) ή ekk-parst-input (επιστροφή)
+      const ekkParst = window._ekkParstatiko ||
+                       document.getElementById('ekk-parst-input')?.value?.trim() || '';
       await py('add_kinisi', {
         imerominia:           ekk.imerominia,
         tipos:                ekk.tipo,
         yliko_id:             ekk.yliko_id,
         posotita:             ekk.posotita,
-        arithmos_parstatikos: '',
+        arithmos_parstatikos: ekkParst,
         adeia_id:             null,
         promitheftis_id:      null,
         paratirishis:         'Αυτόματος υπολογισμός',
@@ -982,9 +985,9 @@ async function autoKataxorisiAll() {
   }
 
   window._ekkData = [];
+  window._ekkParstatiko = null;
   banner.style.display = 'none';
   banner.innerHTML = '';
-  // Καθάρισε και το alertEl του PDF import αν υπάρχει
   const pdfAlert = document.getElementById('pdf-alert');
   if (pdfAlert) pdfAlert.innerHTML = '<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;">✅ Όλες οι καταχωρήσεις ολοκληρώθηκαν.</div>';
   if (errors.length) alert('Σφάλματα: ' + errors.join(', '));
@@ -1251,43 +1254,68 @@ async function submitPdfEntries() {
   if (errors.length) alertEl.innerHTML += `<div class="alert alert-error">Σφάλματα: ${errors.join(', ')}</div>`;
   if (saved) {
     alertEl.innerHTML += `<div class="alert alert-success">✅ Καταχωρήθηκαν ${saved} γραμμές!</div>`;
-    // Έλεγχος εκκρεμότητας — φιλτράρει ανά παραστατικό αγοράς
-    const tipos = document.getElementById('pdf-tipos').value;
+
     if (tipos === 'ΕΠΙΣΤΡΟΦΗ') {
-      // Για επιστροφές: ζητάμε το παραστατικό αγοράς από τον χρήστη
+      // ── ΕΠΙΣΤΡΟΦΗ: ζήτα το συσχετιζόμενο τιμολόγιο αγοράς ──
       const lastAgora = await py('get_last_eisagogi_parstatiko', {});
       const lastParst = lastAgora.arithmos_parstatikos || '';
       alertEl.innerHTML += `
         <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
-          <strong>⚠️ Έλεγχος εκκρεμοτήτων αγοράς</strong>
-          <div style="margin:8px 0;font-size:13px;">Εισάγετε το παραστατικό αγοράς για να υπολογιστούν οι εκκρεμείς καταναλώσεις:</div>
+          <strong>⚠️ Βήμα 2: Συσχέτισε με τιμολόγιο αγοράς</strong>
+          <div style="margin:8px 0;font-size:13px;">Ποιο τιμολόγιο αγοράς αφορά η επιστροφή <strong>${parstatiko}</strong>;</div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
             <input type="text" id="ekk-parst-input" value="${lastParst}"
-              style="flex:1;padding:6px 10px;border:1px solid #ffc107;border-radius:4px;font-size:13px;">
+              style="flex:1;padding:6px 10px;border:1px solid #ffc107;border-radius:4px;font-size:13px;"
+              placeholder="π.χ. ΔΙΧΝ - 19586">
             <button class="btn btn-sm btn-accent" onclick="checkEkkremotitaByParst()">🔍 Έλεγχος</button>
           </div>
         </div>`;
     } else {
-      // Για άλλους τύπους: κανονικός έλεγχος με ημερομηνία
-      const r2 = await py('check_ekkremotita', { imerominia });
-      if (r2.ekkremotita && r2.ekkremes?.length) {
-        window._ekkData = r2.ekkremes;
-        const lines = r2.ekkremes.map(e => {
-          const lbl = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
-          const fmt = e.posotita.toFixed(3).replace('.',',');
-          return `<div>• ${lbl} <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
-        }).join('');
-        alertEl.innerHTML += `
-          <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
-            <strong>⚠️ Εκκρεμείς καταχωρήσεις:</strong>
-            <div style="margin:8px 0;font-size:12px;">${lines}</div>
-            <div style="display:flex;gap:8px;margin-top:8px;">
-              <button class="btn btn-sm btn-accent" onclick="autoKataxorisiAll()">✅ Καταχώρηση Όλων</button>
-            </div>
-          </div>`;
-      }
+      // ── ΕΙΣΑΓΩΓΗ: ρώτα αν υπάρχει επιστροφή ──
+      alertEl.innerHTML += `
+        <div class="alert" style="background:#e8f4fd;border:1px solid #90cdf4;color:#2b6cb0;margin-top:8px;" id="ekk-eisagogi-prompt">
+          <strong>📋 Βήμα 2: Έχεις επιστροφή για το <em>${parstatiko}</em>;</strong>
+          <div style="display:flex;gap:8px;margin-top:10px;">
+            <button class="btn btn-sm btn-outline" onclick="showEkkEisagogiWait('${parstatiko}')">🔄 ΝΑΙ — Θα περάσω πιστωτικό</button>
+            <button class="btn btn-sm btn-success" onclick="doAutoKataxorisiEisagogi('${parstatiko}')">✅ ΟΧΙ — Καταχώρηση Κατανάλωσης</button>
+          </div>
+        </div>`;
     }
   }
+}
+
+function showEkkEisagogiWait(parstatiko) {
+  const alertEl = document.getElementById('pdf-alert');
+  alertEl.innerHTML += `
+    <div class="alert" style="background:#e8f4fd;border:1px solid #90cdf4;color:#2b6cb0;margin-top:8px;">
+      ℹ️ Πέρασε το πιστωτικό τιμολόγιο — μετά η εφαρμογή θα σε καθοδηγήσει για την κατανάλωση του <strong>${parstatiko}</strong>.
+    </div>`;
+  document.getElementById('ekk-eisagogi-prompt')?.remove();
+}
+
+async function doAutoKataxorisiEisagogi(parstatiko) {
+  // Υπολόγισε κατανάλωση για το συγκεκριμένο παραστατικό
+  const r = await py('check_ekkremotita', { parstatiko });
+  if (!r.ekkremotita || !r.ekkremes?.length) {
+    const alertEl = document.getElementById('pdf-alert');
+    alertEl.innerHTML += `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Δεν υπάρχουν εκκρεμείς καταχωρήσεις για <strong>${parstatiko}</strong>.</div>`;
+    document.getElementById('ekk-eisagogi-prompt')?.remove();
+    return;
+  }
+  window._ekkData = r.ekkremes;
+  window._ekkParstatiko = parstatiko;
+  document.getElementById('ekk-eisagogi-prompt')?.remove();
+  const lines = r.ekkremes.map(e => {
+    const fmt = e.posotita.toFixed(3).replace('.',',');
+    return `<div>• 🔥 <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
+  }).join('');
+  const alertEl = document.getElementById('pdf-alert');
+  alertEl.innerHTML += `
+    <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
+      <strong>🔥 Καταναλώσεις για <em>${parstatiko}</em>:</strong>
+      <div style="margin:8px 0;font-size:12px;">${lines}</div>
+      <button class="btn btn-sm btn-accent" onclick="autoKataxorisiAll()">✅ Καταχώρηση Κατανάλωσης</button>
+    </div>`;
 }
 
 // ── EXPORT ───────────────────────────────────────────────────────────────────
@@ -1580,31 +1608,27 @@ async function checkEkkremotitaByParst() {
   const r = await py('check_ekkremotita', { parstatiko: parst });
   const alertEl = document.getElementById('pdf-alert');
 
-  // Αφαίρεσε το input banner
-  const existing = alertEl.querySelector('.ekk-parst-banner');
-  if (existing) existing.remove();
-
   if (!r.ekkremotita || !r.ekkremes?.length) {
     alertEl.innerHTML += `
       <div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">
-        ✅ Δεν υπάρχουν εκκρεμείς καταχωρήσεις για το παραστατικό <strong>"${parst}"</strong>
+        ✅ Πλήρης επιστροφή — δεν απαιτείται κατανάλωση για <strong>"${parst}"</strong>.
       </div>`;
     return;
   }
 
   window._ekkData = r.ekkremes;
+  window._ekkParstatiko = parst;
   const lines = r.ekkremes.map(e => {
-    const lbl = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
     const fmt = e.posotita.toFixed(3).replace('.',',');
-    return `<div>• ${lbl} <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
+    return `<div>• 🔥 <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
   }).join('');
 
   alertEl.innerHTML += `
     <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
-      <strong>⚠️ Εκκρεμείς για παραστατικό "${parst}":</strong>
+      <strong>🔥 Καταναλώσεις για <em>${parst}</em>:</strong>
       <div style="margin:8px 0;font-size:12px;">${lines}</div>
       <div style="display:flex;gap:8px;margin-top:8px;">
-        <button class="btn btn-sm btn-accent" onclick="autoKataxorisiAll()">✅ Καταχώρηση Όλων</button>
+        <button class="btn btn-sm btn-accent" onclick="autoKataxorisiAll()">✅ Καταχώρηση Κατανάλωσης</button>
       </div>
     </div>`;
 }
