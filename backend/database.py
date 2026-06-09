@@ -20,6 +20,26 @@ def get_db():
 
 def init_db():
     with get_db() as conn:
+        # Migration: agora_ref για επιστροφές
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(kiniseis)").fetchall()]
+            if cols and 'agora_ref' not in cols:
+                conn.execute("ALTER TABLE kiniseis ADD COLUMN agora_ref TEXT")
+                # Auto-migration: κάθε ΕΠΙΣΤΡΟΦΗ → αμέσως προηγούμενη αγορά με κοινά υλικά
+                epistrofes = conn.execute(
+                    "SELECT id, arithmos_parstatikos, auxon_arithmos, yliko_id FROM kiniseis WHERE tipos='ΕΠΙΣΤΡΟΦΗ' ORDER BY auxon_arithmos"
+                ).fetchall()
+                for epi in epistrofes:
+                    agora = conn.execute(
+                        """SELECT arithmos_parstatikos FROM kiniseis
+                           WHERE tipos='ΕΙΣΑΓΩΓΗ' AND yliko_id=? AND auxon_arithmos<?
+                           ORDER BY auxon_arithmos DESC LIMIT 1""",
+                        (epi[3], epi[2])
+                    ).fetchone()
+                    if agora:
+                        conn.execute("UPDATE kiniseis SET agora_ref=? WHERE id=?", (agora[0], epi[0]))
+        except Exception:
+            pass
         conn.executescript('''
             CREATE TABLE IF NOT EXISTS ylika (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -203,16 +223,16 @@ def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
         return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
-               adeia_id, promitheftis_id, paratirishis, ypografi):
+               adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None):
     auxon = next_auxon()
     with get_db() as conn:
         conn.execute('''
             INSERT INTO kiniseis(auxon_arithmos,imerominia,tipos,yliko_id,posotita,
-                arithmos_parstatikos,adeia_id,promitheftis_id,paratirishis,ypografi)
-            VALUES(?,?,?,?,?,?,?,?,?,?)
+                arithmos_parstatikos,adeia_id,promitheftis_id,paratirishis,ypografi,agora_ref)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?)
         ''', (auxon, imerominia, tipos, yliko_id, posotita,
               arithmos_parstatikos or None, adeia_id or None,
-              promitheftis_id or None, paratirishis or None, ypografi or None))
+              promitheftis_id or None, paratirishis or None, ypografi or None, agora_ref or None))
 
 def update_kinisi(id, imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
                   adeia_id, promitheftis_id, paratirishis, ypografi):
@@ -322,17 +342,11 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
         if imerominia:
             sql += ' AND k.imerominia=?'; params.append(imerominia)
         if parstatiko:
-            # Όταν έχουμε parstatiko: φέρνουμε ΜΟΝΟ κινήσεις που σχετίζονται άμεσα
-            # - ΕΙΣΑΓΩΓΕΣ με αυτό το parstatiko
-            # - ΚΑΤΑΝΑΛΩΣΕΙΣ με αυτό το parstatiko
-            # - ΕΠΙΣΤΡΟΦΕΣ των υλικών αυτής της αγοράς (ΔΕ/ΔΑΠ κλπ)
+            # Φίλτρο με agora_ref — συνδέει ΕΠΙΣΤΡΟΦΕΣ με την αγορά τους
             sql += """ AND (
                 (k.tipos='ΕΙΣΑΓΩΓΗ' AND k.arithmos_parstatikos=?) OR
                 (k.tipos='ΚΑΤΑΝΑΛΩΣΗ' AND k.arithmos_parstatikos=?) OR
-                (k.tipos='ΕΠΙΣΤΡΟΦΗ' AND k.yliko_id IN (
-                    SELECT yliko_id FROM kiniseis
-                    WHERE arithmos_parstatikos=? AND tipos='ΕΙΣΑΓΩΓΗ'
-                ) AND (k.arithmos_parstatikos NOT LIKE 'ΔΙΧΝ%'))
+                (k.tipos='ΕΠΙΣΤΡΟΦΗ' AND k.agora_ref=?)
             )"""
             params.extend([parstatiko, parstatiko, parstatiko])
 
@@ -361,7 +375,7 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
                     by_yliko[yid]['imerominia'] = r['imerominia']
             elif t == 'ΚΑΤΑΝΑΛΩΣΗ':
                 by_yliko[yid]['katanalosis'] += r['posotita']
-            elif t == 'ΕΠΙΣΤΡΟΦΗ' or (t == 'ΕΞΑΓΩΓΗ' and rp):
+            elif t in ('ΕΠΙΣΤΡΟΦΗ', 'ΕΞΑΓΩΓΗ'):
                 by_yliko[yid]['epistrofes'] += r['posotita']
 
         # Έλεγχος για κάθε υλικό
