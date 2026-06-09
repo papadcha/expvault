@@ -1294,18 +1294,31 @@ function showEkkEisagogiWait(parstatiko) {
 }
 
 async function doAutoKataxorisiEisagogi(parstatiko) {
-  // Υπολόγισε κατανάλωση για το συγκεκριμένο παραστατικό
-  const r = await py('check_ekkremotita', { parstatiko });
-  if (!r.ekkremotita || !r.ekkremes?.length) {
+  // Παίρνει ΟΛΕΣ τις γραμμές ΕΙΣΑΓΩΓΗΣ του παραστατικού
+  // Κατανάλωση = ολόκληρη η αγορά (οι επιστροφές αφαιρούνται μετά ξεχωριστά)
+  const kiniseis = await py('get_kiniseis', {});
+  const eisagogi = kiniseis.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ' && k.arithmos_parstatikos === parstatiko);
+
+  if (!eisagogi.length) {
     const alertEl = document.getElementById('pdf-alert');
-    alertEl.innerHTML += `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Δεν υπάρχουν εκκρεμείς καταχωρήσεις για <strong>${parstatiko}</strong>.</div>`;
+    alertEl.innerHTML += `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Δεν βρέθηκαν γραμμές αγοράς για <strong>${parstatiko}</strong>.</div>`;
     document.getElementById('ekk-eisagogi-prompt')?.remove();
     return;
   }
-  window._ekkData = r.ekkremes;
+
+  // Μετατροπή σε ekkData format
+  window._ekkData = eisagogi.map(k => ({
+    yliko_id:   k.yliko_id,
+    yliko_onoma: k.yliko_onoma,
+    monada:     k.monada_metrisis,
+    posotita:   k.posotita,
+    imerominia: k.imerominia,
+    tipo:       'ΚΑΤΑΝΑΛΩΣΗ'
+  }));
   window._ekkParstatiko = parstatiko;
   document.getElementById('ekk-eisagogi-prompt')?.remove();
-  const lines = r.ekkremes.map(e => {
+
+  const lines = window._ekkData.map(e => {
     const fmt = e.posotita.toFixed(3).replace('.',',');
     return `<div>• 🔥 <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
   }).join('');
