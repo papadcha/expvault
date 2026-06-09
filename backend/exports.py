@@ -77,7 +77,6 @@ def build_book_rows(kiniseis):
     agores     = OrderedDict()
     epistrofes = []
     katanaliseis = []
-    aa = 1
 
     for k in kiniseis:
         yid   = k['yliko_id']
@@ -93,12 +92,11 @@ def build_book_rows(kiniseis):
             key = (imer, parst, adeia, prom)
             if key not in agores:
                 agores[key] = {
-                    'type':'agora', 'aa':aa,
+                    'type':'agora', 'aa':0,
                     'imerominia':imer, 'parstatiko':parst,
                     'adeia':adeia, 'ekdousa':ekd, 'promitheftis':prom,
                     'ylika':{}, 'paratirishis':par
                 }
-                aa += 1
             agores[key]['ylika'][yid] = agores[key]['ylika'].get(yid,0) + k['posotita']
 
         elif tipos in ('ΕΠΙΣΤΡΟΦΗ', 'ΕΞΑΓΩΓΗ') and parst:
@@ -155,17 +153,19 @@ def build_book_rows(kiniseis):
         rows.append(agora)
         for i, e in enumerate(epistrofes):
             if i not in epi_used and epi_to_agora.get(i) == j:
-                e['aa'] = aa
-                aa += 1
+                e['aa'] = 0
                 rows.append(e)
                 epi_used.add(i)
 
     # Επιστροφές που δεν συσχετίστηκαν — στο τέλος
     for i, e in enumerate(epistrofes):
         if i not in epi_used:
-            e['aa'] = aa
-            aa += 1
+            e['aa'] = 0
             rows.append(e)
+
+    # Δώσε Α/Α με τη σωστή σειρά τώρα που οι γραμμές είναι στη θέση τους
+    for i, row in enumerate(rows, 1):
+        row['aa'] = i
 
     # Κατανάλωση ανά ημερομηνία — αν δεν υπάρχει χειροκίνητη, υπολογίζει αυτόματα
     kat_by_date = {}
