@@ -209,9 +209,9 @@ def build_book_rows(kiniseis):
 
     for agora in agora_list:
         ap = agora['parstatiko']
+        epi = epi_by_agora.get(ap, {})
         if ap not in kat_by_parst:
-            # Δεν υπάρχει χειροκίνητη → υπολόγισε: Αγορά − Επιστροφές αυτής της αγοράς
-            epi = epi_by_agora.get(ap, {})
+            # Δεν υπάρχει χειροκίνητη → αυτόματος υπολογισμός: Αγορά − Επιστροφές
             auto_ylika = {}
             for yid, pos in agora['ylika'].items():
                 katanalosi = pos - epi.get(yid, 0)
@@ -224,6 +224,16 @@ def build_book_rows(kiniseis):
                     'imerominia': agora['imerominia'],
                     'auto': True
                 }
+        else:
+            # Υπάρχει χειροκίνητη → αφαίρεσε τις επιστροφές
+            if epi:
+                for yid, epi_pos in epi.items():
+                    if yid in kat_by_parst[ap]['ylika']:
+                        new_pos = kat_by_parst[ap]['ylika'][yid] - epi_pos
+                        if new_pos > 0:
+                            kat_by_parst[ap]['ylika'][yid] = new_pos
+                        else:
+                            del kat_by_parst[ap]['ylika'][yid]
 
     return rows, kat_by_parst
 
