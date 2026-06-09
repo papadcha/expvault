@@ -1391,10 +1391,8 @@ async function deleteParstatiko() {
   try {
     await py('delete_kiniseis_by_parstatiko', { arithmos_parstatikos: parstatiko });
     closeDiploModal();
-    loadKiniseis();
-    document.getElementById('export-msg') &&
-      (document.getElementById('export-msg').innerHTML =
-        `<div class="alert alert-success">✅ Διαγράφηκαν όλες οι εγγραφές του παραστατικού "${parstatiko}"</div>`);
+    // Συνέχισε αυτόματα με την καταχώρηση
+    await submitPdfEntries();
   } catch(e) { alert('Σφάλμα διαγραφής: ' + e.message); }
 }
 
