@@ -231,7 +231,13 @@ def build_book_rows(kiniseis):
             if epi:
                 # Βρες min auxon κατανάλωσης vs min auxon επιστροφής
                 kat_auxon = kat_by_parst[ap].get('auxon', 999999)
-                epi_auxons = [e.get('auxon', 0) for e in epistrofes if e.get('agora_ref') == ap]
+                # Συμπεριλάβε ΟΛΕΣ τις επιστροφές που συσχετίστηκαν με αυτή την αγορά
+                # (είτε μέσω agora_ref είτε μέσω fallback auxon-αλγόριθμου)
+                epi_auxons = [e.get('auxon', 0) for e in epistrofes
+                              if (e.get('agora_ref') == ap) or
+                                 (not e.get('agora_ref') and
+                                  set(e['ylika'].keys()) & set(agora['ylika'].keys()) and
+                                  e['auxon'] > agora['auxon'])]
                 min_epi_auxon = min(epi_auxons) if epi_auxons else 999999
                 # Αφαίρεσε μόνο αν η κατανάλωση έγινε ΠΡΙΝ την επιστροφή
                 if kat_auxon < min_epi_auxon:
