@@ -224,6 +224,9 @@ def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
 
 def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
                adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None):
+    # Δεν επιτρέπεται αποθήκευση αυτόματα υπολογισμένων καταναλώσεων
+    if tipos == 'ΚΑΤΑΝΑΛΩΣΗ' and paratirishis == 'Αυτόματος υπολογισμός':
+        raise ValueError("Απαγορεύεται η αποθήκευση αυτόματου υπολογισμού ως ΚΑΤΑΝΑΛΩΣΗ")
     auxon = next_auxon()
     with get_db() as conn:
         conn.execute('''
