@@ -95,7 +95,8 @@ def build_book_rows(kiniseis):
                     'type':'agora', 'aa':0,
                     'imerominia':imer, 'parstatiko':parst,
                     'adeia':adeia, 'ekdousa':ekd, 'promitheftis':prom,
-                    'ylika':{}, 'paratirishis':par
+                    'ylika':{}, 'paratirishis':par,
+                    'auxon': k.get('auxon_arithmos', 0)
                 }
             agores[key]['ylika'][yid] = agores[key]['ylika'].get(yid,0) + k['posotita']
 
@@ -107,7 +108,8 @@ def build_book_rows(kiniseis):
                     'type':'epistrofi', 'aa':None,
                     'imerominia':imer, 'parstatiko':parst,
                     'adeia':adeia, 'ekdousa':ekd, 'promitheftis':prom,
-                    'ylika':{}, 'paratirishis':'ΕΠΙΣΤΡΟΦΗ'
+                    'ylika':{}, 'paratirishis':'ΕΠΙΣΤΡΟΦΗ',
+                    'auxon': k.get('auxon_arithmos', 0)
                 }
                 epistrofes.append(found)
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
@@ -139,8 +141,9 @@ def build_book_rows(kiniseis):
         best_agora_date = None
         for j, agora in enumerate(agora_list):
             common = set(e['ylika'].keys()) & set(agora['ylika'].keys())
-            if common and agora['imerominia'] <= e['imerominia']:
-                if best_agora_date is None or agora['imerominia'] > best_agora_date:
+            # Η αγορά πρέπει να έχει auxon ΜΙΚΡΟΤΕΡΟ από την επιστροφή
+            if common and agora['auxon'] < e['auxon']:
+                if best_agora_date is None or agora['auxon'] > (agora_list[best_agora_idx]['auxon'] if best_agora_idx is not None else -1):
                     best_agora_date = agora['imerominia']
                     best_agora_idx = j
         if best_agora_idx is not None:
