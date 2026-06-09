@@ -970,8 +970,10 @@ async function autoKataxorisiAll() {
       // Χρήση parstatiko από το window._ekkParstatiko (αγορά) ή ekk-parst-input (επιστροφή)
       const ekkParst = window._ekkParstatiko ||
                        document.getElementById('ekk-parst-input')?.value?.trim() || '';
+      // Ημερομηνία: πάντα από την αγορά (window._ekkImerominia) αν υπάρχει
+      const ekkImer = window._ekkImerominia || ekk.imerominia;
       await py('add_kinisi', {
-        imerominia:           ekk.imerominia,
+        imerominia:           ekkImer,
         tipos:                ekk.tipo,
         yliko_id:             ekk.yliko_id,
         posotita:             ekk.posotita,
@@ -986,6 +988,7 @@ async function autoKataxorisiAll() {
 
   window._ekkData = [];
   window._ekkParstatiko = null;
+  window._ekkImerominia = null;
   banner.style.display = 'none';
   banner.innerHTML = '';
   const pdfAlert = document.getElementById('pdf-alert');
@@ -1307,15 +1310,18 @@ async function doAutoKataxorisiEisagogi(parstatiko) {
   }
 
   // Μετατροπή σε ekkData format
+  // Χρήση ημερομηνίας αγοράς — η πρώτη imerominia από τις γραμμές ΕΙΣΑΓΩΓΗΣ
+  const agoraImerominia = eisagogi[0]?.imerominia || '';
   window._ekkData = eisagogi.map(k => ({
     yliko_id:   k.yliko_id,
     yliko_onoma: k.yliko_onoma,
     monada:     k.monada_metrisis,
     posotita:   k.posotita,
-    imerominia: k.imerominia,
+    imerominia: agoraImerominia,
     tipo:       'ΚΑΤΑΝΑΛΩΣΗ'
   }));
   window._ekkParstatiko = parstatiko;
+  window._ekkImerominia = agoraImerominia;
   document.getElementById('ekk-eisagogi-prompt')?.remove();
 
   const lines = window._ekkData.map(e => {
@@ -1629,6 +1635,8 @@ async function checkEkkremotitaByParst() {
 
   window._ekkData = r.ekkremes;
   window._ekkParstatiko = parst;
+  // Ημερομηνία κατανάλωσης = ημερομηνία αγοράς
+  window._ekkImerominia = r.ekkremes[0]?.imerominia || '';
   const lines = r.ekkremes.map(e => {
     const fmt = e.posotita.toFixed(3).replace('.',',');
     return `<div>• 🔥 <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;

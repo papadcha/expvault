@@ -358,11 +358,14 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
                     'yliko_id': yid,
                     'yliko_onoma': r['onoma'],
                     'monada': r['monada_metrisis'],
-                    'imerominia': r['imerominia'],
+                    'imerominia': '',  # θα οριστεί από ΕΙΣΑΓΩΓΗ
                     'agores': 0, 'katanalosis': 0, 'epistrofes': 0
                 }
             if t == 'ΕΙΣΑΓΩΓΗ':
                 by_yliko[yid]['agores'] += r['posotita']
+                # Ημερομηνία κατανάλωσης = ημερομηνία αγοράς
+                if not by_yliko[yid]['imerominia']:
+                    by_yliko[yid]['imerominia'] = r['imerominia']
             elif t == 'ΚΑΤΑΝΑΛΩΣΗ':
                 by_yliko[yid]['katanalosis'] += r['posotita']
             elif t == 'ΕΠΙΣΤΡΟΦΗ' or (t == 'ΕΞΑΓΩΓΗ' and rp):
