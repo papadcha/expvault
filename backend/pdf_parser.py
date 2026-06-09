@@ -57,22 +57,24 @@ def parse_pdf(filepath: str) -> dict:
             break
 
     # ── Σχετ. Παραστατικό → Αρ. Παραστατικού + Ημερομηνία ───────────────────
-    # Για πιστωτικά: προτεραιότητα στο ΔΑΠ (Δελτίο Αποστολής Παραλήπτη)
-    # Μορφή ΔΑΠ: "ΔΑΠ 1" ή "ΔΑΠ 12"
-    dap_pat = re.compile(r'^ΔΑΠ\s+(\d+)\s*$', re.IGNORECASE)
-    for line in lines:
-        m = dap_pat.match(line.strip())
-        if m:
-            suggested['arithmos_parstatikos'] = f"ΔΑΠ {m.group(1)}"
-            break
+    # ── Για πιστωτικά: ΔΑΠ ή ΔΕ από το Σχόλιο ──────────────────────────────
+    # Προτεραιότητα: ΔΑΠ N ή ΔΕ N (δικά μας έγγραφα)
+    # Αγνοούμε ΔΕΠ/ΔΙΧΝ/ΑΙΧΝ που είναι έγγραφα NITROCHEM
+    if suggested['tipos'] == 'ΕΠΙΣΤΡΟΦΗ':
+        our_doc_pat = re.compile(r'^(ΔΑΠ|ΔΕ)\s+(\d+)\s*$', re.IGNORECASE)
+        for line in lines:
+            m = our_doc_pat.match(line.strip())
+            if m:
+                suggested['arithmos_parstatikos'] = f"{m.group(1).upper()} {m.group(2)}"
+                break
 
-    # Αν δεν βρέθηκε ΔΑΠ, πάρε το Σχετ. Παραστ.
-    # Μορφή: "ΔΙΧΝ - 19586 - 5/1/2026"  ή  "ΔΕΠ0 - 4223 - 7/1/2026"
+    # Για τιμολόγια αγοράς ή fallback: πάρε το Σχετ. Παραστ. (ΔΙΧΝ κλπ)
+    # Μορφή: "ΔΙΧΝ - 19586 - 5/1/2026"
+    sxet_pat = re.compile(
+        r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
+        re.IGNORECASE
+    )
     if not suggested['arithmos_parstatikos']:
-        sxet_pat = re.compile(
-            r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
-            re.IGNORECASE
-        )
         for line in lines:
             m = sxet_pat.search(line)
             if m:
@@ -80,10 +82,7 @@ def parse_pdf(filepath: str) -> dict:
                 suggested['imerominia'] = _normalize_date(m.group(2))
                 break
     else:
-        sxet_pat = re.compile(
-            r'([Α-ΩA-Z0-9]{2,8}\s*[-–]\s*\d+)\s*[-–]\s*(\d{1,2}[/\-\.]\d{1,2}[/\-\.]\d{4})',
-            re.IGNORECASE
-        )
+        # Παραστατικό βρέθηκε — πάρε μόνο την ημερομηνία από το Σχετ. Παραστ.
         for line in lines:
             m = sxet_pat.search(line)
             if m:
