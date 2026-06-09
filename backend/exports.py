@@ -126,23 +126,31 @@ def build_book_rows(kiniseis):
                 katanaliseis.append(found)
             found['ylika'][yid] = found['ylika'].get(yid,0) + k['posotita']
 
-    # Αγορά → επιστροφές που αφορούν αυτή την αγορά (ανεξαρτήτως ημερομηνίας)
-    # Κριτήριο: τα yliko_ids της επιστροφής είναι υποσύνολο της αγοράς
+    # Χτίζουμε τις γραμμές: αγορά → αμέσως μετά η επιστροφή της (αν υπάρχει)
+    # Κριτήριο συσχέτισης: η επιστροφή έχει ημερομηνία ΜΕΤΑ την αγορά
+    # και τα υλικά της είναι υποσύνολο της αγοράς
     rows = []
     epi_used = set()
-    for key, agora in agores.items():
-        rows.append(agora)
-        for i, e in enumerate(epistrofes):
-            if i not in epi_used:
-                # Η επιστροφή αφορά αυτή την αγορά αν έχει κοινά υλικά
-                common = set(e['ylika'].keys()) & set(agora['ylika'].keys())
-                if common:
-                    e['aa'] = aa
-                    aa += 1
-                    rows.append(e)
-                    epi_used.add(i)
+    agora_list = list(agores.values())
 
-    # Επιστροφές που δεν συσχετίστηκαν — βάλτε τες στο τέλος
+    for agora in agora_list:
+        agora['aa'] = agora['aa']  # ήδη έχει aa
+        rows.append(agora)
+        # Βρες επιστροφές που αφορούν αυτή την αγορά:
+        # 1) έχουν κοινά υλικά με την αγορά
+        # 2) δεν έχουν χρησιμοποιηθεί ήδη
+        # 3) η ημερομηνία τους είναι >= ημερομηνία αγοράς
+        for i, e in enumerate(epistrofes):
+            if i in epi_used:
+                continue
+            common = set(e['ylika'].keys()) & set(agora['ylika'].keys())
+            if common and e['imerominia'] >= agora['imerominia']:
+                e['aa'] = aa
+                aa += 1
+                rows.append(e)
+                epi_used.add(i)
+
+    # Επιστροφές που δεν συσχετίστηκαν — στο τέλος
     for i, e in enumerate(epistrofes):
         if i not in epi_used:
             e['aa'] = aa
