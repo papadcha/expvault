@@ -972,6 +972,8 @@ async function autoKataxorisiAll() {
                        document.getElementById('ekk-parst-input')?.value?.trim() || '';
       // Ημερομηνία: πάντα από την αγορά (window._ekkImerominia) αν υπάρχει
       const ekkImer = window._ekkImerominia || ekk.imerominia;
+      // Αποθήκευση μόνο ΕΠΙΣΤΡΟΦΗ — η ΚΑΤΑΝΑΛΩΣΗ υπολογίζεται on-the-fly στο export
+      if (ekk.tipo === 'ΚΑΤΑΝΑΛΩΣΗ') continue;
       await py('add_kinisi', {
         imerominia:           ekkImer,
         tipos:                ekk.tipo,
