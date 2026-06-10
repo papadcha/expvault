@@ -248,6 +248,13 @@ def update_kinisi(id, imerominia, tipos, yliko_id, posotita, arithmos_parstatiko
               adeia_id or None, promitheftis_id or None,
               paratirishis or None, ypografi or None, id))
 
+def update_agora_ref(arithmos_parstatikos, agora_ref):
+    with get_db() as conn:
+        conn.execute(
+            "UPDATE kiniseis SET agora_ref=? WHERE arithmos_parstatikos=? AND tipos='ΕΠΙΣΤΡΟΦΗ'",
+            (agora_ref or None, arithmos_parstatikos)
+        )
+
 def delete_kinisi(id):
     with get_db() as conn:
         conn.execute("DELETE FROM kiniseis WHERE id=?", (id,))

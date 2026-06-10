@@ -1624,6 +1624,11 @@ async function checkEkkremotitaByParst() {
   const parst = document.getElementById('ekk-parst-input')?.value?.trim();
   if (!parst) { alert('Εισάγετε παραστατικό αγοράς'); return; }
 
+  // Αποθήκευση agora_ref στις γραμμές της επιστροφής
+  const epistrofiParst = document.getElementById('pdf-parstatiko')?.value?.trim() || '';
+  if (epistrofiParst) {
+    await py('update_agora_ref', { arithmos_parstatikos: epistrofiParst, agora_ref: parst });
+  }
   const r = await py('check_ekkremotita', { parstatiko: parst });
   const alertEl = document.getElementById('pdf-alert');
 
