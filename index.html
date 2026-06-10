@@ -1262,6 +1262,7 @@ async function submitPdfEntries() {
 
     if (tipos === 'ΕΠΙΣΤΡΟΦΗ') {
       // ── ΕΠΙΣΤΡΟΦΗ: ζήτα το συσχετιζόμενο τιμολόγιο αγοράς ──
+      window._lastEpistrofiParst = parstatiko; // αποθήκευση πριν καθαριστεί
       const lastAgora = await py('get_last_eisagogi_parstatiko', {});
       const lastParst = lastAgora.arithmos_parstatikos || '';
       alertEl.innerHTML += `
@@ -1625,7 +1626,7 @@ async function checkEkkremotitaByParst() {
   if (!parst) { alert('Εισάγετε παραστατικό αγοράς'); return; }
 
   // Αποθήκευση agora_ref στις γραμμές της επιστροφής
-  const epistrofiParst = document.getElementById('pdf-parstatiko')?.value?.trim() || '';
+  const epistrofiParst = window._lastEpistrofiParst || document.getElementById('pdf-parstatiko')?.value?.trim() || '';
   if (epistrofiParst) {
     await py('update_agora_ref', { arithmos_parstatikos: epistrofiParst, agora_ref: parst });
   }
