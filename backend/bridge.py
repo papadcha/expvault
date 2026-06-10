@@ -98,7 +98,7 @@ def handle(cmd, payload):
 
     if cmd == 'update_agora_ref':
         database.update_agora_ref(data['arithmos_parstatikos'], data['agora_ref'])
-        return {}
+        return {'ok': True}
     if cmd == 'delete_kinisi':
         database.delete_kinisi(payload['id'])
         return {'ok': True}
