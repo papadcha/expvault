@@ -349,7 +349,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             v = row['ylika'].get(yid)
             cells.append(p(fmt_num(v) if v else '—', num_s))
         cells += [
-            p(f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", txt_s),
+            Paragraph(f"<para align='center'>{fmt_date(row['imerominia'])}<br/><font name='Helvetica-Bold'>{row['parstatiko']}</font></para>", txt_s),
             p(row['promitheftis'], txt_s),
         ]
         l_data.append(cells)
