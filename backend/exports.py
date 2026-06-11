@@ -309,7 +309,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     l_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + \
               [''] * (len(L_WIDTHS)-1)
     l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./\nΕκδ.Αρχή',HS)] + yliko_hdrs + \
-              [p('Ημερ.Αγ./\nΑρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
+              [p('Ημερ.Αγ./<br/>Αρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
 
     l_data  = [l_title, l_hdr]
     n_ylika_cols = len(ylika_order)
@@ -349,7 +349,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             v = row['ylika'].get(yid)
             cells.append(p(fmt_num(v) if v else '—', num_s))
         cells += [
-            p(f"{fmt_date(row['imerominia'])}\n{row['parstatiko'].replace(' - ', ' - ')}", txt_s),
+            p(f"{fmt_date(row['imerominia'])}<br/>{row['parstatiko']}", txt_s),
             p(row['promitheftis'], txt_s),
         ]
         l_data.append(cells)
