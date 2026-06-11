@@ -301,7 +301,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     yliko_hdrs = [p(f"{on}\n({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
-    L_FIXED = [0.6, 2.2, 2.8, 2.5]
+    L_FIXED = [0.6, 2.2, 2.2, 2.5]
     yw_l = max(0.8, (page_w_cm - sum(L_FIXED)) / n) if n else 1.5
     L_WIDTHS = [L_FIXED[0]*cm, L_FIXED[1]*cm] + [yw_l*cm]*n + \
                [L_FIXED[2]*cm, L_FIXED[3]*cm]
