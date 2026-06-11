@@ -463,8 +463,10 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
 
     hdrs   = ['Α/Α','Αρ.Άδ./Εκδ.Αρχή'] + \
              [f"{on}\n({mo})" for _,(on,mo) in ylika_order] + \
-             ['Ημερ.Αγ./Αρ.Δελτ.','Στοιχεία Προμηθευτή']
-    widths = [5, 18] + [13]*n + [16, 20]
+             ['Ημερ.Αγ./
+Αρ.Δελτ.','Στοιχεία
+Προμηθευτή']
+    widths = [5, 18] + [13]*n + [12, 18]
 
     for ci,(h,w) in enumerate(zip(hdrs,widths),1):
         cell = ws1.cell(row=2,column=ci,value=h)
