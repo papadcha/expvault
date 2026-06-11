@@ -1161,6 +1161,8 @@ async function parsePdf() {
     status.textContent = '';
     document.getElementById('pdf-raw-text').textContent = r.raw_text || '(Δεν εξήχθη κείμενο)';
     document.getElementById('pdf-results').style.display = 'block';
+    document.getElementById('pdf-alert').innerHTML = '';
+    window._lastEpistrofiParst = null;
     const s = r.suggested;
     if (s.imerominia) {
       const [d,m,y] = s.imerominia.split('/');
