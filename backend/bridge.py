@@ -15,6 +15,7 @@ database.DB_NAME = DB_PATH
 database.init_db()
 
 import pdf_parser
+import importlib
 import exports
 
 def handle(cmd, payload):
@@ -166,6 +167,8 @@ def handle(cmd, payload):
         return {'ok': True}
 
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
+    if cmd in ('export_pdf', 'export_excel'):
+        importlib.reload(exports)
     if cmd == 'export_pdf':
         kiniseis = database.get_kiniseis(
             yliko_id=payload.get('yliko_id'),
