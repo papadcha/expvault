@@ -115,7 +115,7 @@ def get_all_ylika():
         return [dict(r) for r in conn.execute(
             "SELECT * FROM ylika ORDER BY onoma").fetchall()]
 
-def add_yliko(onoma, diatomi_mm, monada, paratirishis, kategoria=None):
+def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None):
     with get_db() as conn:
         # Έλεγχος αν υπάρχει ήδη (case-insensitive)
         existing = conn.execute(
@@ -125,14 +125,14 @@ def add_yliko(onoma, diatomi_mm, monada, paratirishis, kategoria=None):
         if existing:
             return existing[0]  # Επιστρέφει υπάρχον id
         conn.execute(
-            "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,kategoria) VALUES(?,?,?,?,?)",
-            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, kategoria))
+            "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,export_group,export_subgroup) VALUES(?,?,?,?,?,?)",
+            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, export_subgroup))
 
-def update_yliko(id, onoma, diatomi_mm, monada, paratirishis, kategoria=None):
+def update_yliko(id, onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None):
     with get_db() as conn:
         conn.execute(
-            "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,kategoria=? WHERE id=?",
-            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, kategoria, id))
+            "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,export_group=?,export_subgroup=? WHERE id=?",
+            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, export_subgroup, id))
 
 def delete_yliko(id):
     with get_db() as conn:

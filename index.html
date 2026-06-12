@@ -584,7 +584,8 @@ body.electron .main    { padding-top: 60px; }
             </select>
           </div>
         </div>
-        <div class="form-row"><div><label>Κατηγορία NONEL</label><select id="yl-kategoria"><option value="">— Καμία —</option><option value="SNAPLINE">SNAPLINE</option><option value="UNIDET">UNIDET</option><option value="LP">LP</option></select></div></div>
+        <div class="form-row"><div><label>Ομάδα Export</label><input type="text" id="yl-export-group" placeholder="π.χ. NONEL, POLADYN, EM-EX"></div></div>
+        <div class="form-row"><div><label>Υποομάδα Export</label><input type="text" id="yl-export-subgroup" placeholder="π.χ. SNAPLINE, UNIDET, LP, 38X380"></div></div>
         <div class="form-row"><div><label>Παρατηρήσεις</label><input type="text" id="yl-paratirishis"></div></div>
         <div class="form-actions">
           <button class="btn btn-success" onclick="saveYliko()">💾 Αποθήκευση</button>
@@ -1039,7 +1040,8 @@ function fillYlikoForm(y) {
   document.getElementById('yl-onoma').value = y.onoma;
   document.getElementById('yl-diatomi').value = y.diatomi_mm||'';
   document.getElementById('yl-monada').value = y.monada_metrisis;
-  document.getElementById('yl-kategoria').value = y.kategoria||'';
+  document.getElementById('yl-export-group').value = y.export_group||'';
+  document.getElementById('yl-export-subgroup').value = y.export_subgroup||'';
   document.getElementById('yl-paratirishis').value = y.paratirishis||'';
   document.getElementById('yl-del-btn').style.display = 'inline-flex';
 }
@@ -1048,7 +1050,8 @@ async function saveYliko() {
   const id = document.getElementById('yl-edit-id').value;
   const body = {
     onoma: document.getElementById('yl-onoma').value.trim(),
-      kategoria: document.getElementById('yl-kategoria').value||null,
+      export_group: document.getElementById('yl-export-group').value.trim()||null,
+      export_subgroup: document.getElementById('yl-export-subgroup').value.trim()||null,
     diatomi_mm: document.getElementById('yl-diatomi').value || null,
     monada_metrisis: document.getElementById('yl-monada').value,
     paratirishis: document.getElementById('yl-paratirishis').value
