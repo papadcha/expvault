@@ -642,7 +642,7 @@ body.electron .main    { padding-top: 60px; }
       </div>
       <div class="card">
         <div class="card-title">Λίστα Αδειών</div>
-        <table><thead><tr><th>Αρ. Άδειας</th><th>Περιγραφή</th></tr></thead><tbody id="adeia-body"></tbody></table>
+        <table><thead><tr><th>Αρ. Άδειας</th><th>Περιγραφή</th><th>Συντομογραφία</th></tr></thead><tbody id="adeia-body"></tbody></table>
       </div>
     </div>
   </div>
@@ -1116,7 +1116,7 @@ async function loadAdeies() {
   allAdeies = await py('get_adeies');
   const body=document.getElementById('adeia-body');
   body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" onclick='fillAdeiaForm(${JSON.stringify(a)})'>
-    <td><strong>${a.arithmos_adeias}</strong></td><td>${a.perigrafi||'—'}</td>
+    <td><strong>${a.arithmos_adeias}</strong></td><td>${a.perigrafi||'—'}</td><td>${a.syntomografia_ekdousas||'—'}</td>
   </tr>`).join('')||'<tr><td colspan="2" style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
 }
 
@@ -1124,6 +1124,7 @@ function fillAdeiaForm(a) {
   document.getElementById('adeia-edit-id').value=a.id;
   document.getElementById('adeia-form-title').textContent='Επεξεργασία Άδειας';
   document.getElementById('adeia-num').value=a.arithmos_adeias;
+  document.getElementById('adeia-syntomografia').value=a.syntomografia_ekdousas||'';
   document.getElementById('adeia-perigrafi').value=a.perigrafi||'';
   document.getElementById('adeia-del-btn').style.display='inline-flex';
 }
