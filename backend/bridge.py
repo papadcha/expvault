@@ -171,6 +171,7 @@ def handle(cmd, payload):
         importlib.reload(exports)
         import sys; print('[DEBUG] exports reloaded, get_ylika_order id:', id(exports.get_ylika_order), file=sys.stderr)
     if cmd == 'export_pdf':
+        import sys as _sys; from database import get_kiniseis as _gk; _kin2 = _gk(); _ord2 = exports.get_ylika_order(_kin2, 'detail'); print('[DEBUG] order:', [k for k,v in _ord2], file=_sys.stderr)
         kiniseis = database.get_kiniseis(
             yliko_id=payload.get('yliko_id'),
             apo=payload.get('apo'),
