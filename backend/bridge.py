@@ -169,6 +169,7 @@ def handle(cmd, payload):
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
     if cmd in ('export_pdf', 'export_excel'):
         importlib.reload(exports)
+        import sys; print('[DEBUG] exports reloaded, get_ylika_order id:', id(exports.get_ylika_order), file=sys.stderr)
     if cmd == 'export_pdf':
         kiniseis = database.get_kiniseis(
             yliko_id=payload.get('yliko_id'),
