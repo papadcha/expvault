@@ -172,7 +172,7 @@ def handle(cmd, payload):
             apo=payload.get('apo'),
             eos=payload.get('eos')
         )
-        data = exports.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'))
+        data = exports.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'), payload.get('nonel_mode','detail'))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)
@@ -185,7 +185,7 @@ def handle(cmd, payload):
             apo=payload.get('apo'),
             eos=payload.get('eos')
         )
-        data = exports.export_excel(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'))
+        data = exports.export_excel(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('nonel_mode','detail'))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)

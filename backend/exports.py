@@ -65,13 +65,67 @@ def fmt_num(val):
     if val is None or val == 0: return ''
     return f"{val:,.2f}".replace(',','X').replace('.',',').replace('X','.')
 
-def get_ylika_order(kiniseis):
-    order = OrderedDict()
+def get_ylika_order(kiniseis, nonel_mode='detail'):
+    from database import get_all_ylika
+    all_ylika = {y['id']: y for y in get_all_ylika()}
+
+    if nonel_mode == 'detail':
+        # Τρέχουσα συμπεριφορά — όλα τα υλικά ξεχωριστά
+        order = OrderedDict()
+        for k in kiniseis:
+            yid = k['yliko_id']
+            if yid not in order:
+                order[yid] = (k['yliko_onoma'], k['monada_metrisis'])
+        return list(order.items())
+
+    # Για grouped/total/subgroup: χτίζουμε virtual στήλες
+    # Πρώτα βρες τα non-NONEL υλικά που εμφανίζονται
+    seen_yids = OrderedDict()
     for k in kiniseis:
         yid = k['yliko_id']
-        if yid not in order:
-            order[yid] = (k['yliko_onoma'], k['monada_metrisis'])
-    return list(order.items())
+        if yid not in seen_yids:
+            seen_yids[yid] = all_ylika.get(yid, {})
+
+    result = []
+    nonel_added = set()
+
+    for yid, ydata in seen_yids.items():
+        grp = ydata.get('export_group')
+        sub = ydata.get('export_subgroup')
+
+        if grp == 'NONEL':
+            if nonel_mode == 'total':
+                if 'NONEL_TOTAL' not in nonel_added:
+                    result.append(('NONEL_TOTAL', ('NONEL ΣΥΝΟΛΟ', 'Τεμ')))
+                    nonel_added.add('NONEL_TOTAL')
+            elif nonel_mode == 'grouped':
+                for s in ['SNAPLINE', 'UNIDET', 'LP']:
+                    key = f'NONEL_{s}'
+                    if key not in nonel_added:
+                        result.append((key, ('NONEL ' + s, 'Τεμ')))
+                        nonel_added.add(key)
+            elif nonel_mode == 'subgroup':
+                # Επιλογή Α - ανά διατομή (TODO)
+                if yid not in nonel_added:
+                    result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', 'Τεμ'))))
+                    nonel_added.add(yid)
+        else:
+            result.append((yid, (k['yliko_onoma'] if hasattr(k, '__getitem__') else ydata.get('onoma',''), ydata.get('monada_metrisis', ''))))
+
+    return result
+
+
+def get_nonel_sums(row_ylika, all_ylika, nonel_mode):
+    """Υπολογίζει αθροίσματα NONEL για grouped/total mode."""
+    sums = {'SNAPLINE': 0, 'UNIDET': 0, 'LP': 0}
+    for yid, pos in row_ylika.items():
+        y = all_ylika.get(yid, {})
+        if y.get('export_group') == 'NONEL':
+            sub = y.get('export_subgroup', '')
+            if sub in sums:
+                sums[sub] += pos or 0
+    sums['TOTAL'] = sum(sums.values())
+    return sums
 
 def build_book_rows(kiniseis):
     agores     = OrderedDict()
@@ -259,7 +313,7 @@ def build_book_rows(kiniseis):
 
 # ─── PDF ─────────────────────────────────────────────────────────────────────
 
-def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka') -> bytes:
+def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka', nonel_mode: str = 'detail') -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
@@ -271,7 +325,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     if not FONT_REGULAR:
         F, FB = 'Helvetica', 'Helvetica-Bold'
 
-    ylika_order = get_ylika_order(kiniseis)
+    ylika_order = get_ylika_order(kiniseis, nonel_mode)
     rows, kat_by_parst = build_book_rows(kiniseis)
     n = len(ylika_order)
 
@@ -345,8 +399,18 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             p(str(row['aa']) if row['aa'] else '', txt_s),
             p(adeia_ekd, txt_s),
         ]
+        from database import get_all_ylika as _gay
+        _all_y = {y['id']: y for y in _gay()}
+        _nonel_sums = get_nonel_sums(row['ylika'], _all_y, nonel_mode) if nonel_mode != 'detail' else {}
         for yid, _ in ylika_order:
-            v = row['ylika'].get(yid)
+            if isinstance(yid, str) and yid.startswith('NONEL_'):
+                if yid == 'NONEL_TOTAL':
+                    v = _nonel_sums.get('TOTAL', 0) or None
+                else:
+                    sub = yid.replace('NONEL_', '')
+                    v = _nonel_sums.get(sub, 0) or None
+            else:
+                v = row['ylika'].get(yid)
             cells.append(p(fmt_num(v) if v else '—', num_s))
         cells += [
             p(f"{fmt_date(row['imerominia'])}<br/>{row['parstatiko']}", txt_s),
@@ -405,8 +469,18 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             kat_used.add(ap)
             kat_imer = kat.get('imerominia', imer)
             cells = [p(fmt_date(kat_imer), CS), p(fmt_date(kat_imer), CS)]
+            from database import get_all_ylika as _gay2
+            _all_y2 = {y['id']: y for y in _gay2()}
+            _nonel_sums2 = get_nonel_sums(kat.get('ylika',{}), _all_y2, nonel_mode) if nonel_mode != 'detail' else {}
             for yid, _ in ylika_order:
-                v = kat.get('ylika', {}).get(yid)
+                if isinstance(yid, str) and yid.startswith('NONEL_'):
+                    if yid == 'NONEL_TOTAL':
+                        v = _nonel_sums2.get('TOTAL', 0) or None
+                    else:
+                        sub = yid.replace('NONEL_', '')
+                        v = _nonel_sums2.get(sub, 0) or None
+                else:
+                    v = kat.get('ylika', {}).get(yid)
                 cells.append(p(fmt_num(v) if v else '—', RS))
             cells.append(p(kat.get('paratirishis',''), CS))
             if ri % 2 == 0:
@@ -430,12 +504,12 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
 # ─── Excel ────────────────────────────────────────────────────────────────────
 
-def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
+def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode: str = 'detail') -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    ylika_order = get_ylika_order(kiniseis)
+    ylika_order = get_ylika_order(kiniseis, nonel_mode)
     rows, kat_by_parst = build_book_rows(kiniseis)
     n = len(ylika_order)
 
