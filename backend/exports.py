@@ -65,21 +65,57 @@ def fmt_num(val):
     if val is None or val == 0: return ''
     return f"{val:,.2f}".replace(',','X').replace('.',',').replace('X','.')
 
+# Σειρά εμφάνισης υλικών στο export
+YLIKA_ORDER_IDS = [1, 4, 3, 2, 5, 10, 9, 33]
+
+def _sort_key(yid, ydata):
+    if ydata.get('export_group') == 'NONEL':
+        return 999
+    try:
+        return YLIKA_ORDER_IDS.index(yid)
+    except ValueError:
+        return 500
+
 def get_ylika_order(kiniseis, nonel_mode='detail'):
     from database import get_all_ylika
     all_ylika = {y['id']: y for y in get_all_ylika()}
 
+    seen_ids = set(k['yliko_id'] for k in kiniseis)
+
     if nonel_mode == 'detail':
-        # Τρέχουσα συμπεριφορά — όλα τα υλικά ξεχωριστά
-        order = OrderedDict()
+        result = []
+        added = set()
+        if 1 in seen_ids:
+            result.append((1, (all_ylika[1]['onoma'], all_ylika[1]['monada_metrisis'])))
+            added.add(1)
+        if seen_ids & {4, 3}:
+            lbl = 'POLADYN 65X500' + chr(10) + 'POLADYN 38X380'
+            result.append(('POLADYN', (lbl, 'Κιλ')))
+            added |= {4, 3}
+        if 2 in seen_ids:
+            result.append((2, (all_ylika[2]['onoma'], all_ylika[2]['monada_metrisis'])))
+            added.add(2)
+        if seen_ids & {5, 10}:
+            lbl = 'ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ'
+            result.append(('THRYALLIDES', (lbl, 'Μετρ')))
+            added |= {5, 10}
+        if seen_ids & {9, 33}:
+            lbl = 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ'
+            result.append(('KAPSYLIA', (lbl, 'Τεμ')))
+            added |= {9, 33}
         for k in kiniseis:
             yid = k['yliko_id']
-            if yid not in order:
-                order[yid] = (k['yliko_onoma'], k['monada_metrisis'])
-        return list(order.items())
+            if yid not in added and all_ylika.get(yid, {}).get('export_group') != 'NONEL':
+                result.append((yid, (k['yliko_onoma'], k['monada_metrisis'])))
+                added.add(yid)
+        nonel_added = set()
+        for k in kiniseis:
+            yid = k['yliko_id']
+            if all_ylika.get(yid, {}).get('export_group') == 'NONEL' and yid not in nonel_added:
+                result.append((yid, (k['yliko_onoma'], k['monada_metrisis'])))
+                nonel_added.add(yid)
+        return result
 
-    # Για grouped/total/subgroup: χτίζουμε virtual στήλες
-    # Πρώτα βρες τα non-NONEL υλικά που εμφανίζονται
     seen_yids = OrderedDict()
     for k in kiniseis:
         yid = k['yliko_id']
@@ -87,30 +123,81 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
             seen_yids[yid] = all_ylika.get(yid, {})
 
     result = []
+    added = set()
     nonel_added = set()
 
+    for yid in [1, 4, 3, 2, 5, 10, 9, 33]:
+        if yid not in seen_yids or yid in added:
+            continue
+        ydata = seen_yids[yid]
+        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        added.add(yid)
+
     for yid, ydata in seen_yids.items():
+        if yid in added or ydata.get('export_group') == 'NONEL':
+            continue
+        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        added.add(yid)
+
+    for yid, ydata in seen_yids.items():
+        if ydata.get('export_group') != 'NONEL':
+            continue
+        if nonel_mode == 'total':
+            if 'NONEL_TOTAL' not in nonel_added:
+                result.append(('NONEL_TOTAL', ('NONEL ΣΥΝΟΛΟ', 'Τεμ')))
+                nonel_added.add('NONEL_TOTAL')
+        elif nonel_mode == 'grouped':
+            for s in ['SNAPLINE', 'UNIDET', 'LP']:
+                key = 'NONEL_' + s
+                if key not in nonel_added:
+                    result.append((key, ('NONEL ' + s, 'Τεμ')))
+                    nonel_added.add(key)
+        elif nonel_mode == 'subgroup':
+            if yid not in nonel_added:
+                result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', 'Τεμ'))))
+                nonel_added.add(yid)
+
+    return result
+
+    result = []
+    added = set()
+    nonel_added = set()
+
+    # Σταθερή σειρά non-NONEL
+    for yid in [1, 4, 3, 2, 5, 10, 9, 33]:
+        if yid not in seen_yids or yid in added:
+            continue
+        ydata = seen_yids[yid]
+        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        added.add(yid)
+
+    # Υπόλοιπα non-NONEL
+    for yid, ydata in seen_yids.items():
+        if yid in added or ydata.get('export_group') == 'NONEL':
+            continue
+        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        added.add(yid)
+
+    # NONEL
+    for yid, ydata in seen_yids.items():
+        if ydata.get('export_group') != 'NONEL':
+            continue
         grp = ydata.get('export_group')
         sub = ydata.get('export_subgroup')
-
-        if grp == 'NONEL':
-            if nonel_mode == 'total':
-                if 'NONEL_TOTAL' not in nonel_added:
-                    result.append(('NONEL_TOTAL', ('NONEL ΣΥΝΟΛΟ', 'Τεμ')))
-                    nonel_added.add('NONEL_TOTAL')
-            elif nonel_mode == 'grouped':
-                for s in ['SNAPLINE', 'UNIDET', 'LP']:
-                    key = f'NONEL_{s}'
-                    if key not in nonel_added:
-                        result.append((key, ('NONEL ' + s, 'Τεμ')))
-                        nonel_added.add(key)
-            elif nonel_mode == 'subgroup':
-                # Επιλογή Α - ανά διατομή (TODO)
-                if yid not in nonel_added:
-                    result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', 'Τεμ'))))
-                    nonel_added.add(yid)
-        else:
-            result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        if nonel_mode == 'total':
+            if 'NONEL_TOTAL' not in nonel_added:
+                result.append(('NONEL_TOTAL', ('NONEL ΣΥΝΟΛΟ', 'Τεμ')))
+                nonel_added.add('NONEL_TOTAL')
+        elif nonel_mode == 'grouped':
+            for s in ['SNAPLINE', 'UNIDET', 'LP']:
+                key = f'NONEL_{s}'
+                if key not in nonel_added:
+                    result.append((key, ('NONEL ' + s, 'Τεμ')))
+                    nonel_added.add(key)
+        elif nonel_mode == 'subgroup':
+            if yid not in nonel_added:
+                result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', 'Τεμ'))))
+                nonel_added.add(yid)
 
     return result
 
@@ -402,6 +489,11 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         from database import get_all_ylika as _gay
         _all_y = {y['id']: y for y in _gay()}
         _nonel_sums = get_nonel_sums(row['ylika'], _all_y, nonel_mode) if nonel_mode != 'detail' else {}
+        MERGED_IDS = {
+            'POLADYN':     [4, 3],
+            'THRYALLIDES': [5, 10],
+            'KAPSYLIA':    [9, 33],
+        }
         for yid, _ in ylika_order:
             if isinstance(yid, str) and yid.startswith('NONEL_'):
                 if yid == 'NONEL_TOTAL':
@@ -409,6 +501,12 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                 else:
                     sub = yid.replace('NONEL_', '')
                     v = _nonel_sums.get(sub, 0) or None
+            elif isinstance(yid, str) and yid in MERGED_IDS:
+                vals = [row['ylika'].get(i) for i in MERGED_IDS[yid] if row['ylika'].get(i)]
+                parts = [fmt_num(v2) for v2 in vals if v2]
+                combined = chr(10).join(parts) if parts else '—'
+                cells.append(p(combined, num_s))
+                continue
             else:
                 v = row['ylika'].get(yid)
             cells.append(p(fmt_num(v) if v else '—', num_s))
@@ -472,6 +570,11 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             from database import get_all_ylika as _gay2
             _all_y2 = {y['id']: y for y in _gay2()}
             _nonel_sums2 = get_nonel_sums(kat.get('ylika',{}), _all_y2, nonel_mode) if nonel_mode != 'detail' else {}
+            MERGED_IDS = {
+                'POLADYN':     [4, 3],
+                'THRYALLIDES': [5, 10],
+                'KAPSYLIA':    [9, 33],
+            }
             for yid, _ in ylika_order:
                 if isinstance(yid, str) and yid.startswith('NONEL_'):
                     if yid == 'NONEL_TOTAL':
@@ -479,6 +582,12 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                     else:
                         sub = yid.replace('NONEL_', '')
                         v = _nonel_sums2.get(sub, 0) or None
+                elif isinstance(yid, str) and yid in MERGED_IDS:
+                    vals = [kat.get('ylika', {}).get(i) for i in MERGED_IDS[yid]]
+                    parts = [fmt_num(v2) for v2 in vals if v2]
+                    combined = chr(10).join(parts) if parts else '—'
+                    cells.append(p(combined, RS))
+                    continue
                 else:
                     v = kat.get('ylika', {}).get(yid)
                 cells.append(p(fmt_num(v) if v else '—', RS))
