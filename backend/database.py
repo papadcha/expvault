@@ -147,13 +147,13 @@ def get_all_promitheftes():
     with get_db() as conn:
         return [dict(r) for r in conn.execute("SELECT * FROM promitheftes ORDER BY onoma").fetchall()]
 
-def add_promitheftis(onoma):
+def add_promitheftis(onoma, syntomografia=None):
     with get_db() as conn:
-        conn.execute("INSERT INTO promitheftes(onoma) VALUES(?)", (onoma,))
+        conn.execute("INSERT INTO promitheftes(onoma, syntomografia) VALUES(?,?)", (onoma, syntomografia))
 
-def update_promitheftis(id, onoma):
+def update_promitheftis(id, onoma, syntomografia=None):
     with get_db() as conn:
-        conn.execute("UPDATE promitheftes SET onoma=? WHERE id=?", (onoma, id))
+        conn.execute("UPDATE promitheftes SET onoma=?, syntomografia=? WHERE id=?", (onoma, syntomografia, id))
 
 def delete_promitheftis(id):
     with get_db() as conn:

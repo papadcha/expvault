@@ -611,6 +611,7 @@ body.electron .main    { padding-top: 60px; }
         <div class="card-title" id="prom-form-title">Νέος Προμηθευτής</div>
         <input type="hidden" id="prom-edit-id">
         <div class="form-row"><div><label>Όνομα *</label><input type="text" id="prom-onoma"></div></div>
+        <div class="form-row"><div><label>Συντομογραφία (για βιβλίο)</label><input type="text" id="prom-syntomografia" placeholder="π.χ. NITROCHEM"></div></div>
         <div class="form-actions">
           <button class="btn btn-success" onclick="saveProm()">💾 Αποθήκευση</button>
           <button class="btn btn-outline" onclick="clearPromForm()">✖</button>
@@ -1082,12 +1083,13 @@ function fillPromForm(p) {
   document.getElementById('prom-edit-id').value=p.id;
   document.getElementById('prom-form-title').textContent='Επεξεργασία Προμηθευτή';
   document.getElementById('prom-onoma').value=p.onoma;
+  document.getElementById('prom-syntomografia').value=p.syntomografia||'';
   document.getElementById('prom-del-btn').style.display='inline-flex';
 }
 
 async function saveProm() {
   const id=document.getElementById('prom-edit-id').value;
-  const body={onoma:document.getElementById('prom-onoma').value.trim()};
+  const body={onoma:document.getElementById('prom-onoma').value.trim(), syntomografia:document.getElementById('prom-syntomografia').value.trim()||null};
   if (!body.onoma) { alert('Το όνομα είναι υποχρεωτικό.'); return; }
   try {
     if (id) await py('update_promitheftis', { id: parseInt(id), ...body });
@@ -1105,6 +1107,7 @@ function clearPromForm() {
   document.getElementById('prom-edit-id').value='';
   document.getElementById('prom-form-title').textContent='Νέος Προμηθευτής';
   document.getElementById('prom-onoma').value='';
+  document.getElementById('prom-syntomografia').value='';
   document.getElementById('prom-del-btn').style.display='none';
 }
 

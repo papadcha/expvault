@@ -41,11 +41,11 @@ def handle(cmd, payload):
         return database.get_all_promitheftes()
 
     if cmd == 'add_promitheftis':
-        database.add_promitheftis(payload['onoma'])
+        database.add_promitheftis(payload['onoma'], payload.get('syntomografia'))
         return {'ok': True}
 
     if cmd == 'update_promitheftis':
-        database.update_promitheftis(payload['id'], payload['onoma'])
+        database.update_promitheftis(payload['id'], payload['onoma'], payload.get('syntomografia'))
         return {'ok': True}
 
     if cmd == 'delete_promitheftis':
