@@ -339,7 +339,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         num_s  = ER if is_epi else RS
         adeia_ekd = row['adeia']
         if row.get('ekdousa'):
-            adeia_ekd += f"\n{row['ekdousa']}"
+            adeia_ekd += f"<br/>{row['ekdousa']}"
 
         cells = [
             p(str(row['aa']) if row['aa'] else '', txt_s),
@@ -478,7 +478,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
         is_epi = row['type'] == 'epistrofi'
         fill   = red_fill if is_epi else (alt_fill if ri%2==0 else None)
         font   = red_font if is_epi else None
-        adeia  = row['adeia'] + (f"\n{row['ekdousa']}" if row.get('ekdousa') else '')
+        adeia  = row['adeia'] + (f"<br/>{row['ekdousa']}" if row.get('ekdousa') else '')
 
         vals = [row['aa'] or '', adeia] + \
                [row['ylika'].get(yid) for yid,_ in ylika_order] + \
