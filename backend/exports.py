@@ -308,7 +308,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
     l_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + \
               [''] * (len(L_WIDTHS)-1)
-    l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./\nΕκδ.Αρχή',HS)] + yliko_hdrs + \
+    l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./<br/>Εκδ.Αρχή',HS)] + yliko_hdrs + \
               [p('Ημερ.Αγ./<br/>Αρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
 
     l_data  = [l_title, l_hdr]
