@@ -413,6 +413,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         F, FB = 'Helvetica', 'Helvetica-Bold'
 
     ylika_order = get_ylika_order(kiniseis, nonel_mode)
+    import sys as _s; _s.stderr.write('[DEBUG PDF] ylika_order: ' + str([k for k,v in ylika_order]) + '\n')
     rows, kat_by_parst = build_book_rows(kiniseis)
     n = len(ylika_order)
 
