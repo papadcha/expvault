@@ -85,24 +85,22 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
     if nonel_mode == 'detail':
         result = []
         added = set()
-        if 1 in seen_ids:
+        # Πάντα εμφανίζουμε τις fixed στήλες ανεξάρτητα από φίλτρο
+        if 1 in all_ylika:
             result.append((1, (all_ylika[1]['onoma'], all_ylika[1]['monada_metrisis'])))
             added.add(1)
-        if seen_ids & {4, 3}:
-            lbl = 'POLADYN 65X500' + chr(10) + 'POLADYN 38X380'
-            result.append(('POLADYN', (lbl, 'Κιλ')))
-            added |= {4, 3}
-        if 2 in seen_ids:
+        lbl = 'POLADYN 65X500' + chr(10) + 'POLADYN 38X380'
+        result.append(('POLADYN', (lbl, 'Κιλ')))
+        added |= {4, 3}
+        if 2 in all_ylika:
             result.append((2, (all_ylika[2]['onoma'], all_ylika[2]['monada_metrisis'])))
             added.add(2)
-        if seen_ids & {5, 10}:
-            lbl = 'ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ'
-            result.append(('THRYALLIDES', (lbl, 'Μετρ')))
-            added |= {5, 10}
-        if seen_ids & {9, 33}:
-            lbl = 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ'
-            result.append(('KAPSYLIA', (lbl, 'Τεμ')))
-            added |= {9, 33}
+        lbl = 'ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ'
+        result.append(('THRYALLIDES', (lbl, 'Μετρ')))
+        added |= {5, 10}
+        lbl = 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ'
+        result.append(('KAPSYLIA', (lbl, 'Τεμ')))
+        added |= {9, 33}
         for k in kiniseis:
             yid = k['yliko_id']
             if yid not in added and all_ylika.get(yid, {}).get('export_group') != 'NONEL':
