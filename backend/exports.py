@@ -110,7 +110,7 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
                     result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', 'Τεμ'))))
                     nonel_added.add(yid)
         else:
-            result.append((yid, (k['yliko_onoma'] if hasattr(k, '__getitem__') else ydata.get('onoma',''), ydata.get('monada_metrisis', ''))))
+            result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
 
     return result
 
