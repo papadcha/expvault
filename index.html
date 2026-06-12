@@ -556,6 +556,17 @@ body.electron .main    { padding-top: 60px; }
         <div><label>Από ημερομηνία</label><input type="date" id="exp-apo"></div>
         <div><label>Έως ημερομηνία</label><input type="date" id="exp-eos"></div>
       </div>
+      <div class="form-row">
+        <div>
+          <label>Εμφάνιση NONEL</label>
+          <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
+            <label><input type="radio" name="nonel-mode" value="detail" checked> Αναλυτικό (27 στήλες)</label>
+            <label><input type="radio" name="nonel-mode" value="subgroup"> Ανά διατομή (16 στήλες)</label>
+            <label><input type="radio" name="nonel-mode" value="grouped"> NONEL ανά τύπο (SNAPLINE/UNIDET/LP)</label>
+            <label><input type="radio" name="nonel-mode" value="total"> NONEL συνολικό (1 στήλη)</label>
+          </div>
+        </div>
+      </div>
       <div class="form-actions">
         <button class="btn btn-danger" onclick="doExport('pdf')">📄 Εξαγωγή PDF (Νόμιμη Μορφή)</button>
         <button class="btn btn-success" onclick="doExport('excel')">📊 Εξαγωγή Excel</button>
@@ -1373,6 +1384,7 @@ async function doExport(fmt) {
     const ap = document.getElementById('exp-apo').value;
     const eo = document.getElementById('exp-eos').value;
     const font = document.getElementById('exp-font').value;
+    const nonel_mode = document.querySelector('input[name="nonel-mode"]:checked')?.value || 'detail';
     const ext = fmt === 'excel' ? 'xlsx' : fmt;
     const savePath = await window.api.saveFile({
       defaultName: `vivlio_ekrktikon.${ext}`, ext
@@ -1382,7 +1394,7 @@ async function doExport(fmt) {
       yliko_id: yl ? parseInt(yl) : null,
       apo: ap || null, eos: eo || null,
       yliko_label: 'Όλα', period_label: `${ap||'—'} έως ${eo||'—'}`,
-      out_path: savePath, font: font
+      out_path: savePath, font: font, nonel_mode: nonel_mode
     });
     msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${savePath}</div>`;
   } catch(e) {
