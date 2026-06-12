@@ -1130,7 +1130,7 @@ function fillAdeiaForm(a) {
 
 async function saveAdeia() {
   const id=document.getElementById('adeia-edit-id').value;
-  const body={arithmos_adeias:document.getElementById('adeia-num').value.trim(), perigrafi:document.getElementById('adeia-perigrafi').value};
+  const body={arithmos_adeias:document.getElementById('adeia-num').value.trim(), perigrafi:document.getElementById('adeia-perigrafi').value, syntomografia_ekdousas:document.getElementById('adeia-syntomografia').value.trim()||null};
   if (!body.arithmos_adeias) { alert('Ο αριθμός άδειας είναι υποχρεωτικός.'); return; }
   try {
     if (id) await py('update_adeia', { id: parseInt(id), ...body });

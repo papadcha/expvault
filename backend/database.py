@@ -168,13 +168,13 @@ def get_all_adeies():
     with get_db() as conn:
         return [dict(r) for r in conn.execute("SELECT * FROM adeies ORDER BY arithmos_adeias").fetchall()]
 
-def add_adeia(arithmos, perigrafi):
+def add_adeia(arithmos, perigrafi, syntomografia_ekdousas=None):
     with get_db() as conn:
-        conn.execute("INSERT INTO adeies(arithmos_adeias,perigrafi) VALUES(?,?)", (arithmos, perigrafi or None))
+        conn.execute("INSERT INTO adeies(arithmos_adeias,perigrafi,syntomografia_ekdousas) VALUES(?,?,?)", (arithmos, perigrafi or None, syntomografia_ekdousas))
 
-def update_adeia(id, arithmos, perigrafi):
+def update_adeia(id, arithmos, perigrafi, syntomografia_ekdousas=None):
     with get_db() as conn:
-        conn.execute("UPDATE adeies SET arithmos_adeias=?,perigrafi=? WHERE id=?", (arithmos, perigrafi or None, id))
+        conn.execute("UPDATE adeies SET arithmos_adeias=?,perigrafi=?,syntomografia_ekdousas=? WHERE id=?", (arithmos, perigrafi or None, syntomografia_ekdousas, id))
 
 def delete_adeia(id):
     with get_db() as conn:

@@ -57,11 +57,11 @@ def handle(cmd, payload):
         return database.get_all_adeies()
 
     if cmd == 'add_adeia':
-        database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'))
+        database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
         return {'ok': True}
 
     if cmd == 'update_adeia':
-        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'))
+        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
         return {'ok': True}
 
     if cmd == 'delete_adeia':
