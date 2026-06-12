@@ -24,12 +24,12 @@ def handle(cmd, payload):
 
     if cmd == 'add_yliko':
         database.add_yliko(payload['onoma'], payload.get('diatomi_mm'),
-                           payload['monada_metrisis'], payload.get('paratirishis'))
+                           payload['monada_metrisis'], payload.get('paratirishis'), payload.get('kategoria'))
         return {'ok': True}
 
     if cmd == 'update_yliko':
         database.update_yliko(payload['id'], payload['onoma'], payload.get('diatomi_mm'),
-                              payload['monada_metrisis'], payload.get('paratirishis'))
+                              payload['monada_metrisis'], payload.get('paratirishis'), payload.get('kategoria'))
         return {'ok': True}
 
     if cmd == 'delete_yliko':
