@@ -470,7 +470,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                     sub = yid.replace('NONEL_', '')
                     v = _nonel_sums.get(sub, 0) or None
             elif isinstance(yid, str) and yid in MERGED_IDS:
-                ids = MERGED_IDS[yid][0]
+                ids = MERGED_IDS[yid]
                 parts = [fmt_num(row['ylika'].get(i)) if row['ylika'].get(i) else '—' for i in ids]
                 combined = '<br/>'.join(parts)
                 cells.append(p(combined, num_s))
@@ -551,7 +551,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                         sub = yid.replace('NONEL_', '')
                         v = _nonel_sums2.get(sub, 0) or None
                 elif isinstance(yid, str) and yid in MERGED_IDS:
-                    ids = MERGED_IDS[yid][0]
+                    ids = MERGED_IDS[yid]
                     parts = [fmt_num(kat.get('ylika', {}).get(i)) if kat.get('ylika', {}).get(i) else '—' for i in ids]
                     combined = '<br/>'.join(parts)
                     cells.append(p(combined, RS))
