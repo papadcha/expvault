@@ -349,7 +349,9 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
         params = []
         if yliko_id:
             sql += ' AND k.yliko_id=?'; params.append(yliko_id)
-        if imerominia:
+        if imerominia and not parstatiko:
+            # Όταν υπάρχει parstatiko, αγνοούμε imerominia — οι επιστροφές
+            # μπορεί να είναι σε διαφορετική ημερομηνία και βρίσκονται μέσω agora_ref
             sql += ' AND k.imerominia=?'; params.append(imerominia)
         if parstatiko:
             # Φίλτρο με agora_ref — συνδέει ΕΠΙΣΤΡΟΦΕΣ με την αγορά τους
