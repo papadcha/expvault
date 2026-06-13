@@ -406,7 +406,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             virtual_order.append((yid, (on, mo)))
     ylika_order = virtual_order
     n = len(ylika_order)
-    yliko_hdrs = [p(f"{on.replace(chr(10), '<br/>')}\n({mo})", HS) for _, (on, mo) in ylika_order]
+    yliko_hdrs = [p(f"{on}<br/>({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
     L_FIXED = [0.5, 1.7, 1.8, 1.6]
