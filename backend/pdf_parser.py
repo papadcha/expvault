@@ -36,6 +36,11 @@ def _normalize_date(d: str) -> str:
     return d
 
 
+def _clean_doc_number(raw: str) -> str:
+    """Αφαιρεί παύλες από αριθμό παραστατικού. π.χ. 'ΔΙΧΝ - 19586' → 'ΔΙΧΝ 19586'"""
+    return re.sub(r'\s*[-–]\s*', ' ', raw).strip()
+
+
 def parse_pdf(filepath: str) -> dict:
     raw_text = extract_text_from_pdf(filepath)
     suggested = {
@@ -78,7 +83,7 @@ def parse_pdf(filepath: str) -> dict:
         for line in lines:
             m = sxet_pat.search(line)
             if m:
-                suggested['arithmos_parstatikos'] = m.group(1).strip()
+                suggested['arithmos_parstatikos'] = _clean_doc_number(m.group(1))
                 suggested['imerominia'] = _normalize_date(m.group(2))
                 break
     else:

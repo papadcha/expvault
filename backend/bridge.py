@@ -15,6 +15,7 @@ database.DB_NAME = DB_PATH
 database.init_db()
 
 import pdf_parser
+import importlib
 import exports
 
 def handle(cmd, payload):
@@ -24,12 +25,12 @@ def handle(cmd, payload):
 
     if cmd == 'add_yliko':
         database.add_yliko(payload['onoma'], payload.get('diatomi_mm'),
-                           payload['monada_metrisis'], payload.get('paratirishis'))
+                           payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'))
         return {'ok': True}
 
     if cmd == 'update_yliko':
         database.update_yliko(payload['id'], payload['onoma'], payload.get('diatomi_mm'),
-                              payload['monada_metrisis'], payload.get('paratirishis'))
+                              payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'))
         return {'ok': True}
 
     if cmd == 'delete_yliko':
@@ -41,11 +42,11 @@ def handle(cmd, payload):
         return database.get_all_promitheftes()
 
     if cmd == 'add_promitheftis':
-        database.add_promitheftis(payload['onoma'])
+        database.add_promitheftis(payload['onoma'], payload.get('syntomografia'))
         return {'ok': True}
 
     if cmd == 'update_promitheftis':
-        database.update_promitheftis(payload['id'], payload['onoma'])
+        database.update_promitheftis(payload['id'], payload['onoma'], payload.get('syntomografia'))
         return {'ok': True}
 
     if cmd == 'delete_promitheftis':
@@ -57,11 +58,11 @@ def handle(cmd, payload):
         return database.get_all_adeies()
 
     if cmd == 'add_adeia':
-        database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'))
+        database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
         return {'ok': True}
 
     if cmd == 'update_adeia':
-        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'))
+        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
         return {'ok': True}
 
     if cmd == 'delete_adeia':
@@ -138,6 +139,11 @@ def handle(cmd, payload):
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
 
+    if cmd == 'get_kiniseis_by_parstatiko_yliko':
+        return database.get_kiniseis_by_parstatiko_yliko(
+            payload['arithmos_parstatikos'], payload['yliko_id']
+        )
+
     if cmd == 'delete_kiniseis_by_parstatiko':
         database.delete_kiniseis_by_parstatiko(payload.get('arithmos_parstatikos'))
         return {'ok': True}
@@ -166,13 +172,21 @@ def handle(cmd, payload):
         return {'ok': True}
 
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
+    if cmd in ('export_pdf', 'export_excel'):
+        importlib.reload(exports)
     if cmd == 'export_pdf':
         kiniseis = database.get_kiniseis(
             yliko_id=payload.get('yliko_id'),
             apo=payload.get('apo'),
             eos=payload.get('eos')
         )
-        data = exports.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'))
+        _mod = importlib.import_module('exports'); importlib.reload(_mod)
+        try:
+            data = _mod.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'), payload.get('nonel_mode','detail'))
+        except Exception as _e:
+            import sys, traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)
@@ -185,7 +199,7 @@ def handle(cmd, payload):
             apo=payload.get('apo'),
             eos=payload.get('eos')
         )
-        data = exports.export_excel(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'))
+        data = exports.export_excel(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('nonel_mode','detail'))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)

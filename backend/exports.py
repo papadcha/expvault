@@ -4,7 +4,7 @@
   Σελίδα 1: Αγορές / Επιστροφές
   Σελίδα 2: Καταναλώσεις
 """
-import io, os, glob
+import io, os, glob, re
 from datetime import datetime
 from collections import OrderedDict
 
@@ -65,13 +65,113 @@ def fmt_num(val):
     if val is None or val == 0: return ''
     return f"{val:,.2f}".replace(',','X').replace('.',',').replace('X','.')
 
-def get_ylika_order(kiniseis):
-    order = OrderedDict()
+# Σειρά εμφάνισης υλικών στο export
+YLIKA_ORDER_IDS = [1, 4, 3, 2, 5, 10, 9, 33]
+
+def _sort_key(yid, ydata):
+    if ydata.get('export_group') == 'NONEL':
+        return 999
+    try:
+        return YLIKA_ORDER_IDS.index(yid)
+    except ValueError:
+        return 500
+
+def get_ylika_order(kiniseis, nonel_mode='detail'):
+    from database import get_all_ylika
+    all_ylika = {y['id']: y for y in get_all_ylika()}
+
+    # Fixed σειρά: ANFO, POLADYN 65, POLADYN 38, EM-EX, ΒΡΑΔΥΚΑΥΣΤΗ, ΑΚΑΡΙΑΙΑ, ΚΟΙΝΟΙ, ΗΛΕΚΤΡΙΚΟΙ, NONEL
+    FIXED = [1, 4, 3, 2, 5, 10, 9, 33]
+    seen_ids = set(k['yliko_id'] for k in kiniseis)
+
+    if nonel_mode == 'detail':
+        result = []
+        added = set()
+        for yid in FIXED:
+            if yid in all_ylika:
+                y = all_ylika[yid]
+                result.append((yid, (y['onoma'], y['monada_metrisis'])))
+                added.add(yid)
+        for k in kiniseis:
+            yid = k['yliko_id']
+            if yid not in added and all_ylika.get(yid, {}).get('export_group') != 'NONEL':
+                result.append((yid, (k['yliko_onoma'], k['monada_metrisis'])))
+                added.add(yid)
+        nonel_added = set()
+        for k in kiniseis:
+            yid = k['yliko_id']
+            if all_ylika.get(yid, {}).get('export_group') == 'NONEL' and yid not in nonel_added:
+                result.append((yid, (k['yliko_onoma'], k['monada_metrisis'])))
+                nonel_added.add(yid)
+        return result
+
+    seen_yids = OrderedDict()
     for k in kiniseis:
         yid = k['yliko_id']
-        if yid not in order:
-            order[yid] = (k['yliko_onoma'], k['monada_metrisis'])
-    return list(order.items())
+        if yid not in seen_yids:
+            seen_yids[yid] = all_ylika.get(yid, {})
+
+    result = []
+    added = set()
+    nonel_added = set()
+
+    for yid in FIXED:
+        if yid not in seen_yids or yid in added:
+            continue
+        ydata = seen_yids[yid]
+        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        added.add(yid)
+
+    for yid, ydata in seen_yids.items():
+        if yid in added or ydata.get('export_group') == 'NONEL':
+            continue
+        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
+        added.add(yid)
+
+    for yid, ydata in seen_yids.items():
+        if ydata.get('export_group') != 'NONEL':
+            continue
+        if nonel_mode == 'total':
+            if 'NONEL_TOTAL' not in nonel_added:
+                result.append(('NONEL_TOTAL', ('NONEL ΣΥΝΟΛΟ', 'Τεμ')))
+                nonel_added.add('NONEL_TOTAL')
+        elif nonel_mode == 'grouped':
+            for s in ['SNAPLINE', 'UNIDET', 'LP']:
+                key = 'NONEL_' + s
+                if key not in nonel_added:
+                    result.append((key, ('NONEL ' + s, 'Τεμ')))
+                    nonel_added.add(key)
+        elif nonel_mode == 'subgroup':
+            gkey = nonel_group_key(ydata)
+            vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
+            if vkey not in nonel_added:
+                onoma = ydata.get('onoma', '')
+                display = re.sub(r'\s*\([^)]*\)', '', onoma).strip().replace(',', '').replace('  ', ' ')
+                result.append((vkey, (display, 'Τεμ')))
+                nonel_added.add(vkey)
+
+    return result
+
+def get_nonel_sums(row_ylika, all_ylika, nonel_mode):
+    """Υπολογίζει αθροίσματα NONEL για grouped/total mode."""
+    sums = {'SNAPLINE': 0, 'UNIDET': 0, 'LP': 0}
+    for yid, pos in row_ylika.items():
+        y = all_ylika.get(yid, {})
+        if y.get('export_group') == 'NONEL':
+            sub = y.get('export_subgroup', '')
+            if sub in sums:
+                sums[sub] += pos or 0
+    sums['TOTAL'] = sum(sums.values())
+    return sums
+
+def nonel_group_key(ydata):
+    """Εξάγει (subgroup, type_key) για ομαδοποίηση NONEL ανά καθυστέρηση.
+    π.χ. 'NONEL SNAPLINE, SL17 (4.8M)' → ('SNAPLINE', 'SL17')
+    """
+    sub = ydata.get('export_subgroup', '')
+    onoma = ydata.get('onoma', '')
+    m = re.search(r'([A-Z][A-Z0-9.]*)\s*\(', onoma)
+    return (sub, m.group(1) if m else onoma)
 
 def build_book_rows(kiniseis):
     agores     = OrderedDict()
@@ -84,8 +184,8 @@ def build_book_rows(kiniseis):
         parst = k.get('arithmos_parstatikos') or ''
         imer  = k['imerominia']
         adeia = k.get('arithmos_adeias') or ''
-        ekd   = k.get('ekdousa_archi') or ''
-        prom  = k.get('promitheftis_onoma') or ''
+        ekd   = k.get('syntomografia_ekdousas') or k.get('ekdousa_archi') or ''
+        prom  = k.get('promitheftis_syntomografia') or k.get('promitheftis_onoma') or ''
         par   = k.get('paratirishis') or ''
 
         if tipos == 'ΕΙΣΑΓΩΓΗ':
@@ -259,7 +359,7 @@ def build_book_rows(kiniseis):
 
 # ─── PDF ─────────────────────────────────────────────────────────────────────
 
-def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka') -> bytes:
+def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka', nonel_mode: str = 'detail') -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
@@ -271,9 +371,24 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     if not FONT_REGULAR:
         F, FB = 'Helvetica', 'Helvetica-Bold'
 
-    ylika_order = get_ylika_order(kiniseis)
+    ylika_order = get_ylika_order(kiniseis, nonel_mode)
     rows, kat_by_parst = build_book_rows(kiniseis)
-    n = len(ylika_order)
+
+    from database import get_all_ylika as _gay_main
+    _all_y = {y['id']: y for y in _gay_main()}
+    nonel_delay_map = {}
+    if nonel_mode == 'subgroup':
+        for k in kiniseis:
+            yid = k['yliko_id']
+            ydata = _all_y.get(yid, {})
+            if ydata.get('export_group') != 'NONEL':
+                continue
+            gkey = nonel_group_key(ydata)
+            vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
+            if vkey not in nonel_delay_map:
+                nonel_delay_map[vkey] = []
+            if yid not in nonel_delay_map[vkey]:
+                nonel_delay_map[vkey].append(yid)
 
     pagesize  = landscape(A4)
     page_w_cm = (pagesize[0] - 1.4*cm) / cm
@@ -298,18 +413,40 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
     def p(txt, s=None): return Paragraph(str(txt), s or CS)
 
-    yliko_hdrs = [p(f"{on}\n({mo})", HS) for _, (on, mo) in ylika_order]
+    MERGED_IDS = {
+        'POLADYN':     ([4, 3],  'POLADYN 65X500<br/>POLADYN 38X380', 'Κιλ'),
+        'THRYALLIDES': ([5, 10], 'ΒΡΑΔΥΚΑΥΣΤΗ<br/>ΑΚΑΡΙΑΙΑ',          'Μετρ'),
+        'KAPSYLIA':    ([9, 33], 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.<br/>ΗΛΕΚΤΡΙΚΟΙ',     'Τεμ'),
+    }
+    # Χτίζουμε virtual ylika_order με merged στήλες
+    virtual_order = []
+    added_merged = set()
+    for yid, (on, mo) in ylika_order:
+        if yid in {4, 3} and 'POLADYN' not in added_merged:
+            virtual_order.append(('POLADYN', ('POLADYN 65X500<br/>POLADYN 38X380', 'Κιλ')))
+            added_merged.add('POLADYN')
+        elif yid in {5, 10} and 'THRYALLIDES' not in added_merged:
+            virtual_order.append(('THRYALLIDES', ('ΒΡΑΔΥΚΑΥΣΤΗ<br/>ΑΚΑΡΙΑΙΑ', 'Μετρ')))
+            added_merged.add('THRYALLIDES')
+        elif yid in {9, 33} and 'KAPSYLIA' not in added_merged:
+            virtual_order.append(('KAPSYLIA', ('ΚΟΙΝΟΙ ΠΥΡΟΚΡ.<br/>ΗΛΕΚΤΡΙΚΟΙ', 'Τεμ')))
+            added_merged.add('KAPSYLIA')
+        elif yid not in {4, 3, 5, 10, 9, 33}:
+            virtual_order.append((yid, (on, mo)))
+    ylika_order = virtual_order
+    n = len(ylika_order)
+    yliko_hdrs = [p(f"{on}<br/>({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
-    L_FIXED = [0.6, 2.2, 2.8, 2.5]
+    L_FIXED = [0.5, 1.7, 1.8, 1.6]
     yw_l = max(0.8, (page_w_cm - sum(L_FIXED)) / n) if n else 1.5
     L_WIDTHS = [L_FIXED[0]*cm, L_FIXED[1]*cm] + [yw_l*cm]*n + \
                [L_FIXED[2]*cm, L_FIXED[3]*cm]
 
     l_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + \
               [''] * (len(L_WIDTHS)-1)
-    l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./\nΕκδ.Αρχή',HS)] + yliko_hdrs + \
-              [p('Ημερ.Αγ./\nΑρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
+    l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./<br/>Εκδ.Αρχή',HS)] + yliko_hdrs + \
+              [p('Ημερ.Αγ./<br/>Αρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
 
     l_data  = [l_title, l_hdr]
     n_ylika_cols = len(ylika_order)
@@ -339,17 +476,35 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         num_s  = ER if is_epi else RS
         adeia_ekd = row['adeia']
         if row.get('ekdousa'):
-            adeia_ekd += f"\n{row['ekdousa']}"
+            adeia_ekd += f"<br/>{row['ekdousa']}"
 
         cells = [
             p(str(row['aa']) if row['aa'] else '', txt_s),
             p(adeia_ekd, txt_s),
         ]
+        _nonel_sums = get_nonel_sums(row['ylika'], _all_y, nonel_mode) if nonel_mode not in ('detail', 'subgroup') else {}
+        _MERGED = {'POLADYN': [4, 3], 'THRYALLIDES': [5, 10], 'KAPSYLIA': [9, 33]}
         for yid, _ in ylika_order:
-            v = row['ylika'].get(yid)
-            cells.append(p(fmt_num(v) if v else '—', num_s))
+            if isinstance(yid, str) and yid.startswith('NONEL_DLY_'):
+                ids = nonel_delay_map.get(yid, [])
+                total = sum(row['ylika'].get(i, 0) for i in ids) or None
+                cells.append(p(fmt_num(total) if total else '—', num_s))
+            elif isinstance(yid, str) and yid.startswith('NONEL_'):
+                if yid == 'NONEL_TOTAL':
+                    v = _nonel_sums.get('TOTAL', 0) or None
+                else:
+                    sub = yid.replace('NONEL_', '')
+                    v = _nonel_sums.get(sub, 0) or None
+                cells.append(p(fmt_num(v) if v else '—', num_s))
+            elif isinstance(yid, str) and yid in _MERGED:
+                ids = _MERGED[yid]
+                parts = [fmt_num(row['ylika'].get(i)) if row['ylika'].get(i) else '—' for i in ids]
+                cells.append(p('<br/>'.join(parts), num_s))
+            else:
+                v = row['ylika'].get(yid)
+                cells.append(p(fmt_num(v) if v else '—', num_s))
         cells += [
-            p(f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", txt_s),
+            p(f"{fmt_date(row['imerominia'])}<br/>{row['parstatiko']}", txt_s),
             p(row['promitheftis'], txt_s),
         ]
         l_data.append(cells)
@@ -405,9 +560,28 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             kat_used.add(ap)
             kat_imer = kat.get('imerominia', imer)
             cells = [p(fmt_date(kat_imer), CS), p(fmt_date(kat_imer), CS)]
+            _nonel_sums2 = get_nonel_sums(kat.get('ylika',{}), _all_y, nonel_mode) if nonel_mode not in ('detail', 'subgroup') else {}
+            _MERGED = {'POLADYN': [4, 3], 'THRYALLIDES': [5, 10], 'KAPSYLIA': [9, 33]}
+            kat_ylika = kat.get('ylika', {})
             for yid, _ in ylika_order:
-                v = kat.get('ylika', {}).get(yid)
-                cells.append(p(fmt_num(v) if v else '—', RS))
+                if isinstance(yid, str) and yid.startswith('NONEL_DLY_'):
+                    ids = nonel_delay_map.get(yid, [])
+                    total = sum(kat_ylika.get(i, 0) for i in ids) or None
+                    cells.append(p(fmt_num(total) if total else '—', RS))
+                elif isinstance(yid, str) and yid.startswith('NONEL_'):
+                    if yid == 'NONEL_TOTAL':
+                        v = _nonel_sums2.get('TOTAL', 0) or None
+                    else:
+                        sub = yid.replace('NONEL_', '')
+                        v = _nonel_sums2.get(sub, 0) or None
+                    cells.append(p(fmt_num(v) if v else '—', RS))
+                elif isinstance(yid, str) and yid in _MERGED:
+                    ids = _MERGED[yid]
+                    parts = [fmt_num(kat_ylika.get(i)) if kat_ylika.get(i) else '—' for i in ids]
+                    cells.append(p('<br/>'.join(parts), RS))
+                else:
+                    v = kat_ylika.get(yid)
+                    cells.append(p(fmt_num(v) if v else '—', RS))
             cells.append(p(kat.get('paratirishis',''), CS))
             if ri % 2 == 0:
                 r_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
@@ -430,119 +604,219 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
 # ─── Excel ────────────────────────────────────────────────────────────────────
 
-def export_excel(kiniseis: list, yliko_label: str, period_label: str) -> bytes:
+def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode: str = 'detail') -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
-    ylika_order = get_ylika_order(kiniseis)
     rows, kat_by_parst = build_book_rows(kiniseis)
-    n = len(ylika_order)
+
+    from database import get_all_ylika as _gay_xl
+    _all_y = {y['id']: y for y in _gay_xl()}
+
+    _MERGED_IDS = {'POLADYN': [4, 3], 'THRYALLIDES': [5, 10], 'KAPSYLIA': [9, 33]}
+    _MERGED_HDR = {
+        'POLADYN':     ('POLADYN 65X500 / POLADYN 38X380', 'Κιλ'),
+        'THRYALLIDES': ('ΒΡΑΔΥΚΑΥΣΤΗ / ΑΚΑΡΙΑΙΑ',          'Μετρ'),
+        'KAPSYLIA':    ('ΚΟΙΝΟΙ ΠΥΡΟΚΡ. / ΗΛΕΚΤΡΙΚΟΙ',    'Τεμ'),
+    }
+
+    def build_virtual_order(mode):
+        raw = get_ylika_order(kiniseis, mode)
+        vo, added = [], set()
+        for yid, (on, mo) in raw:
+            if yid in {4, 3} and 'POLADYN' not in added:
+                vo.append(('POLADYN', _MERGED_HDR['POLADYN'])); added.add('POLADYN')
+            elif yid in {5, 10} and 'THRYALLIDES' not in added:
+                vo.append(('THRYALLIDES', _MERGED_HDR['THRYALLIDES'])); added.add('THRYALLIDES')
+            elif yid in {9, 33} and 'KAPSYLIA' not in added:
+                vo.append(('KAPSYLIA', _MERGED_HDR['KAPSYLIA'])); added.add('KAPSYLIA')
+            elif yid not in {4, 3, 5, 10, 9, 33}:
+                vo.append((yid, (on, mo)))
+        return vo
+
+    def build_nonel_delay_map(mode, vo):
+        if mode != 'subgroup':
+            return {}
+        dm = {}
+        for k in kiniseis:
+            yid = k['yliko_id']
+            ydata = _all_y.get(yid, {})
+            if ydata.get('export_group') != 'NONEL':
+                continue
+            gkey = nonel_group_key(ydata)
+            vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
+            if vkey not in dm:
+                dm[vkey] = []
+            if yid not in dm[vkey]:
+                dm[vkey].append(yid)
+        return dm
+
+    def yval(yid, ylika_dict, delay_map):
+        if isinstance(yid, str) and yid.startswith('NONEL_DLY_'):
+            ids = delay_map.get(yid, [])
+            v = sum(ylika_dict.get(i, 0) for i in ids) or None
+            return v, False
+        if isinstance(yid, str) and yid == 'NONEL_TOTAL':
+            v = get_nonel_sums(ylika_dict, _all_y, 'total').get('TOTAL') or None
+            return v, False
+        if isinstance(yid, str) and yid.startswith('NONEL_'):
+            sub = yid.replace('NONEL_', '')
+            v = get_nonel_sums(ylika_dict, _all_y, 'grouped').get(sub) or None
+            return v, False
+        if isinstance(yid, str) and yid in _MERGED_IDS:
+            parts = [ylika_dict.get(i) for i in _MERGED_IDS[yid]]
+            return '\n'.join(fmt_num(v) if v else '—' for v in parts), True
+        return ylika_dict.get(yid), False
 
     wb = openpyxl.Workbook()
+    wb.remove(wb.active)  # αφαιρούμε το default φύλλο
 
-    # ── Sheet 1: Αγορές ───────────────────────────────────────────────────────
-    ws1 = wb.active
-    ws1.title = "Αγορές-Επιστροφές"
-    total_l = 2 + n + 2  # Α/Α | Άδεια | υλικά | Ημερ/Δελτ | Προμηθ
+    thin   = Side(style='thin', color="AABBD0")
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
 
-    thin      = Side(style='thin', color="AABBD0")
-    border    = Border(left=thin, right=thin, top=thin, bottom=thin)
-    navy_fill = PatternFill("solid", fgColor="1A365D")
-    lnav_fill = PatternFill("solid", fgColor="4A7FC1")
-    hdr_font  = Font(bold=True, color="FFFFFF", size=9)
-    alt_fill  = PatternFill("solid", fgColor="EEF2F7")
-    red_fill  = PatternFill("solid", fgColor="FFF0F0")
-    red_font  = Font(color="C53030", bold=True, size=9)
+    MODES = [
+        ('detail',   'Αναλυτικό'),
+        ('subgroup', 'Ανά καθυστέρηση'),
+        ('grouped',  'Ανά τύπο NONEL'),
+        ('total',    'NONEL Σύνολο'),
+    ]
 
-    ws1.merge_cells(f'A1:{get_column_letter(total_l)}1')
-    ws1['A1'] = "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ"
-    ws1['A1'].fill = navy_fill
-    ws1['A1'].font = Font(bold=True, color="FFFFFF", size=11)
-    ws1['A1'].alignment = Alignment(horizontal='center')
+    for mode, sheet_label in MODES:
+        vo       = build_virtual_order(mode)
+        dly_map  = build_nonel_delay_map(mode, vo)
+        n        = len(vo)
+        total_cols = max(2 + n + 2, 2 + n + 1)  # αγορές έχει +2, καταν. +1
 
-    hdrs   = ['Α/Α','Αρ.Άδ./Εκδ.Αρχή'] + \
-             [f"{on}\n({mo})" for _,(on,mo) in ylika_order] + \
-             ['Ημερ.Αγ./Αρ.Δελτ.','Στοιχεία Προμηθευτή']
-    widths = [5, 18] + [13]*n + [16, 20]
+        ws = wb.create_sheet(sheet_label)
 
-    for ci,(h,w) in enumerate(zip(hdrs,widths),1):
-        cell = ws1.cell(row=2,column=ci,value=h)
-        cell.fill = lnav_fill; cell.font = hdr_font
-        cell.alignment = Alignment(horizontal='center',wrap_text=True)
-        cell.border = border
-        ws1.column_dimensions[get_column_letter(ci)].width = w
-    ws1.row_dimensions[2].height = 32
+        hdr_font  = Font(bold=True, color="FFFFFF", size=9)
+        alt_fill  = PatternFill("solid", fgColor="EEF2F7")
+        red_fill  = PatternFill("solid", fgColor="FFF0F0")
+        red_font  = Font(color="C53030", bold=True, size=9)
+        navy_fill = PatternFill("solid", fgColor="1A365D")
+        lnav_fill = PatternFill("solid", fgColor="4A7FC1")
+        grn_fill  = PatternFill("solid", fgColor="2D6A4F")
+        lgrn_fill = PatternFill("solid", fgColor="52B788")
+        alt2_fill = PatternFill("solid", fgColor="D8F3DC")
 
-    for ri, row in enumerate(rows,3):
-        is_epi = row['type'] == 'epistrofi'
-        fill   = red_fill if is_epi else (alt_fill if ri%2==0 else None)
-        font   = red_font if is_epi else None
-        adeia  = row['adeia'] + (f"\n{row['ekdousa']}" if row.get('ekdousa') else '')
+        # Layout: Αγορές αριστερά | κενή στήλη | Καταναλώσεις δεξιά
+        L_COLS  = 2 + n + 2   # Α/Α, Άδεια, υλικά, Ημερ/Δελτ, Προμηθ
+        GAP     = 1
+        R_START = L_COLS + GAP + 1   # 1-indexed αρχή δεξιού πίνακα
+        R_COLS  = 2 + n + 1   # Ημερ×2, υλικά, Παρατηρήσεις
 
-        vals = [row['aa'] or '', adeia] + \
-               [row['ylika'].get(yid) for yid,_ in ylika_order] + \
-               [f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}",
-                row['promitheftis']]
+        # ── Τίτλοι row 1 ─────────────────────────────────────────────────────
+        ws.merge_cells(f'A1:{get_column_letter(L_COLS)}1')
+        ws['A1'] = "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ"
+        ws['A1'].fill = navy_fill
+        ws['A1'].font = Font(bold=True, color="FFFFFF", size=11)
+        ws['A1'].alignment = Alignment(horizontal='center')
 
-        for ci,val in enumerate(vals,1):
-            cell = ws1.cell(row=ri,column=ci,value=val)
+        rc1 = get_column_letter(R_START)
+        rc2 = get_column_letter(R_START + R_COLS - 1)
+        ws.merge_cells(f'{rc1}1:{rc2}1')
+        ws.cell(row=1, column=R_START).value = \
+            "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ"
+        ws.cell(row=1, column=R_START).fill = grn_fill
+        ws.cell(row=1, column=R_START).font = Font(bold=True, color="FFFFFF", size=11)
+        ws.cell(row=1, column=R_START).alignment = Alignment(horizontal='center')
+
+        # ── Headers row 2 ─────────────────────────────────────────────────────
+        hdrs_l   = ['Α/Α', 'Αρ.Άδ./Εκδ.Αρχή'] + \
+                   [f"{on}\n({mo})" for _, (on, mo) in vo] + \
+                   ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή']
+        widths_l = [5, 18] + [13]*n + [12, 18]
+
+        for ci, (h, w) in enumerate(zip(hdrs_l, widths_l), 1):
+            cell = ws.cell(row=2, column=ci, value=h)
+            cell.fill = lnav_fill; cell.font = hdr_font
+            cell.alignment = Alignment(horizontal='center', wrap_text=True)
             cell.border = border
-            if fill: cell.fill = fill
-            if font: cell.font = font
-            if ci > 2 and ci <= 2+n and isinstance(val,(int,float)):
-                cell.number_format = '#,##0.000'
-                cell.alignment = Alignment(horizontal='right')
-            else:
-                cell.alignment = Alignment(horizontal='center',wrap_text=True)
+            ws.column_dimensions[get_column_letter(ci)].width = w
 
-    # ── Sheet 2: Καταναλώσεις ─────────────────────────────────────────────────
-    ws2 = wb.create_sheet("Καταναλώσεις")
-    total_r = 2 + n + 1
-    grn_fill  = PatternFill("solid", fgColor="2D6A4F")
-    lgrn_fill = PatternFill("solid", fgColor="52B788")
-    alt2_fill = PatternFill("solid", fgColor="D8F3DC")
+        hdrs_r  = ['Ημερ.\nΕισαγ.\nΑποθ.', 'Ημερ.\nΚατανάλ.'] + \
+                  [f"{on}\n({mo})" for _, (on, mo) in vo] + ['Παρατηρήσεις']
+        widths_r = [14, 14] + [13]*n + [20]
 
-    ws2.merge_cells(f'A1:{get_column_letter(total_r)}1')
-    ws2['A1'] = "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ"
-    ws2['A1'].fill = grn_fill
-    ws2['A1'].font = Font(bold=True, color="FFFFFF", size=11)
-    ws2['A1'].alignment = Alignment(horizontal='center')
+        for ci, (h, w) in enumerate(zip(hdrs_r, widths_r), R_START):
+            cell = ws.cell(row=2, column=ci, value=h)
+            cell.fill = lgrn_fill; cell.font = hdr_font
+            cell.alignment = Alignment(horizontal='center', wrap_text=True)
+            cell.border = border
+            ws.column_dimensions[get_column_letter(ci)].width = w
 
-    hdrs2  = ['Ημερ.\nΕισαγ.\nΑποθ.','Ημερ.\nΚατανάλ.'] + \
-             [f"{on}\n({mo})" for _,(on,mo) in ylika_order] + ['Παρατηρήσεις']
-    widths2 = [14,14] + [13]*n + [20]
+        ws.row_dimensions[2].height = 32
 
-    for ci,(h,w) in enumerate(zip(hdrs2,widths2),1):
-        cell = ws2.cell(row=2,column=ci,value=h)
-        cell.fill = lgrn_fill; cell.font = hdr_font
-        cell.alignment = Alignment(horizontal='center',wrap_text=True)
-        cell.border = border
-        ws2.column_dimensions[get_column_letter(ci)].width = w
-    ws2.row_dimensions[2].height = 32
+        # ── Data rows (ίδιο ri και για τους δύο πίνακες) ─────────────────────
+        kat_used = set()
+        for ri, row in enumerate(rows, 3):
+            is_epi = row['type'] == 'epistrofi'
+            fill_l = red_fill if is_epi else (alt_fill if ri % 2 == 0 else None)
+            font_l = red_font if is_epi else None
+            adeia  = row['adeia'] + (f"\n{row['ekdousa']}" if row.get('ekdousa') else '')
 
-    kat_used = set()
-    for ri, row in enumerate(rows,3):
-        is_epi = row['type'] == 'epistrofi'
-        ap     = row.get('parstatiko', '')
-        imer   = row['imerominia']
-        if not is_epi and ap not in kat_used:
-            kat = kat_by_parst.get(ap, kat_by_parst.get(imer, {}))
-            kat_used.add(ap)
-            kat_imer = kat.get('imerominia', imer)
-            fill = alt2_fill if ri%2==0 else None
-            vals = [fmt_date(kat_imer), fmt_date(kat_imer)] + \
-                   [kat.get('ylika',{}).get(yid) for yid,_ in ylika_order] + \
-                   [kat.get('paratirishis','')]
-            for ci,val in enumerate(vals,1):
-                cell = ws2.cell(row=ri,column=ci,value=val)
+            # — Αριστερός πίνακας (Αγορές) —
+            ci = 1
+            for v in [row['aa'] or '', adeia]:
+                cell = ws.cell(row=ri, column=ci, value=v)
                 cell.border = border
-                if fill: cell.fill = fill
-                if ci>2 and ci<=2+n and isinstance(val,(int,float)):
+                if fill_l: cell.fill = fill_l
+                if font_l: cell.font = font_l
+                cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                ci += 1
+            for yid, _ in vo:
+                v, is_text = yval(yid, row['ylika'], dly_map)
+                cell = ws.cell(row=ri, column=ci, value=v)
+                cell.border = border
+                if fill_l: cell.fill = fill_l
+                if font_l: cell.font = font_l
+                if is_text or not isinstance(v, (int, float)):
+                    cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                else:
                     cell.number_format = '#,##0.000'
                     cell.alignment = Alignment(horizontal='right')
-                else:
+                ci += 1
+            for v in [f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", row['promitheftis']]:
+                cell = ws.cell(row=ri, column=ci, value=v)
+                cell.border = border
+                if fill_l: cell.fill = fill_l
+                if font_l: cell.font = font_l
+                cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                ci += 1
+
+            # — Δεξιός πίνακας (Καταναλώσεις) —
+            ap   = row.get('parstatiko', '')
+            imer = row['imerominia']
+            if not is_epi and ap not in kat_used:
+                kat = kat_by_parst.get(ap, kat_by_parst.get(imer, {}))
+                kat_used.add(ap)
+                kat_imer  = kat.get('imerominia', imer)
+                kat_ylika = kat.get('ylika', {})
+                fill_r = alt2_fill if ri % 2 == 0 else None
+
+                ci = R_START
+                for v in [fmt_date(kat_imer), fmt_date(kat_imer)]:
+                    cell = ws.cell(row=ri, column=ci, value=v)
+                    cell.border = border
+                    if fill_r: cell.fill = fill_r
                     cell.alignment = Alignment(horizontal='center')
+                    ci += 1
+                for yid, _ in vo:
+                    v, is_text = yval(yid, kat_ylika, dly_map)
+                    cell = ws.cell(row=ri, column=ci, value=v)
+                    cell.border = border
+                    if fill_r: cell.fill = fill_r
+                    if is_text or not isinstance(v, (int, float)):
+                        cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                    else:
+                        cell.number_format = '#,##0.000'
+                        cell.alignment = Alignment(horizontal='right')
+                    ci += 1
+                cell = ws.cell(row=ri, column=ci, value=kat.get('paratirishis', ''))
+                cell.border = border
+                if fill_r: cell.fill = fill_r
+                cell.alignment = Alignment(horizontal='center')
 
     buf = io.BytesIO()
     wb.save(buf)
