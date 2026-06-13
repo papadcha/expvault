@@ -178,7 +178,12 @@ def handle(cmd, payload):
             eos=payload.get('eos')
         )
         _mod = importlib.import_module('exports'); importlib.reload(_mod)
-        data = _mod.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'), payload.get('nonel_mode','detail'))
+        try:
+            data = _mod.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'), payload.get('nonel_mode','detail'))
+        except Exception as _e:
+            import sys, traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)
