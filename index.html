@@ -456,17 +456,16 @@ body.electron .main    { padding-top: 60px; }
       <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">
         Διόρθωσε λάθος παραστατικό ή ημερομηνία σε όλες τις κινήσεις ταυτόχρονα.
       </p>
-      <div class="form-row cols-2">
+      <div class="form-row">
         <div>
-          <label>Υπάρχον Παραστατικό *</label>
-          <select id="rn-old-sel" onchange="loadRenamePreview()">
-            <option value="">— Επιλογή —</option>
-          </select>
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <span id="rn-count" style="font-size:12px;color:var(--muted);padding-bottom:8px;"></span>
+          <label>Αναζήτηση Παραστατικού *</label>
+          <input type="text" id="rn-search" list="rn-datalist"
+                 placeholder="Πληκτρολογήστε αριθμό παραστατικού..."
+                 oninput="loadRenamePreview()" autocomplete="off">
+          <datalist id="rn-datalist"></datalist>
         </div>
       </div>
+      <div id="rn-preview" style="margin-top:4px;margin-bottom:8px;"></div>
       <div class="form-row cols-2">
         <div>
           <label>Νέο Παραστατικό</label>
@@ -474,7 +473,7 @@ body.electron .main    { padding-top: 60px; }
         </div>
         <div>
           <label>Νέα Ημερομηνία</label>
-          <input type="date" id="rn-new-date" placeholder="αφήστε κενό αν δεν αλλάζει">
+          <input type="date" id="rn-new-date">
         </div>
       </div>
       <div class="form-actions">
@@ -1995,19 +1994,19 @@ async function loadParstatikaPage() {
     agoraSel.innerHTML = '<option value="">✅ Δεν υπάρχουν εκκρεμείς επιστροφές</option>';
   }
 
-  // Dropdown μετονομασίας (όλα τα μοναδικά παραστατικά)
+  // Datalist μετονομασίας (όλα τα μοναδικά παραστατικά)
   const allParst = [...new Set(
     kiniseis.filter(k => k.arithmos_parstatikos).map(k => k.arithmos_parstatikos)
   )].sort();
 
-  const rnSel = document.getElementById('rn-old-sel');
-  rnSel.innerHTML = '<option value="">— Επιλογή —</option>' +
-    allParst.map(p => `<option value="${p}">${p}</option>`).join('');
+  document.getElementById('rn-datalist').innerHTML =
+    allParst.map(p => `<option value="${p}">`).join('');
 
   document.getElementById('pp-preview').innerHTML = '';
   document.getElementById('pp-msg').innerHTML = '';
   document.getElementById('rn-msg').innerHTML = '';
-  document.getElementById('rn-count').textContent = '';
+  document.getElementById('rn-preview').innerHTML = '';
+  document.getElementById('rn-search').value = '';
 }
 
 async function loadEpistrofesWithoutParst() {
@@ -2063,16 +2062,69 @@ async function assignEpistrofiParst() {
 }
 
 async function loadRenamePreview() {
-  const old = document.getElementById('rn-old-sel').value;
-  const cnt = document.getElementById('rn-count');
-  if (!old) { cnt.textContent = ''; return; }
+  const val = document.getElementById('rn-search').value.trim();
+  const preview = document.getElementById('rn-preview');
+  if (!val) { preview.innerHTML = ''; return; }
+
+  // Έλεγχος αν το παραστατικό υπάρχει στο datalist
+  const opts = [...document.getElementById('rn-datalist').options].map(o => o.value);
+  if (!opts.includes(val)) { preview.innerHTML = ''; return; }
+
   const kiniseis = await py('get_kiniseis', {});
-  const n = kiniseis.filter(k => k.arithmos_parstatikos === old).length;
-  cnt.textContent = `${n} κινήσεις με αυτό το παραστατικό`;
+  const related = kiniseis.filter(k => k.arithmos_parstatikos === val);
+  if (!related.length) { preview.innerHTML = ''; return; }
+
+  // Ομαδοποίηση ανά τύπο
+  const agores    = related.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ');
+  const epistrofes = related.filter(k => k.tipos === 'ΕΠΙΣΤΡΟΦΗ');
+
+  const tipoLbl = { 'ΕΙΣΑΓΩΓΗ': '📥 Αγορά', 'ΕΠΙΣΤΡΟΦΗ': '🔄 Επιστροφή' };
+  const tipoCls = { 'ΕΙΣΑΓΩΓΗ': '#2b6cb0', 'ΕΠΙΣΤΡΟΦΗ': '#c53030' };
+
+  const allRows = [...agores, ...epistrofes];
+
+  // Πληροφορίες από πρώτη αγορά
+  const firstAgora = agores[0] || related[0];
+  const infoLines = [
+    firstAgora.imerominia ? `📅 ${fmtDate(firstAgora.imerominia)}` : '',
+    firstAgora.arithmos_adeias ? `📋 Άδεια: ${firstAgora.arithmos_adeias}` : '',
+    firstAgora.promitheftis_onoma ? `🏭 ${firstAgora.promitheftis_onoma}` : '',
+  ].filter(Boolean).join('&emsp;');
+
+  const rows = allRows.map(k => `
+    <tr style="border-bottom:1px solid #e2e8f0;">
+      <td style="padding:5px 8px;">
+        <span style="font-size:11px;font-weight:600;color:${tipoCls[k.tipos]||'#555'};">
+          ${tipoLbl[k.tipos]||k.tipos}
+        </span>
+      </td>
+      <td style="padding:5px 8px;font-size:12px;">${fmtDate(k.imerominia)}</td>
+      <td style="padding:5px 8px;font-size:12px;">${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
+      <td style="padding:5px 8px;font-size:12px;text-align:right;font-family:monospace;">
+        ${k.posotita.toFixed(3)} ${k.monada_metrisis}
+      </td>
+    </tr>`).join('');
+
+  preview.innerHTML = `
+    <div style="border:1px solid #bee3f8;background:#ebf8ff;border-radius:8px;padding:10px 14px;margin-bottom:4px;">
+      <div style="font-size:12px;color:#2c5282;margin-bottom:8px;">${infoLines}</div>
+      <table style="width:100%;border-collapse:collapse;">
+        <thead>
+          <tr style="background:#dbeafe;">
+            <th style="padding:4px 8px;font-size:11px;text-align:left;">Τύπος</th>
+            <th style="padding:4px 8px;font-size:11px;text-align:left;">Ημ/νία</th>
+            <th style="padding:4px 8px;font-size:11px;text-align:left;">Υλικό</th>
+            <th style="padding:4px 8px;font-size:11px;text-align:right;">Ποσότητα</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="font-size:11px;color:#4a5568;margin-top:6px;">${related.length} κινήσεις συνολικά</div>
+    </div>`;
 }
 
 async function applyRename() {
-  const oldParst  = document.getElementById('rn-old-sel').value;
+  const oldParst  = document.getElementById('rn-search').value.trim();
   const newParst  = document.getElementById('rn-new-parst').value.trim() || null;
   const newDate   = document.getElementById('rn-new-date').value || null;
   const msg       = document.getElementById('rn-msg');
@@ -2086,6 +2138,8 @@ async function applyRename() {
     msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Ενημερώθηκαν ${r.updated} κινήσεις.</div>`;
     document.getElementById('rn-new-parst').value = '';
     document.getElementById('rn-new-date').value = '';
+    document.getElementById('rn-search').value = newParst || oldParst;
+    document.getElementById('rn-preview').innerHTML = '';
     await loadParstatikaPage();
   } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`; }
 }
