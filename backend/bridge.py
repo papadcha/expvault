@@ -164,6 +164,13 @@ def handle(cmd, payload):
         database.delete_kiniseis_by_parstatiko(payload.get('arithmos_parstatikos'))
         return {'ok': True}
 
+    if cmd == 'delete_parstatiko_with_related':
+        database.delete_parstatiko_with_related(
+            payload['arithmos_parstatikos'],
+            include_agora_ref=payload.get('include_agora_ref', True)
+        )
+        return {'ok': True}
+
     # ── ΕΛΕΓΧΟΣ ΕΚΚΡΕΜΟΤΗΤΑΣ ─────────────────────────────────────────────────
     if cmd == 'check_ekkremotita':
         return database.check_ekkremotita(

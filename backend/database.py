@@ -531,6 +531,13 @@ def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
             (arithmos_parstatikos,)
         )
 
+def delete_parstatiko_with_related(arithmos_parstatikos, include_agora_ref=True):
+    """Διαγράφει παραστατικό + επιστροφές συνδεδεμένες μέσω agora_ref."""
+    with get_db() as conn:
+        conn.execute("DELETE FROM kiniseis WHERE arithmos_parstatikos=?", (arithmos_parstatikos,))
+        if include_agora_ref:
+            conn.execute("DELETE FROM kiniseis WHERE agora_ref=?", (arithmos_parstatikos,))
+
 # ─── ΥΠΟΛΟΓΙΣΜΟΣ ─────────────────────────────────────────────────────────────
 
 def save_ypologismos(parstatiko_agoras, imerominia_agoras, senario, grammes):

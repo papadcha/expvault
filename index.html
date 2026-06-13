@@ -500,6 +500,15 @@ body.electron .main    { padding-top: 60px; }
       </div>
       <div class="form-actions">
         <button class="btn btn-accent" onclick="applyRename()">✏️ Εφαρμογή</button>
+        <button class="btn btn-danger" onclick="promptDeleteParstatiko()">🗑 Διαγραφή</button>
+      </div>
+      <div id="rn-delete-confirm" style="display:none;margin-top:10px;padding:12px;background:#fff5f5;border:1px solid #fc8181;border-radius:8px;">
+        <div id="rn-delete-info" style="font-size:13px;color:#742a2a;margin-bottom:10px;"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-danger btn-sm" id="rn-del-main-btn" onclick="confirmDeleteParstatiko(false)">🗑 Μόνο αυτό</button>
+          <button class="btn btn-danger btn-sm" id="rn-del-both-btn" onclick="confirmDeleteParstatiko(true)" style="display:none;">🗑 Και τα 2 μαζί</button>
+          <button class="btn btn-outline btn-sm" onclick="cancelDeleteParstatiko()">Ακύρωση</button>
+        </div>
       </div>
       <div id="rn-msg"></div>
     </div>
@@ -2224,6 +2233,56 @@ async function applyRename() {
     document.getElementById('rn-preview').innerHTML = '';
     await loadParstatikaPage();
   } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`; }
+}
+
+function promptDeleteParstatiko() {
+  const val = document.getElementById('rn-search').value.trim();
+  if (!val) return;
+
+  const agoraRefRow = document.getElementById('rn-agora-ref-row');
+  const hasRelated  = agoraRefRow.style.display !== 'none';
+  const confirmDiv  = document.getElementById('rn-delete-confirm');
+  const infoDiv     = document.getElementById('rn-delete-info');
+  const bothBtn     = document.getElementById('rn-del-both-btn');
+
+  let msg = `⚠️ Πρόκειται να διαγραφούν <strong>όλες οι κινήσεις</strong> με παραστατικό <strong>${val}</strong>.`;
+  if (hasRelated) {
+    msg += `<br>Υπάρχουν συσχετισμένες επιστροφές (agora_ref = ${val}). Θέλεις να διαγραφούν και αυτές;`;
+    bothBtn.style.display = '';
+  } else {
+    bothBtn.style.display = 'none';
+  }
+  infoDiv.innerHTML = msg;
+  confirmDiv.style.display = '';
+  document.getElementById('rn-msg').innerHTML = '';
+}
+
+function cancelDeleteParstatiko() {
+  document.getElementById('rn-delete-confirm').style.display = 'none';
+}
+
+async function confirmDeleteParstatiko(includeRelated) {
+  const val = document.getElementById('rn-search').value.trim();
+  const msg = document.getElementById('rn-msg');
+  document.getElementById('rn-delete-confirm').style.display = 'none';
+  try {
+    await py('delete_parstatiko_with_related', {
+      arithmos_parstatikos: val,
+      include_agora_ref: includeRelated
+    });
+    msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Το παραστατικό <strong>${val}</strong> διαγράφηκε${includeRelated?' μαζί με τις συσχετισμένες επιστροφές':''} .</div>`;
+    document.getElementById('rn-search').value = '';
+    document.getElementById('rn-preview').innerHTML = '';
+    document.getElementById('rn-new-parst').value = '';
+    document.getElementById('rn-new-date').value = '';
+    document.getElementById('rn-new-adeia').value = '';
+    document.getElementById('rn-new-prom').value = '';
+    document.getElementById('rn-new-agora-ref').value = '';
+    document.getElementById('rn-agora-ref-row').style.display = 'none';
+    await loadParstatikaPage();
+  } catch(e) {
+    msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`;
+  }
 }
 
 // ── ΕΠΕΞΕΡΓΑΣΙΑ ΟΜΑΔΑΣ ΚΙΝΗΣΕΩΝ (ΠΑΡΑΣΤΑΤΙΚΟ + ΥΛΙΚΟ) ───────────────────────
