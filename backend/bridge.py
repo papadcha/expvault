@@ -169,9 +169,7 @@ def handle(cmd, payload):
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
     if cmd in ('export_pdf', 'export_excel'):
         importlib.reload(exports)
-        import sys, inspect; print('[DEBUG SRC]', inspect.getsource(exports.get_ylika_order)[:300], file=sys.stderr)
     if cmd == 'export_pdf':
-        import sys as _sys; from database import get_kiniseis as _gk; _kin2 = _gk(); _ord2 = exports.get_ylika_order(_kin2, 'detail'); print('[DEBUG] order:', [k for k,v in _ord2], file=_sys.stderr)
         kiniseis = database.get_kiniseis(
             yliko_id=payload.get('yliko_id'),
             apo=payload.get('apo'),
