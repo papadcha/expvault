@@ -2059,6 +2059,7 @@ async function loadParstatikaPage() {
   document.getElementById('rn-new-agora-ref').value = '';
   document.getElementById('rn-agora-ref-row').style.display = 'none';
   window._rnLinkedCount = 0;
+  window._rnLinkedAgoraRef = null;
 }
 
 async function loadEpistrofesWithoutParst() {
@@ -2139,22 +2140,32 @@ async function loadRenamePreview() {
     ...linkedEpistrofes
   ];
 
+  // Αν το παραστατικό είναι επιστροφή → φόρτωσε και την αγορά (agora_ref)
+  const firstEpi = related.find(k => k.tipos === 'ΕΠΙΣΤΡΟΦΗ');
+  const linkedAgoraRef = (agores.length === 0 && firstEpi?.agora_ref) ? firstEpi.agora_ref : null;
+  const linkedAgora = linkedAgoraRef
+    ? kiniseis.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ' && k.arithmos_parstatikos === linkedAgoraRef)
+    : [];
+  window._rnLinkedAgoraRef = linkedAgoraRef; // για χρήση στη διαγραφή
+
   const tipoLbl = { 'ΕΙΣΑΓΩΓΗ': '📥 Αγορά', 'ΕΠΙΣΤΡΟΦΗ': '🔄 Επιστροφή' };
   const tipoCls = { 'ΕΙΣΑΓΩΓΗ': '#2b6cb0', 'ΕΠΙΣΤΡΟΦΗ': '#c53030' };
 
   const allRows = [...agores, ...epistrofes];
 
-  // Πληροφορίες από πρώτη αγορά
-  const firstAgora = agores[0] || related[0];
+  // Πληροφορίες — προτεραιότητα στην αγορά (είτε άμεση είτε linked)
+  const firstAgora = agores[0] || linkedAgora[0] || related[0];
   const infoLines = [
-    firstAgora.imerominia ? `📅 ${fmtDate(firstAgora.imerominia)}` : '',
-    firstAgora.arithmos_adeias ? `📋 Άδεια: ${firstAgora.arithmos_adeias}` : '',
-    firstAgora.promitheftis_onoma ? `🏭 ${firstAgora.promitheftis_onoma}` : '',
+    firstAgora?.imerominia ? `📅 ${fmtDate(firstAgora.imerominia)}` : '',
+    firstAgora?.arithmos_adeias ? `📋 Άδεια: ${firstAgora.arithmos_adeias}` : '',
+    firstAgora?.promitheftis_onoma ? `🏭 ${firstAgora.promitheftis_onoma}` : '',
+    linkedAgoraRef ? `🔗 Αγορά: ${linkedAgoraRef}` : '',
   ].filter(Boolean).join('&emsp;');
 
   // Προεπιλογή τρεχουσών τιμών στα dropdowns
-  if (firstAgora.adeia_id) document.getElementById('rn-new-adeia').value = firstAgora.adeia_id;
-  if (firstAgora.promitheftis_id) document.getElementById('rn-new-prom').value = firstAgora.promitheftis_id;
+  const dropSrc = agores[0] || related[0];
+  if (dropSrc?.adeia_id) document.getElementById('rn-new-adeia').value = dropSrc.adeia_id;
+  if (dropSrc?.promitheftis_id) document.getElementById('rn-new-prom').value = dropSrc.promitheftis_id;
 
   // Agora-ref row: εμφάνιση μόνο αν υπάρχουν επιστροφές
   const agoraRefRow = document.getElementById('rn-agora-ref-row');
@@ -2168,11 +2179,11 @@ async function loadRenamePreview() {
     document.getElementById('rn-new-agora-ref').value = '';
   }
 
-  const rows = allRows.map(k => `
-    <tr style="border-bottom:1px solid #e2e8f0;">
+  const makeRows = (kins, dimmed) => kins.map(k => `
+    <tr style="border-bottom:1px solid #e2e8f0;${dimmed?'opacity:0.55;background:#f8f8f8;':''}" >
       <td style="padding:5px 8px;">
         <span style="font-size:11px;font-weight:600;color:${tipoCls[k.tipos]||'#555'};">
-          ${tipoLbl[k.tipos]||k.tipos}
+          ${tipoLbl[k.tipos]||k.tipos}${dimmed?' (συνδεδεμένη αγορά)':''}
         </span>
         ${k.arithmos_parstatikos && k.arithmos_parstatikos !== val
           ? `<br><span style="font-size:10px;color:#718096;">Παρ: ${k.arithmos_parstatikos}</span>` : ''}
@@ -2183,6 +2194,8 @@ async function loadRenamePreview() {
         ${k.posotita.toFixed(3)} ${k.monada_metrisis}
       </td>
     </tr>`).join('');
+
+  const allHtml = makeRows(allRows, false) + makeRows(linkedAgora, true);
 
   preview.innerHTML = `
     <div style="border:1px solid #bee3f8;background:#ebf8ff;border-radius:8px;padding:10px 14px;margin-bottom:4px;">
@@ -2196,9 +2209,9 @@ async function loadRenamePreview() {
             <th style="padding:4px 8px;font-size:11px;text-align:right;">Ποσότητα</th>
           </tr>
         </thead>
-        <tbody>${rows}</tbody>
+        <tbody>${allHtml}</tbody>
       </table>
-      <div style="font-size:11px;color:#4a5568;margin-top:6px;">${related.length} κινήσεις συνολικά</div>
+      <div style="font-size:11px;color:#4a5568;margin-top:6px;">${related.length} κινήσεις${linkedAgora.length?` + ${linkedAgora.length} της συνδεδεμένης αγοράς`:''}</div>
     </div>`;
 }
 
@@ -2246,10 +2259,16 @@ function promptDeleteParstatiko() {
   const infoDiv    = document.getElementById('rn-delete-info');
   const bothBtn    = document.getElementById('rn-del-both-btn');
 
+  const linkedAgoraRef = window._rnLinkedAgoraRef || null;
   let msg = `⚠️ Πρόκειται να διαγραφούν <strong>όλες οι κινήσεις</strong> με παραστατικό <strong>${val}</strong>.`;
   if (hasRelated) {
-    msg += `<br>Υπάρχουν ${window._rnLinkedCount} συσχετισμένες επιστροφές (agora_ref = ${val}). Θέλεις να διαγραφούν και αυτές;`;
+    msg += `<br>Υπάρχουν ${window._rnLinkedCount} συσχετισμένες επιστροφές (agora_ref = ${val}).`;
+    msg += `<br><em>Αν διαγραφεί μόνο η αγορά, οι επιστροφές μένουν ορφανές και οι ποσότητες δεν θα υπολογίζονται σωστά.</em>`;
     bothBtn.style.display = '';
+  } else if (linkedAgoraRef) {
+    msg += `<br>Αυτή η επιστροφή συνδέεται με την αγορά <strong>${linkedAgoraRef}</strong>.`;
+    msg += `<br><em>Αν διαγραφεί μόνο η επιστροφή, η αγορά θα υπολογίζει πλήρη κατανάλωση (χωρίς επιστροφή).</em>`;
+    bothBtn.style.display = 'none';
   } else {
     bothBtn.style.display = 'none';
   }
