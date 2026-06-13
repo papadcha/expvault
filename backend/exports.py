@@ -407,7 +407,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         elif yid not in {4, 3, 5, 10, 9, 33}:
             virtual_order.append((yid, (on, mo)))
     ylika_order = virtual_order
-    yliko_hdrs = [p(f"{on}\n({mo})", HS) for _, (on, mo) in ylika_order]
+    yliko_hdrs = [p(f"{on.replace(chr(10), '<br/>')}\n({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
     L_FIXED = [0.5, 1.7, 1.8, 1.6]
@@ -470,9 +470,9 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                     sub = yid.replace('NONEL_', '')
                     v = _nonel_sums.get(sub, 0) or None
             elif isinstance(yid, str) and yid in MERGED_IDS:
-                vals = [row['ylika'].get(i) for i in MERGED_IDS[yid] if row['ylika'].get(i)]
-                parts = [fmt_num(v2) for v2 in vals if v2]
-                combined = chr(10).join(parts) if parts else '—'
+                ids = MERGED_IDS[yid][0]
+                parts = [fmt_num(row['ylika'].get(i)) if row['ylika'].get(i) else '—' for i in ids]
+                combined = '<br/>'.join(parts)
                 cells.append(p(combined, num_s))
                 continue
             else:
@@ -551,9 +551,9 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                         sub = yid.replace('NONEL_', '')
                         v = _nonel_sums2.get(sub, 0) or None
                 elif isinstance(yid, str) and yid in MERGED_IDS:
-                    vals = [kat.get('ylika', {}).get(i) for i in MERGED_IDS[yid]]
-                    parts = [fmt_num(v2) for v2 in vals if v2]
-                    combined = chr(10).join(parts) if parts else '—'
+                    ids = MERGED_IDS[yid][0]
+                    parts = [fmt_num(kat.get('ylika', {}).get(i)) if kat.get('ylika', {}).get(i) else '—' for i in ids]
+                    combined = '<br/>'.join(parts)
                     cells.append(p(combined, RS))
                     continue
                 else:
