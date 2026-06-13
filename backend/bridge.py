@@ -185,7 +185,7 @@ def handle(cmd, payload):
         return {'ok': True}
 
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
-    if cmd in ('export_pdf', 'export_excel'):
+    if cmd in ('export_pdf', 'export_excel', 'export_docx'):
         importlib.reload(exports)
     if cmd == 'export_pdf':
         kiniseis = database.get_kiniseis(
@@ -213,6 +213,20 @@ def handle(cmd, payload):
             eos=payload.get('eos')
         )
         data = exports.export_excel(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('nonel_mode','detail'))
+        out_path = payload['out_path']
+        with open(out_path, 'wb') as f:
+            f.write(data)
+        return {'ok': True, 'path': out_path}
+
+    # ── EXPORT DOCX ───────────────────────────────────────────────────────────
+    if cmd == 'export_docx':
+        kiniseis = database.get_kiniseis(
+            yliko_id=payload.get('yliko_id'),
+            apo=payload.get('apo'),
+            eos=payload.get('eos')
+        )
+        _mod = importlib.import_module('exports'); importlib.reload(_mod)
+        data = _mod.export_docx(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('nonel_mode','detail'))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)

@@ -823,6 +823,247 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
     return buf.getvalue()
 
 
+# ─── Word (docx) ─────────────────────────────────────────────────────────────
+
+def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode: str = 'detail') -> bytes:
+    from docx import Document
+    from docx.shared import Cm, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.oxml.ns import qn
+    from docx.oxml import OxmlElement
+
+    rows, kat_by_parst = build_book_rows(kiniseis)
+
+    from database import get_all_ylika as _gay
+    _all_y = {y['id']: y for y in _gay()}
+
+    # Build virtual_order με merged στήλες (ίδια λογική PDF/Excel)
+    raw_order = get_ylika_order(kiniseis, nonel_mode)
+    virtual_order = []
+    added_merged = set()
+    for yid, (on, mo) in raw_order:
+        if yid in {4, 3} and 'POLADYN' not in added_merged:
+            virtual_order.append(('POLADYN', ('POLADYN 65X500 / POLADYN 38X380', 'Κιλ')))
+            added_merged.add('POLADYN')
+        elif yid in {5, 10} and 'THRYALLIDES' not in added_merged:
+            virtual_order.append(('THRYALLIDES', ('ΒΡΑΔΥΚΑΥΣΤΗ / ΑΚΑΡΙΑΙΑ', 'Μετρ')))
+            added_merged.add('THRYALLIDES')
+        elif yid in {9, 33} and 'KAPSYLIA' not in added_merged:
+            virtual_order.append(('KAPSYLIA', ('ΚΟΙΝΟΙ ΠΥΡΟΚΡ. / ΗΛΕΚΤΡΙΚΟΙ', 'Τεμ')))
+            added_merged.add('KAPSYLIA')
+        elif yid not in {4, 3, 5, 10, 9, 33}:
+            virtual_order.append((yid, (on, mo)))
+
+    def is_nonel(yid):
+        if isinstance(yid, str):
+            return 'NONEL' in yid
+        return _all_y.get(yid, {}).get('export_group') == 'NONEL'
+
+    non_nonel  = [(yid, lbl) for yid, lbl in virtual_order if not is_nonel(yid)]
+    nonel_cols = [(yid, lbl) for yid, lbl in virtual_order if is_nonel(yid)]
+
+    nonel_delay_map = {}
+    if nonel_mode == 'subgroup':
+        for k in kiniseis:
+            yid = k['yliko_id']
+            ydata = _all_y.get(yid, {})
+            if ydata.get('export_group') != 'NONEL':
+                continue
+            gkey = nonel_group_key(ydata)
+            vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
+            if vkey not in nonel_delay_map:
+                nonel_delay_map[vkey] = []
+            if yid not in nonel_delay_map[vkey]:
+                nonel_delay_map[vkey].append(yid)
+
+    _MRG = {'POLADYN': [4, 3], 'THRYALLIDES': [5, 10], 'KAPSYLIA': [9, 33]}
+
+    def get_val(yid, ylika_dict):
+        if isinstance(yid, str) and yid.startswith('NONEL_DLY_'):
+            ids = nonel_delay_map.get(yid, [])
+            v = sum(ylika_dict.get(i, 0) for i in ids)
+            return fmt_num(v) if v else '—'
+        if isinstance(yid, str) and yid == 'NONEL_TOTAL':
+            v = get_nonel_sums(ylika_dict, _all_y, 'total').get('TOTAL', 0)
+            return fmt_num(v) if v else '—'
+        if isinstance(yid, str) and yid.startswith('NONEL_'):
+            sub = yid.replace('NONEL_', '')
+            v = get_nonel_sums(ylika_dict, _all_y, 'grouped').get(sub, 0)
+            return fmt_num(v) if v else '—'
+        if isinstance(yid, str) and yid in _MRG:
+            parts = [fmt_num(ylika_dict.get(i)) if ylika_dict.get(i) else '—' for i in _MRG[yid]]
+            return '\n'.join(parts)
+        v = ylika_dict.get(yid)
+        return fmt_num(v) if v else '—'
+
+    def hex_rgb(h):
+        h = h.lstrip('#')
+        return tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+
+    def _shd(cell, fill):
+        tcPr = cell._tc.get_or_add_tcPr()
+        for x in tcPr.findall(qn('w:shd')):
+            tcPr.remove(x)
+        el = OxmlElement('w:shd')
+        el.set(qn('w:val'), 'clear')
+        el.set(qn('w:color'), 'auto')
+        el.set(qn('w:fill'), fill)
+        tcPr.append(el)
+
+    def _write(cell, text, bold=False, size=7, fg=None, align='center'):
+        para = cell.paragraphs[0]
+        para.paragraph_format.space_before = Pt(0)
+        para.paragraph_format.space_after = Pt(0)
+        para.alignment = {'center': WD_ALIGN_PARAGRAPH.CENTER,
+                          'right':  WD_ALIGN_PARAGRAPH.RIGHT,
+                          'left':   WD_ALIGN_PARAGRAPH.LEFT}.get(align, WD_ALIGN_PARAGRAPH.CENTER)
+        p_elem = para._p
+        for r_elem in list(p_elem.findall(qn('w:r'))):
+            p_elem.remove(r_elem)
+        rgb = hex_rgb(fg) if fg else None
+        for i, line in enumerate(str(text).split('\n')):
+            if i > 0:
+                br_r = OxmlElement('w:r')
+                br_r.append(OxmlElement('w:br'))
+                p_elem.append(br_r)
+            run = para.add_run(line)
+            run.font.name = 'Arial'
+            run.font.size = Pt(size)
+            run.font.bold = bold
+            if rgb:
+                run.font.color.rgb = RGBColor(*rgb)
+
+    def _tcW(cell, w_cm):
+        tcPr = cell._tc.get_or_add_tcPr()
+        for x in list(tcPr.findall(qn('w:tcW'))):
+            tcPr.remove(x)
+        el = OxmlElement('w:tcW')
+        el.set(qn('w:w'), str(int(w_cm * 567)))
+        el.set(qn('w:type'), 'dxa')
+        tcPr.append(el)
+
+    def _vmid(cell):
+        tcPr = cell._tc.get_or_add_tcPr()
+        el = OxmlElement('w:vAlign')
+        el.set(qn('w:val'), 'center')
+        tcPr.append(el)
+
+    def _setup_grid(table, widths_cm):
+        tbl = table._tbl
+        for x in list(tbl.findall(qn('w:tblGrid'))):
+            tbl.remove(x)
+        tblGrid = OxmlElement('w:tblGrid')
+        for w in widths_cm:
+            gc = OxmlElement('w:gridCol')
+            gc.set(qn('w:w'), str(int(w * 567)))
+            tblGrid.append(gc)
+        tblPr = tbl.find(qn('w:tblPr'))
+        if tblPr is None:
+            tblPr = OxmlElement('w:tblPr')
+            tbl.insert(0, tblPr)
+        tblPr.addnext(tblGrid)
+        lay = OxmlElement('w:tblLayout')
+        lay.set(qn('w:type'), 'fixed')
+        tblPr.append(lay)
+
+    HDR_BG = 'CDD5DB'
+    EPY_BG = 'FFF0F0'
+    EPY_FG = 'C0392B'
+    ALT_BG = 'F4F6F8'
+
+    doc = Document()
+    sect = doc.sections[0]
+    sect.page_width    = Cm(29.7)
+    sect.page_height   = Cm(21.0)
+    sect.left_margin   = Cm(1.0)
+    sect.right_margin  = Cm(1.0)
+    sect.top_margin    = Cm(1.5)
+    sect.bottom_margin = Cm(1.5)
+    pgSz = sect._sectPr.find(qn('w:pgSz'))
+    if pgSz is not None:
+        pgSz.set(qn('w:orient'), 'landscape')
+
+    PAGE_W = 27.7  # usable cm
+
+    def add_title(text):
+        p = doc.add_paragraph()
+        p.paragraph_format.space_before = Pt(0)
+        p.paragraph_format.space_after = Pt(3)
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        r = p.add_run(text)
+        r.font.name = 'Arial'
+        r.font.bold = True
+        r.font.size = Pt(10)
+
+    def build_page(columns, is_page1):
+        n_mat = len(columns)
+        if is_page1:
+            FIX = [0.8, 2.5, 3.0, 3.5]
+            mat_w = max(1.5, (PAGE_W - sum(FIX)) / max(n_mat, 1))
+            widths = [FIX[0], FIX[1]] + [mat_w] * n_mat + [FIX[2], FIX[3]]
+            hdrs   = ['Α/Α', 'Αρ.Άδ./\nΕκδ.Αρχή'] + \
+                     [f"{on}\n({mo})" for _, (on, mo) in columns] + \
+                     ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή']
+        else:
+            FIX = [0.8, 3.0]
+            mat_w = max(1.5, (PAGE_W - sum(FIX)) / max(n_mat, 1))
+            widths = FIX + [mat_w] * n_mat
+            hdrs   = ['Α/Α', 'Ημερ.Αγ./\nΑρ.Δελτ.'] + \
+                     [f"{on}\n({mo})" for _, (on, mo) in columns]
+
+        n_cols = len(widths)
+        n_fixed_pre = 2
+
+        tbl = doc.add_table(rows=1, cols=n_cols)
+        tbl.style = 'Table Grid'
+        _setup_grid(tbl, widths)
+
+        hdr_row = tbl.rows[0]
+        for i, cell in enumerate(hdr_row.cells):
+            _shd(cell, HDR_BG)
+            _write(cell, hdrs[i], bold=True, size=7)
+            _tcW(cell, widths[i])
+            _vmid(cell)
+
+        for ri, row in enumerate(rows):
+            is_epi = row['type'] == 'epistrofi'
+            dr = tbl.add_row()
+
+            if is_page1:
+                adeia_ekd = row['adeia'] + (f"\n{row['ekdousa']}" if row.get('ekdousa') else '')
+                data = ([str(row['aa']) if row['aa'] else '', adeia_ekd] +
+                        [get_val(yid, row['ylika']) for yid, _ in columns] +
+                        [f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", row['promitheftis']])
+            else:
+                data = ([str(row['aa']) if row['aa'] else '',
+                         f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}"] +
+                        [get_val(yid, row['ylika']) for yid, _ in columns])
+
+            fg = EPY_FG if is_epi else None
+            bg = EPY_BG if is_epi else (ALT_BG if ri % 2 == 1 else None)
+
+            for i, cell in enumerate(dr.cells):
+                is_mat = n_fixed_pre <= i < n_fixed_pre + n_mat
+                _write(cell, data[i], bold=is_epi, size=7, fg=fg,
+                       align='right' if is_mat else 'center')
+                if bg:
+                    _shd(cell, bg)
+                _tcW(cell, widths[i])
+                _vmid(cell)
+
+    add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ')
+    build_page(non_nonel, is_page1=True)
+
+    if nonel_cols:
+        doc.add_page_break()
+        add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — NONEL')
+        build_page(nonel_cols, is_page1=False)
+
+    buf = io.BytesIO()
+    doc.save(buf)
+    return buf.getvalue()
+
+
 # ─── PDF ΥΠΟΛΟΓΙΣΜΟΥ ─────────────────────────────────────────────────────────
 
 def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) -> bytes:

@@ -110,6 +110,8 @@ function setupIPC() {
   ipcMain.handle('save-file-dialog', async (event, { defaultName, ext }) => {
     const filters = ext === 'pdf'
       ? [{ name: 'PDF Files', extensions: ['pdf'] }]
+      : ext === 'docx'
+      ? [{ name: 'Word Files', extensions: ['docx'] }]
       : [{ name: 'Excel Files', extensions: ['xlsx'] }];
     const downloadsPath = app.getPath('downloads');
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
