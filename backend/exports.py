@@ -385,22 +385,22 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     def p(txt, s=None): return Paragraph(str(txt), s or CS)
 
     MERGED_IDS = {
-        'POLADYN':     ([4, 3],  'POLADYN 65X500' + chr(10) + 'POLADYN 38X380', 'Κιλ'),
-        'THRYALLIDES': ([5, 10], 'ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ',          'Μετρ'),
-        'KAPSYLIA':    ([9, 33], 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ',     'Τεμ'),
+        'POLADYN':     ([4, 3],  'POLADYN 65X500<br/>POLADYN 38X380', 'Κιλ'),
+        'THRYALLIDES': ([5, 10], 'ΒΡΑΔΥΚΑΥΣΤΗ<br/>ΑΚΑΡΙΑΙΑ',          'Μετρ'),
+        'KAPSYLIA':    ([9, 33], 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.<br/>ΗΛΕΚΤΡΙΚΟΙ',     'Τεμ'),
     }
     # Χτίζουμε virtual ylika_order με merged στήλες
     virtual_order = []
     added_merged = set()
     for yid, (on, mo) in ylika_order:
         if yid in {4, 3} and 'POLADYN' not in added_merged:
-            virtual_order.append(('POLADYN', ('POLADYN 65X500' + chr(10) + 'POLADYN 38X380', 'Κιλ')))
+            virtual_order.append(('POLADYN', ('POLADYN 65X500<br/>POLADYN 38X380', 'Κιλ')))
             added_merged.add('POLADYN')
         elif yid in {5, 10} and 'THRYALLIDES' not in added_merged:
-            virtual_order.append(('THRYALLIDES', ('ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ', 'Μετρ')))
+            virtual_order.append(('THRYALLIDES', ('ΒΡΑΔΥΚΑΥΣΤΗ<br/>ΑΚΑΡΙΑΙΑ', 'Μετρ')))
             added_merged.add('THRYALLIDES')
         elif yid in {9, 33} and 'KAPSYLIA' not in added_merged:
-            virtual_order.append(('KAPSYLIA', ('ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ', 'Τεμ')))
+            virtual_order.append(('KAPSYLIA', ('ΚΟΙΝΟΙ ΠΥΡΟΚΡ.<br/>ΗΛΕΚΤΡΙΚΟΙ', 'Τεμ')))
             added_merged.add('KAPSYLIA')
         elif yid not in {4, 3, 5, 10, 9, 33}:
             virtual_order.append((yid, (on, mo)))
