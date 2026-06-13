@@ -80,27 +80,18 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
     from database import get_all_ylika
     all_ylika = {y['id']: y for y in get_all_ylika()}
 
+    # Fixed σειρά: ANFO, POLADYN 65, POLADYN 38, EM-EX, ΒΡΑΔΥΚΑΥΣΤΗ, ΑΚΑΡΙΑΙΑ, ΚΟΙΝΟΙ, ΗΛΕΚΤΡΙΚΟΙ, NONEL
+    FIXED = [1, 4, 3, 2, 5, 10, 9, 33]
     seen_ids = set(k['yliko_id'] for k in kiniseis)
 
     if nonel_mode == 'detail':
         result = []
         added = set()
-        # Πάντα εμφανίζουμε τις fixed στήλες ανεξάρτητα από φίλτρο
-        if 1 in all_ylika:
-            result.append((1, (all_ylika[1]['onoma'], all_ylika[1]['monada_metrisis'])))
-            added.add(1)
-        lbl = 'POLADYN 65X500' + chr(10) + 'POLADYN 38X380'
-        result.append(('POLADYN', (lbl, 'Κιλ')))
-        added |= {4, 3}
-        if 2 in all_ylika:
-            result.append((2, (all_ylika[2]['onoma'], all_ylika[2]['monada_metrisis'])))
-            added.add(2)
-        lbl = 'ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ'
-        result.append(('THRYALLIDES', (lbl, 'Μετρ')))
-        added |= {5, 10}
-        lbl = 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ'
-        result.append(('KAPSYLIA', (lbl, 'Τεμ')))
-        added |= {9, 33}
+        for yid in FIXED:
+            if yid in all_ylika:
+                y = all_ylika[yid]
+                result.append((yid, (y['onoma'], y['monada_metrisis'])))
+                added.add(yid)
         for k in kiniseis:
             yid = k['yliko_id']
             if yid not in added and all_ylika.get(yid, {}).get('export_group') != 'NONEL':
@@ -124,7 +115,7 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
     added = set()
     nonel_added = set()
 
-    for yid in [1, 4, 3, 2, 5, 10, 9, 33]:
+    for yid in FIXED:
         if yid not in seen_yids or yid in added:
             continue
         ydata = seen_yids[yid]
@@ -156,49 +147,6 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
                 nonel_added.add(yid)
 
     return result
-
-    result = []
-    added = set()
-    nonel_added = set()
-
-    # Σταθερή σειρά non-NONEL
-    for yid in [1, 4, 3, 2, 5, 10, 9, 33]:
-        if yid not in seen_yids or yid in added:
-            continue
-        ydata = seen_yids[yid]
-        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
-        added.add(yid)
-
-    # Υπόλοιπα non-NONEL
-    for yid, ydata in seen_yids.items():
-        if yid in added or ydata.get('export_group') == 'NONEL':
-            continue
-        result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
-        added.add(yid)
-
-    # NONEL
-    for yid, ydata in seen_yids.items():
-        if ydata.get('export_group') != 'NONEL':
-            continue
-        grp = ydata.get('export_group')
-        sub = ydata.get('export_subgroup')
-        if nonel_mode == 'total':
-            if 'NONEL_TOTAL' not in nonel_added:
-                result.append(('NONEL_TOTAL', ('NONEL ΣΥΝΟΛΟ', 'Τεμ')))
-                nonel_added.add('NONEL_TOTAL')
-        elif nonel_mode == 'grouped':
-            for s in ['SNAPLINE', 'UNIDET', 'LP']:
-                key = f'NONEL_{s}'
-                if key not in nonel_added:
-                    result.append((key, ('NONEL ' + s, 'Τεμ')))
-                    nonel_added.add(key)
-        elif nonel_mode == 'subgroup':
-            if yid not in nonel_added:
-                result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', 'Τεμ'))))
-                nonel_added.add(yid)
-
-    return result
-
 
 def get_nonel_sums(row_ylika, all_ylika, nonel_mode):
     """Υπολογίζει αθροίσματα NONEL για grouped/total mode."""
@@ -438,6 +386,27 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
     def p(txt, s=None): return Paragraph(str(txt), s or CS)
 
+    MERGED_IDS = {
+        'POLADYN':     ([4, 3],  'POLADYN 65X500' + chr(10) + 'POLADYN 38X380', 'Κιλ'),
+        'THRYALLIDES': ([5, 10], 'ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ',          'Μετρ'),
+        'KAPSYLIA':    ([9, 33], 'ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ',     'Τεμ'),
+    }
+    # Χτίζουμε virtual ylika_order με merged στήλες
+    virtual_order = []
+    added_merged = set()
+    for yid, (on, mo) in ylika_order:
+        if yid in {4, 3} and 'POLADYN' not in added_merged:
+            virtual_order.append(('POLADYN', ('POLADYN 65X500' + chr(10) + 'POLADYN 38X380', 'Κιλ')))
+            added_merged.add('POLADYN')
+        elif yid in {5, 10} and 'THRYALLIDES' not in added_merged:
+            virtual_order.append(('THRYALLIDES', ('ΒΡΑΔΥΚΑΥΣΤΗ' + chr(10) + 'ΑΚΑΡΙΑΙΑ', 'Μετρ')))
+            added_merged.add('THRYALLIDES')
+        elif yid in {9, 33} and 'KAPSYLIA' not in added_merged:
+            virtual_order.append(('KAPSYLIA', ('ΚΟΙΝΟΙ ΠΥΡΟΚΡ.' + chr(10) + 'ΗΛΕΚΤΡΙΚΟΙ', 'Τεμ')))
+            added_merged.add('KAPSYLIA')
+        elif yid not in {4, 3, 5, 10, 9, 33}:
+            virtual_order.append((yid, (on, mo)))
+    ylika_order = virtual_order
     yliko_hdrs = [p(f"{on}\n({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
