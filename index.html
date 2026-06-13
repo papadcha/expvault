@@ -602,7 +602,21 @@ body.electron .main    { padding-top: 60px; }
         <div class="card-title" id="yp-results-title">Αποτέλεσμα Υπολογισμού</div>
         <div id="yp-results-body"></div>
         <div id="yp-compare-body" style="margin-top:16px;"></div>
+        <!-- Σενάριο 1: καταχώρηση επιστροφής -->
+        <div id="yp-save-epistrofi" style="display:none;margin-top:16px;background:#e8f4fd;border:1px solid #90cdf4;border-radius:6px;padding:14px;">
+          <div style="font-weight:600;color:#2b6cb0;margin-bottom:10px;">📤 Καταχώρηση Επιστροφής στο Βιβλίο</div>
+          <div class="form-row cols-2">
+            <div><label>Παραστατικό Επιστροφής</label>
+              <input type="text" id="yp-epi-parst" placeholder="αφήστε κενό αν δεν έχετε ακόμα"></div>
+            <div><label>Ημερομηνία Επιστροφής *</label>
+              <input type="date" id="yp-epi-date"></div>
+          </div>
+          <button class="btn btn-success" onclick="saveEpistrofiFromYpologismos()">💾 Καταχώρηση Επιστροφής</button>
+          <div id="yp-epi-msg" style="margin-top:8px;"></div>
+        </div>
         <div class="form-actions" style="margin-top:12px;">
+          <!-- Σενάριο 2: καταχώρηση κατανάλωσης (εμφανίζεται μόνο αν συμφωνεί με βιβλίο) -->
+          <button id="yp-kataxorisi-btn" class="btn btn-success" style="display:none;" onclick="kataxoriYpologismos()">💾 Καταχώρηση στο Βιβλίο</button>
           <button class="btn btn-danger" onclick="exportYpologismosPdf()">📄 Εξαγωγή PDF</button>
         </div>
       </div>
@@ -1660,6 +1674,11 @@ async function loadYpologismosAgora() {
     document.getElementById('yp-adeia').value = agores[0].arithmos_adeias || '';
   }
 
+  // Αποθήκευση adeia/promitheftis από πρώτη γραμμή αγοράς
+  window._ypAgoraAdeia     = agores[0]?.adeia_id || null;
+  window._ypAgoraProm      = agores[0]?.promitheftis_id || null;
+  window._ypAgoraImerominia = agores[0]?.imerominia || '';
+
   // Ομαδοποίηση ανά υλικό
   const byYliko = {};
   for (const k of agores) {
@@ -1762,6 +1781,16 @@ function showYpResults() {
   document.getElementById('yp-results').style.display = 'block';
   document.getElementById('yp-kataxorisi-btn').style.display = 'none';
   document.getElementById('yp-compare-body').innerHTML = '';
+  document.getElementById('yp-epi-msg').innerHTML = '';
+  // Σενάριο 1 → εμφάνισε section καταχώρησης επιστροφής
+  const epiSection = document.getElementById('yp-save-epistrofi');
+  if (_ypSenario === 1) {
+    epiSection.style.display = 'block';
+    document.getElementById('yp-epi-date').value = todayInput();
+    document.getElementById('yp-epi-parst').value = '';
+  } else {
+    epiSection.style.display = 'none';
+  }
   compareYpWithVivlio();
 }
 
@@ -1801,18 +1830,18 @@ async function compareYpWithVivlio() {
 }
 
 async function kataxoriYpologismos() {
-  // Καταχωρεί το αποτέλεσμα στο βιβλίο
+  // Σενάριο 2 μόνο: καταχώρηση κατανάλωσης (η επιστροφή ήδη υπάρχει στο βιβλίο)
   const parst = document.getElementById('yp-parstatiko').value;
-  const imer  = _ypAgora.length ? (await py('get_kiniseis',{})).find(k=>k.arithmos_parstatikos===parst)?.imerominia : null;
+  const imer  = window._ypAgoraImerominia || null;
   if (!imer) { alert('Δεν βρέθηκε ημερομηνία'); return; }
 
   for (const r of _ypResult) {
-    const val = _ypSenario===1 ? r.posotita_katanalosis : r.posotita_katanalosis;
+    const val = _ypSenario === 2 ? r.posotita_katanalosis : r.posotita_katanalosis;
     if (val <= 0) continue;
     await py('add_kinisi', {
       imerominia: imer, tipos: 'ΚΑΤΑΝΑΛΩΣΗ',
       yliko_id: r.yliko_id, posotita: val,
-      arithmos_parstatikos: '', adeia_id: null,
+      arithmos_parstatikos: parst, adeia_id: null,
       promitheftis_id: null, paratirishis: 'Από Υπολογισμό',
       ypografi: ''
     });
@@ -1821,6 +1850,46 @@ async function kataxoriYpologismos() {
   alert('✅ Καταχωρήθηκε στο Βιβλίο');
   loadKiniseis();
   loadDashboard();
+}
+
+async function saveEpistrofiFromYpologismos() {
+  const agoraParst = document.getElementById('yp-parstatiko').value;
+  const epiParst   = document.getElementById('yp-epi-parst').value.trim() || null;
+  const epiDate    = document.getElementById('yp-epi-date').value;
+  const msg        = document.getElementById('yp-epi-msg');
+
+  if (!epiDate) {
+    msg.innerHTML = '<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;">Εισάγετε ημερομηνία επιστροφής.</div>';
+    return;
+  }
+
+  let saved = 0, errors = [];
+  for (const r of _ypResult) {
+    if (r.posotita_epistrofis <= 0) continue;
+    try {
+      await py('add_kinisi', {
+        imerominia:           epiDate,
+        tipos:                'ΕΠΙΣΤΡΟΦΗ',
+        yliko_id:             r.yliko_id,
+        posotita:             r.posotita_epistrofis,
+        arithmos_parstatikos: epiParst || '',
+        adeia_id:             window._ypAgoraAdeia,
+        promitheftis_id:      window._ypAgoraProm,
+        paratirishis:         '',
+        ypografi:             '',
+        agora_ref:            agoraParst
+      });
+      saved++;
+    } catch(e) { errors.push(r.yliko_onoma + ': ' + e.message); }
+  }
+
+  if (errors.length) {
+    msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;">Σφάλματα: ${errors.join(', ')}</div>`;
+  } else {
+    msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;">✅ Καταχωρήθηκαν ${saved} επιστροφές.${!epiParst ? ' Χωρίς παραστατικό — χρησιμοποίησε τη σελίδα Παραστατικά για να το συμπληρώσεις αργότερα.' : ''}</div>`;
+    document.getElementById('yp-epi-parst').value = '';
+    await loadKiniseis();
+  }
 }
 
 async function exportYpologismosPdf() {
