@@ -2282,7 +2282,8 @@ function cancelDeleteParstatiko() {
 }
 
 async function confirmDeleteParstatiko(includeRelated) {
-  const val = document.getElementById('rn-search').value.trim();
+  const val           = document.getElementById('rn-search').value.trim();
+  const linkedAgoraRef = window._rnLinkedAgoraRef || null;
   const msg = document.getElementById('rn-msg');
   document.getElementById('rn-delete-confirm').style.display = 'none';
   try {
@@ -2290,6 +2291,13 @@ async function confirmDeleteParstatiko(includeRelated) {
       arithmos_parstatikos: val,
       include_agora_ref: includeRelated
     });
+
+    // Αν διαγράφηκε επιστροφή (όχι αγορά) → άνοιξε Υπολογιστή με την αγορά
+    if (linkedAgoraRef && !includeRelated) {
+      await navigateToYpologismos(linkedAgoraRef);
+      return;
+    }
+
     msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Το παραστατικό <strong>${val}</strong> διαγράφηκε${includeRelated?' μαζί με τις συσχετισμένες επιστροφές':''} .</div>`;
     document.getElementById('rn-search').value = '';
     document.getElementById('rn-preview').innerHTML = '';
@@ -2303,6 +2311,22 @@ async function confirmDeleteParstatiko(includeRelated) {
   } catch(e) {
     msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`;
   }
+}
+
+async function navigateToYpologismos(parstatiko) {
+  // Πλοήγηση στον Υπολογιστή
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  const navEl = document.querySelector('.nav-item[data-page="ypologismos"]');
+  if (navEl) navEl.classList.add('active');
+  document.getElementById('page-ypologismos').classList.add('active');
+
+  // Φόρτωσε τη λίστα αγορών και επέλεξε το παραστατικό
+  await loadYpologismos();
+  showSenario(1);
+  const sel = document.getElementById('yp-parstatiko');
+  sel.value = parstatiko;
+  await loadYpologismosAgora();
 }
 
 // ── ΕΠΕΞΕΡΓΑΣΙΑ ΟΜΑΔΑΣ ΚΙΝΗΣΕΩΝ (ΠΑΡΑΣΤΑΤΙΚΟ + ΥΛΙΚΟ) ───────────────────────
