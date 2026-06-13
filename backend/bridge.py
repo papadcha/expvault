@@ -139,6 +139,11 @@ def handle(cmd, payload):
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
 
+    if cmd == 'get_kiniseis_by_parstatiko_yliko':
+        return database.get_kiniseis_by_parstatiko_yliko(
+            payload['arithmos_parstatikos'], payload['yliko_id']
+        )
+
     if cmd == 'delete_kiniseis_by_parstatiko':
         database.delete_kiniseis_by_parstatiko(payload.get('arithmos_parstatikos'))
         return {'ok': True}

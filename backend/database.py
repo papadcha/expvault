@@ -40,6 +40,23 @@ def init_db():
                         conn.execute("UPDATE kiniseis SET agora_ref=? WHERE id=?", (agora[0], epi[0]))
         except Exception:
             pass
+        # Migration: agora_ref για καταναλώσεις (χωρίς παραστατικό)
+        try:
+            katanalosis = conn.execute(
+                "SELECT id, yliko_id, auxon_arithmos FROM kiniseis WHERE tipos='ΚΑΤΑΝΑΛΩΣΗ' AND (agora_ref IS NULL OR agora_ref='') ORDER BY auxon_arithmos"
+            ).fetchall()
+            for kat in katanalosis:
+                agora = conn.execute(
+                    """SELECT arithmos_parstatikos FROM kiniseis
+                       WHERE tipos='ΕΙΣΑΓΩΓΗ' AND yliko_id=? AND auxon_arithmos<?
+                         AND arithmos_parstatikos IS NOT NULL AND arithmos_parstatikos!=''
+                       ORDER BY auxon_arithmos DESC LIMIT 1""",
+                    (kat[1], kat[2])
+                ).fetchone()
+                if agora:
+                    conn.execute("UPDATE kiniseis SET agora_ref=? WHERE id=?", (agora[0], kat[0]))
+        except Exception:
+            pass
         conn.executescript('''
             CREATE TABLE IF NOT EXISTS ylika (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -229,6 +246,17 @@ def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
         raise ValueError("Απαγορεύεται η αποθήκευση αυτόματου υπολογισμού ως ΚΑΤΑΝΑΛΩΣΗ")
     auxon = next_auxon()
     with get_db() as conn:
+        # Auto-link κατανάλωσης στην τελευταία αγορά του ίδιου υλικού
+        if tipos == 'ΚΑΤΑΝΑΛΩΣΗ' and not agora_ref:
+            last = conn.execute(
+                """SELECT arithmos_parstatikos FROM kiniseis
+                   WHERE tipos='ΕΙΣΑΓΩΓΗ' AND yliko_id=?
+                     AND arithmos_parstatikos IS NOT NULL AND arithmos_parstatikos!=''
+                   ORDER BY auxon_arithmos DESC LIMIT 1""",
+                (yliko_id,)
+            ).fetchone()
+            if last:
+                agora_ref = last[0]
         conn.execute('''
             INSERT INTO kiniseis(auxon_arithmos,imerominia,tipos,yliko_id,posotita,
                 arithmos_parstatikos,adeia_id,promitheftis_id,paratirishis,ypografi,agora_ref)
@@ -421,6 +449,24 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
             return {'ekkremotita': False}
 
         return {'ekkremotita': True, 'ekkremes': ekkremotes}
+
+def get_kiniseis_by_parstatiko_yliko(arithmos_parstatikos, yliko_id):
+    """Επιστρέφει τις κινήσεις ενός υλικού που ανήκουν σε ένα παραστατικό (αγορά + κατανάλωση + επιστροφή)."""
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis,
+                   p.onoma as promitheftis_onoma, a.arithmos_adeias
+            FROM kiniseis k
+            JOIN ylika y ON k.yliko_id = y.id
+            LEFT JOIN promitheftes p ON k.promitheftis_id = p.id
+            LEFT JOIN adeies a ON k.adeia_id = a.id
+            WHERE k.yliko_id = ?
+              AND (k.arithmos_parstatikos = ? OR k.agora_ref = ?)
+            ORDER BY
+              CASE k.tipos WHEN 'ΕΙΣΑΓΩΓΗ' THEN 1 WHEN 'ΚΑΤΑΝΑΛΩΣΗ' THEN 2 WHEN 'ΕΠΙΣΤΡΟΦΗ' THEN 3 ELSE 4 END,
+              k.auxon_arithmos
+        ''', (yliko_id, arithmos_parstatikos, arithmos_parstatikos)).fetchall()
+        return [dict(r) for r in rows]
 
 def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
     """Διαγράφει όλες τις κινήσεις με συγκεκριμένο παραστατικό."""

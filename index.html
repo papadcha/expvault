@@ -711,6 +711,21 @@ body.electron .main    { padding-top: 60px; }
   </div>
 </div>
 
+<!-- ── ΕΠΕΞΕΡΓΑΣΙΑ ΚΙΝΗΣΕΩΝ ΠΑΡΑΣΤΑΤΙΚΟΥ / ΥΛΙΚΟΥ ── -->
+<div class="modal-overlay" id="parst-edit-modal">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-title" style="display:flex;justify-content:space-between;align-items:center;">
+      <span id="pe-title">✏️ Επεξεργασία Κινήσεων</span>
+      <button onclick="closeParstEditModal()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);line-height:1;">✕</button>
+    </div>
+    <div id="pe-body"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeParstEditModal()">Άκυρο</button>
+      <button class="btn btn-success" onclick="saveParstEdit()">💾 Αποθήκευση Όλων</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── ΔΙΠΛΟΕΓΓΡΑΦΗ MODAL ── -->
 <div class="modal-overlay" id="diplo-modal">
   <div class="modal" style="max-width:500px;">
@@ -931,6 +946,18 @@ async function loadKiniseis() {
 }
 
 async function editKinisi(k) {
+  // Αν υπάρχει παραστατικό, άνοιγε group modal με όλες τις κινήσεις αυτού του υλικού
+  const rootParstatiko = (k.tipos === 'ΕΠΙΣΤΡΟΦΗ' && k.agora_ref) ? k.agora_ref : k.arithmos_parstatikos;
+  if (rootParstatiko) {
+    const related = await py('get_kiniseis_by_parstatiko_yliko', {
+      arithmos_parstatikos: rootParstatiko,
+      yliko_id: k.yliko_id
+    });
+    const ylikoName = k.yliko_onoma + (k.diatomi_mm ? ` (${k.diatomi_mm}mm)` : '');
+    openParstEditModal(related, ylikoName, rootParstatiko);
+    return;
+  }
+  // Χωρίς παραστατικό → single modal
   document.getElementById('ek-title').textContent = `✏️ Επεξεργασία Κίνησης #${k.auxon_arithmos}`;
   document.getElementById('ek-id').value = k.id;
 
@@ -1807,6 +1834,80 @@ function closeConfirm() {
 // Κλείσιμο edit-kinisi-modal με click στο overlay
 document.getElementById('edit-kinisi-modal').addEventListener('click', function(e) {
   if (e.target === this) closeEditKinisiModal();
+});
+
+// ── ΕΠΕΞΕΡΓΑΣΙΑ ΟΜΑΔΑΣ ΚΙΝΗΣΕΩΝ (ΠΑΡΑΣΤΑΤΙΚΟ + ΥΛΙΚΟ) ───────────────────────
+let _peKiniseis = [];
+
+function openParstEditModal(kiniseis, ylikoName, parstatiko) {
+  _peKiniseis = kiniseis;
+  document.getElementById('pe-title').textContent = `✏️ ${ylikoName}  —  Παρ. ${parstatiko}`;
+
+  const tipoLabel = { 'ΕΙΣΑΓΩΓΗ': '📥 Αγορά', 'ΚΑΤΑΝΑΛΩΣΗ': '🔥 Κατανάλωση', 'ΕΠΙΣΤΡΟΦΗ': '🔄 Επιστροφή' };
+  const tipoCls   = { 'ΕΙΣΑΓΩΓΗ': 'badge-in', 'ΚΑΤΑΝΑΛΩΣΗ': 'badge-kat', 'ΕΠΙΣΤΡΟΦΗ': 'badge-out' };
+
+  const rows = kiniseis.map(k => `
+    <tr style="border-bottom:1px solid var(--border);">
+      <td style="padding:10px 12px;">
+        <span class="badge ${tipoCls[k.tipos]||''}">${tipoLabel[k.tipos]||k.tipos}</span>
+      </td>
+      <td style="padding:10px 12px;">
+        <input type="date" id="pe-date-${k.id}" value="${k.imerominia}"
+          style="border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:13px;width:140px;">
+      </td>
+      <td style="padding:10px 12px;text-align:right;">
+        <input type="number" id="pe-pos-${k.id}" value="${k.posotita}" step="0.001" min="0.001"
+          style="border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:13px;width:100px;text-align:right;font-family:var(--mono);">
+        <span style="font-size:12px;color:var(--muted);margin-left:4px;">${k.monada_metrisis}</span>
+      </td>
+      <td style="padding:10px 12px;">
+        <input type="text" id="pe-ypografi-${k.id}" value="${k.ypografi||''}"
+          style="border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:13px;width:120px;">
+      </td>
+    </tr>`).join('');
+
+  document.getElementById('pe-body').innerHTML = kiniseis.length ? `
+    <table style="width:100%;border-collapse:collapse;">
+      <thead><tr style="background:var(--navy);color:white;">
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.8px;">Τύπος</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.8px;">Ημ/νία</th>
+        <th style="padding:8px 12px;text-align:right;font-size:11px;font-weight:600;letter-spacing:.8px;">Ποσότητα</th>
+        <th style="padding:8px 12px;text-align:left;font-size:11px;font-weight:600;letter-spacing:.8px;">Υπογραφή</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>` : '<p style="color:var(--muted);text-align:center;padding:20px;">Δεν βρέθηκαν κινήσεις</p>';
+
+  document.getElementById('parst-edit-modal').classList.add('open');
+}
+
+function closeParstEditModal() {
+  document.getElementById('parst-edit-modal').classList.remove('open');
+}
+
+async function saveParstEdit() {
+  for (const k of _peKiniseis) {
+    const posotita  = parseFloat(document.getElementById(`pe-pos-${k.id}`).value);
+    const imerominia = document.getElementById(`pe-date-${k.id}`).value;
+    const ypografi  = document.getElementById(`pe-ypografi-${k.id}`).value;
+    if (!imerominia || isNaN(posotita) || posotita <= 0) {
+      alert('Ελέγξτε ημερομηνία και ποσότητα.');
+      return;
+    }
+    try {
+      await py('update_kinisi', {
+        id: k.id, imerominia, tipos: k.tipos, yliko_id: k.yliko_id,
+        posotita, arithmos_parstatikos: k.arithmos_parstatikos,
+        adeia_id: k.adeia_id, promitheftis_id: k.promitheftis_id,
+        paratirishis: k.paratirishis, ypografi
+      });
+    } catch(e) { alert('Σφάλμα αποθήκευσης: ' + e.message); return; }
+  }
+  closeParstEditModal();
+  await loadKiniseis();
+}
+
+document.getElementById('parst-edit-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeParstEditModal();
 });
 
 // ── ELECTRON DETECTION ───────────────────────────────────────────────────────
