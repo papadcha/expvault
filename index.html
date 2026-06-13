@@ -2116,9 +2116,17 @@ async function loadRenamePreview() {
   const related = kiniseis.filter(k => k.arithmos_parstatikos === val);
   if (!related.length) { preview.innerHTML = ''; return; }
 
+  // Επιστροφές συνδεδεμένες μέσω agora_ref (έχουν δικό τους parstatiko)
+  const linkedEpistrofes = kiniseis.filter(k =>
+    k.tipos === 'ΕΠΙΣΤΡΟΦΗ' && k.agora_ref === val && k.arithmos_parstatikos !== val
+  );
+
   // Ομαδοποίηση ανά τύπο
   const agores     = related.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ');
-  const epistrofes = related.filter(k => k.tipos === 'ΕΠΙΣΤΡΟΦΗ');
+  const epistrofes = [
+    ...related.filter(k => k.tipos === 'ΕΠΙΣΤΡΟΦΗ'),
+    ...linkedEpistrofes
+  ];
 
   const tipoLbl = { 'ΕΙΣΑΓΩΓΗ': '📥 Αγορά', 'ΕΠΙΣΤΡΟΦΗ': '🔄 Επιστροφή' };
   const tipoCls = { 'ΕΙΣΑΓΩΓΗ': '#2b6cb0', 'ΕΠΙΣΤΡΟΦΗ': '#c53030' };
@@ -2155,6 +2163,8 @@ async function loadRenamePreview() {
         <span style="font-size:11px;font-weight:600;color:${tipoCls[k.tipos]||'#555'};">
           ${tipoLbl[k.tipos]||k.tipos}
         </span>
+        ${k.arithmos_parstatikos && k.arithmos_parstatikos !== val
+          ? `<br><span style="font-size:10px;color:#718096;">Παρ: ${k.arithmos_parstatikos}</span>` : ''}
       </td>
       <td style="padding:5px 8px;font-size:12px;">${fmtDate(k.imerominia)}</td>
       <td style="padding:5px 8px;font-size:12px;">${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
