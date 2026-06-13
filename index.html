@@ -1984,15 +1984,15 @@ document.getElementById('edit-kinisi-modal').addEventListener('click', function(
 async function loadParstatikaPage() {
   const kiniseis = await py('get_kiniseis', {});
 
-  // Dropdown αγορών (μοναδικά παραστατικά ΕΙΣΑΓΩΓΗΣ)
-  const agores = [...new Map(
-    kiniseis.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ' && k.arithmos_parstatikos)
-            .map(k => [k.arithmos_parstatikos, k])
-  ).values()].sort((a,b) => a.arithmos_parstatikos.localeCompare(b.arithmos_parstatikos));
-
+  // Dropdown αγορών — μόνο αγορές με εκκρεμείς επιστροφές χωρίς παραστατικό
+  const pendingAgores = await py('get_agores_with_pending_epistrofes', {});
   const agoraSel = document.getElementById('pp-agora-sel');
-  agoraSel.innerHTML = '<option value="">— Επιλογή —</option>' +
-    agores.map(k => `<option value="${k.arithmos_parstatikos}">${k.arithmos_parstatikos} (${fmtDate(k.imerominia)})</option>`).join('');
+  if (pendingAgores.length) {
+    agoraSel.innerHTML = '<option value="">— Επιλογή —</option>' +
+      pendingAgores.map(k => `<option value="${k.arithmos_parstatikos}">${k.arithmos_parstatikos} (${fmtDate(k.imerominia)})</option>`).join('');
+  } else {
+    agoraSel.innerHTML = '<option value="">✅ Δεν υπάρχουν εκκρεμείς επιστροφές</option>';
+  }
 
   // Dropdown μετονομασίας (όλα τα μοναδικά παραστατικά)
   const allParst = [...new Set(

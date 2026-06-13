@@ -450,6 +450,25 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
 
         return {'ekkremotita': True, 'ekkremes': ekkremotes}
 
+def get_agores_with_pending_epistrofes():
+    """Επιστρέφει αγορές που έχουν τουλάχιστον μία επιστροφή χωρίς παραστατικό (εκκρεμής)."""
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT k.arithmos_parstatikos, MIN(k.imerominia) as imerominia
+            FROM kiniseis k
+            WHERE k.tipos = 'ΕΙΣΑΓΩΓΗ'
+              AND k.arithmos_parstatikos IS NOT NULL AND k.arithmos_parstatikos != ''
+              AND EXISTS (
+                SELECT 1 FROM kiniseis e
+                WHERE e.tipos = 'ΕΠΙΣΤΡΟΦΗ'
+                  AND e.agora_ref = k.arithmos_parstatikos
+                  AND (e.arithmos_parstatikos IS NULL OR e.arithmos_parstatikos = '')
+              )
+            GROUP BY k.arithmos_parstatikos
+            ORDER BY k.arithmos_parstatikos
+        ''').fetchall()
+        return [dict(r) for r in rows]
+
 def assign_epistrofi_parstatiko(agora_ref, new_parstatiko, new_date=None):
     """Αναθέτει παραστατικό+ημερομηνία σε επιστροφές linked με αγορά που δεν έχουν ακόμα παραστατικό."""
     with get_db() as conn:

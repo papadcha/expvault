@@ -140,6 +140,9 @@ def handle(cmd, payload):
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
 
+    if cmd == 'get_agores_with_pending_epistrofes':
+        return database.get_agores_with_pending_epistrofes()
+
     if cmd == 'assign_epistrofi_parstatiko':
         n = database.assign_epistrofi_parstatiko(
             payload['agora_ref'], payload['new_parstatiko'], payload.get('new_date')
