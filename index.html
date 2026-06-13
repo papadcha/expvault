@@ -466,6 +466,7 @@ body.electron .main    { padding-top: 60px; }
         </div>
       </div>
       <div id="rn-preview" style="margin-top:4px;margin-bottom:8px;"></div>
+      <p style="font-size:12px;color:var(--muted);margin-bottom:8px;">Συμπλήρωσε μόνο τα πεδία που αλλάζουν:</p>
       <div class="form-row cols-2">
         <div>
           <label>Νέο Παραστατικό</label>
@@ -474,6 +475,27 @@ body.electron .main    { padding-top: 60px; }
         <div>
           <label>Νέα Ημερομηνία</label>
           <input type="date" id="rn-new-date">
+        </div>
+      </div>
+      <div class="form-row cols-2">
+        <div>
+          <label>Νέα Άδεια</label>
+          <select id="rn-new-adeia">
+            <option value="">— Δεν αλλάζει —</option>
+          </select>
+        </div>
+        <div>
+          <label>Νέος Προμηθευτής</label>
+          <select id="rn-new-prom">
+            <option value="">— Δεν αλλάζει —</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" id="rn-agora-ref-row" style="display:none;">
+        <div>
+          <label>Συσχετισμένο Παραστατικό Αγοράς (agora_ref)</label>
+          <input type="text" id="rn-new-agora-ref" list="rn-agora-datalist" placeholder="αφήστε κενό αν δεν αλλάζει" autocomplete="off">
+          <datalist id="rn-agora-datalist"></datalist>
         </div>
       </div>
       <div class="form-actions">
@@ -1984,6 +2006,22 @@ document.getElementById('edit-kinisi-modal').addEventListener('click', function(
 async function loadParstatikaPage() {
   const kiniseis = await py('get_kiniseis', {});
 
+  // Γέμισμα dropdowns Άδεια / Προμηθευτής για μετονομασία
+  const [adeies, proms] = await Promise.all([py('get_adeies'), py('get_promitheftes')]);
+  document.getElementById('rn-new-adeia').innerHTML =
+    '<option value="">— Δεν αλλάζει —</option>' +
+    adeies.map(a => `<option value="${a.id}">${a.arithmos_adeias}${a.perigrafi?' — '+a.perigrafi:''}</option>`).join('');
+  document.getElementById('rn-new-prom').innerHTML =
+    '<option value="">— Δεν αλλάζει —</option>' +
+    proms.map(p => `<option value="${p.id}">${p.onoma}${p.syntomografia?' ('+p.syntomografia+')':''}</option>`).join('');
+
+  // Datalist αγορών για agora_ref
+  const agoresParst = [...new Set(
+    kiniseis.filter(k => k.tipos==='ΕΙΣΑΓΩΓΗ' && k.arithmos_parstatikos).map(k=>k.arithmos_parstatikos)
+  )].sort();
+  document.getElementById('rn-agora-datalist').innerHTML =
+    agoresParst.map(p => `<option value="${p}">`).join('');
+
   // Dropdown αγορών — μόνο αγορές με εκκρεμείς επιστροφές χωρίς παραστατικό
   const pendingAgores = await py('get_agores_with_pending_epistrofes', {});
   const agoraSel = document.getElementById('pp-agora-sel');
@@ -2007,6 +2045,10 @@ async function loadParstatikaPage() {
   document.getElementById('rn-msg').innerHTML = '';
   document.getElementById('rn-preview').innerHTML = '';
   document.getElementById('rn-search').value = '';
+  document.getElementById('rn-new-adeia').value = '';
+  document.getElementById('rn-new-prom').value = '';
+  document.getElementById('rn-new-agora-ref').value = '';
+  document.getElementById('rn-agora-ref-row').style.display = 'none';
 }
 
 async function loadEpistrofesWithoutParst() {
@@ -2075,7 +2117,7 @@ async function loadRenamePreview() {
   if (!related.length) { preview.innerHTML = ''; return; }
 
   // Ομαδοποίηση ανά τύπο
-  const agores    = related.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ');
+  const agores     = related.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ');
   const epistrofes = related.filter(k => k.tipos === 'ΕΠΙΣΤΡΟΦΗ');
 
   const tipoLbl = { 'ΕΙΣΑΓΩΓΗ': '📥 Αγορά', 'ΕΠΙΣΤΡΟΦΗ': '🔄 Επιστροφή' };
@@ -2090,6 +2132,22 @@ async function loadRenamePreview() {
     firstAgora.arithmos_adeias ? `📋 Άδεια: ${firstAgora.arithmos_adeias}` : '',
     firstAgora.promitheftis_onoma ? `🏭 ${firstAgora.promitheftis_onoma}` : '',
   ].filter(Boolean).join('&emsp;');
+
+  // Προεπιλογή τρεχουσών τιμών στα dropdowns
+  if (firstAgora.adeia_id) document.getElementById('rn-new-adeia').value = firstAgora.adeia_id;
+  if (firstAgora.promitheftis_id) document.getElementById('rn-new-prom').value = firstAgora.promitheftis_id;
+
+  // Agora-ref row: εμφάνιση μόνο αν υπάρχουν επιστροφές
+  const agoraRefRow = document.getElementById('rn-agora-ref-row');
+  if (epistrofes.length) {
+    agoraRefRow.style.display = '';
+    const currentRef = epistrofes[0].agora_ref || '';
+    document.getElementById('rn-new-agora-ref').value = currentRef;
+    document.getElementById('rn-new-agora-ref').placeholder = currentRef || 'αφήστε κενό αν δεν αλλάζει';
+  } else {
+    agoraRefRow.style.display = 'none';
+    document.getElementById('rn-new-agora-ref').value = '';
+  }
 
   const rows = allRows.map(k => `
     <tr style="border-bottom:1px solid #e2e8f0;">
@@ -2124,20 +2182,34 @@ async function loadRenamePreview() {
 }
 
 async function applyRename() {
-  const oldParst  = document.getElementById('rn-search').value.trim();
-  const newParst  = document.getElementById('rn-new-parst').value.trim() || null;
-  const newDate   = document.getElementById('rn-new-date').value || null;
-  const msg       = document.getElementById('rn-msg');
+  const oldParst       = document.getElementById('rn-search').value.trim();
+  const newParst       = document.getElementById('rn-new-parst').value.trim() || null;
+  const newDate        = document.getElementById('rn-new-date').value || null;
+  const newAdeiaId     = document.getElementById('rn-new-adeia').value || null;
+  const newPromId      = document.getElementById('rn-new-prom').value || null;
+  const agoraRefRow    = document.getElementById('rn-agora-ref-row');
+  const newAgoraRef    = agoraRefRow.style.display !== 'none'
+                         ? (document.getElementById('rn-new-agora-ref').value.trim() || null)
+                         : undefined;
+  const msg = document.getElementById('rn-msg');
 
-  if (!oldParst || (!newParst && !newDate)) {
-    msg.innerHTML = '<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Επιλέξτε παραστατικό και εισάγετε νέο παραστατικό ή/και νέα ημερομηνία.</div>';
+  if (!oldParst || (!newParst && !newDate && !newAdeiaId && !newPromId && newAgoraRef === undefined)) {
+    msg.innerHTML = '<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Επιλέξτε παραστατικό και εισάγετε τουλάχιστον ένα πεδίο για αλλαγή.</div>';
     return;
   }
   try {
-    const r = await py('batch_update_parstatiko', { old_parst: oldParst, new_parst: newParst, new_date: newDate });
+    const payload = { old_parst: oldParst, new_parst: newParst, new_date: newDate };
+    if (newAdeiaId)   payload.new_adeia_id      = parseInt(newAdeiaId);
+    if (newPromId)    payload.new_promitheftis_id = parseInt(newPromId);
+    if (newAgoraRef !== undefined) payload.new_agora_ref = newAgoraRef;
+
+    const r = await py('batch_update_parstatiko', payload);
     msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Ενημερώθηκαν ${r.updated} κινήσεις.</div>`;
     document.getElementById('rn-new-parst').value = '';
     document.getElementById('rn-new-date').value = '';
+    document.getElementById('rn-new-adeia').value = '';
+    document.getElementById('rn-new-prom').value = '';
+    document.getElementById('rn-new-agora-ref').value = '';
     document.getElementById('rn-search').value = newParst || oldParst;
     document.getElementById('rn-preview').innerHTML = '';
     await loadParstatikaPage();

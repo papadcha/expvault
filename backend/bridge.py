@@ -110,7 +110,10 @@ def handle(cmd, payload):
         n = database.batch_update_parstatiko(
             payload['old_parst'],
             payload.get('new_parst'),
-            payload.get('new_date')
+            payload.get('new_date'),
+            new_adeia_id=payload.get('new_adeia_id'),
+            new_promitheftis_id=payload.get('new_promitheftis_id'),
+            new_agora_ref=payload.get('new_agora_ref'),
         )
         return {'ok': True, 'updated': n}
 

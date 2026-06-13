@@ -295,27 +295,31 @@ def get_last_eisagogi_parstatiko():
         ).fetchone()
         return dict(row) if row else {}
 
-def batch_update_parstatiko(old_parst, new_parst=None, new_date=None):
-    """Μαζική ενημέρωση παραστατικού/ημερομηνίας σε όλες τις κινήσεις."""
+def batch_update_parstatiko(old_parst, new_parst=None, new_date=None,
+                            new_adeia_id=None, new_promitheftis_id=None, new_agora_ref=None):
+    """Μαζική ενημέρωση παραστατικού σε όλες τις κινήσεις."""
+    sets, vals = [], []
+    if new_parst:
+        sets.append('arithmos_parstatikos=?'); vals.append(new_parst)
+    if new_date:
+        sets.append('imerominia=?'); vals.append(new_date)
+    if new_adeia_id is not None:
+        sets.append('adeia_id=?'); vals.append(new_adeia_id if new_adeia_id != '' else None)
+    if new_promitheftis_id is not None:
+        sets.append('promitheftis_id=?'); vals.append(new_promitheftis_id if new_promitheftis_id != '' else None)
+    if not sets:
+        return 0
+    vals.append(old_parst)
     with get_db() as conn:
-        if new_parst and new_date:
+        conn.execute(f"UPDATE kiniseis SET {', '.join(sets)} WHERE arithmos_parstatikos=?", vals)
+        n = conn.execute("SELECT changes()").fetchone()[0]
+        if new_agora_ref is not None:
+            target = new_parst or old_parst
             conn.execute(
-                "UPDATE kiniseis SET arithmos_parstatikos=?, imerominia=? WHERE arithmos_parstatikos=?",
-                (new_parst, new_date, old_parst)
+                "UPDATE kiniseis SET agora_ref=? WHERE arithmos_parstatikos=? AND tipos='ΕΠΙΣΤΡΟΦΗ'",
+                (new_agora_ref or None, target)
             )
-        elif new_parst:
-            conn.execute(
-                "UPDATE kiniseis SET arithmos_parstatikos=? WHERE arithmos_parstatikos=?",
-                (new_parst, old_parst)
-            )
-        elif new_date:
-            conn.execute(
-                "UPDATE kiniseis SET imerominia=? WHERE arithmos_parstatikos=?",
-                (new_date, old_parst)
-            )
-        return conn.execute(
-            "SELECT changes()"
-        ).fetchone()[0]
+        return n
 
 # ─── ΥΠΟΛΟΙΠΑ ────────────────────────────────────────────────────────────────
 
