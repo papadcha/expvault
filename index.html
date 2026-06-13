@@ -2058,6 +2058,7 @@ async function loadParstatikaPage() {
   document.getElementById('rn-new-prom').value = '';
   document.getElementById('rn-new-agora-ref').value = '';
   document.getElementById('rn-agora-ref-row').style.display = 'none';
+  window._rnLinkedCount = 0;
 }
 
 async function loadEpistrofesWithoutParst() {
@@ -2129,6 +2130,7 @@ async function loadRenamePreview() {
   const linkedEpistrofes = kiniseis.filter(k =>
     k.tipos === 'ΕΠΙΣΤΡΟΦΗ' && k.agora_ref === val && k.arithmos_parstatikos !== val
   );
+  window._rnLinkedCount = linkedEpistrofes.length; // για χρήση στη διαγραφή
 
   // Ομαδοποίηση ανά τύπο
   const agores     = related.filter(k => k.tipos === 'ΕΙΣΑΓΩΓΗ');
@@ -2239,15 +2241,14 @@ function promptDeleteParstatiko() {
   const val = document.getElementById('rn-search').value.trim();
   if (!val) return;
 
-  const agoraRefRow = document.getElementById('rn-agora-ref-row');
-  const hasRelated  = agoraRefRow.style.display !== 'none';
-  const confirmDiv  = document.getElementById('rn-delete-confirm');
-  const infoDiv     = document.getElementById('rn-delete-info');
-  const bothBtn     = document.getElementById('rn-del-both-btn');
+  const hasRelated = (window._rnLinkedCount || 0) > 0;
+  const confirmDiv = document.getElementById('rn-delete-confirm');
+  const infoDiv    = document.getElementById('rn-delete-info');
+  const bothBtn    = document.getElementById('rn-del-both-btn');
 
   let msg = `⚠️ Πρόκειται να διαγραφούν <strong>όλες οι κινήσεις</strong> με παραστατικό <strong>${val}</strong>.`;
   if (hasRelated) {
-    msg += `<br>Υπάρχουν συσχετισμένες επιστροφές (agora_ref = ${val}). Θέλεις να διαγραφούν και αυτές;`;
+    msg += `<br>Υπάρχουν ${window._rnLinkedCount} συσχετισμένες επιστροφές (agora_ref = ${val}). Θέλεις να διαγραφούν και αυτές;`;
     bothBtn.style.display = '';
   } else {
     bothBtn.style.display = 'none';
