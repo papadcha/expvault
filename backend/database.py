@@ -450,6 +450,38 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
 
         return {'ekkremotita': True, 'ekkremes': ekkremotes}
 
+def assign_epistrofi_parstatiko(agora_ref, new_parstatiko, new_date=None):
+    """Αναθέτει παραστατικό+ημερομηνία σε επιστροφές linked με αγορά που δεν έχουν ακόμα παραστατικό."""
+    with get_db() as conn:
+        if new_date:
+            conn.execute(
+                """UPDATE kiniseis SET arithmos_parstatikos=?, imerominia=?
+                   WHERE tipos='ΕΠΙΣΤΡΟΦΗ' AND agora_ref=?
+                     AND (arithmos_parstatikos IS NULL OR arithmos_parstatikos='')""",
+                (new_parstatiko, new_date, agora_ref)
+            )
+        else:
+            conn.execute(
+                """UPDATE kiniseis SET arithmos_parstatikos=?
+                   WHERE tipos='ΕΠΙΣΤΡΟΦΗ' AND agora_ref=?
+                     AND (arithmos_parstatikos IS NULL OR arithmos_parstatikos='')""",
+                (new_parstatiko, agora_ref)
+            )
+        return conn.execute("SELECT changes()").fetchone()[0]
+
+def get_epistrofes_without_parstatiko(agora_ref):
+    """Επιστρέφει επιστροφές χωρίς παραστατικό για συγκεκριμένη αγορά."""
+    with get_db() as conn:
+        rows = conn.execute('''
+            SELECT k.id, k.auxon_arithmos, k.imerominia, k.posotita,
+                   y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis
+            FROM kiniseis k JOIN ylika y ON k.yliko_id = y.id
+            WHERE k.tipos='ΕΠΙΣΤΡΟΦΗ' AND k.agora_ref=?
+              AND (k.arithmos_parstatikos IS NULL OR k.arithmos_parstatikos='')
+            ORDER BY k.auxon_arithmos
+        ''', (agora_ref,)).fetchall()
+        return [dict(r) for r in rows]
+
 def get_kiniseis_by_parstatiko_yliko(arithmos_parstatikos, yliko_id):
     """Επιστρέφει τις κινήσεις ενός υλικού που ανήκουν σε ένα παραστατικό (αγορά + κατανάλωση + επιστροφή)."""
     with get_db() as conn:

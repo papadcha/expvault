@@ -139,6 +139,15 @@ def handle(cmd, payload):
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
 
+    if cmd == 'assign_epistrofi_parstatiko':
+        n = database.assign_epistrofi_parstatiko(
+            payload['agora_ref'], payload['new_parstatiko'], payload.get('new_date')
+        )
+        return {'ok': True, 'updated': n}
+
+    if cmd == 'get_epistrofes_without_parstatiko':
+        return database.get_epistrofes_without_parstatiko(payload['agora_ref'])
+
     if cmd == 'get_kiniseis_by_parstatiko_yliko':
         return database.get_kiniseis_by_parstatiko_yliko(
             payload['arithmos_parstatikos'], payload['yliko_id']
