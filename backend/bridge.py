@@ -58,11 +58,26 @@ def handle(cmd, payload):
         return database.get_all_adeies()
 
     if cmd == 'add_adeia':
-        database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
-        return {'ok': True}
+        new_id = database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'),
+                                    payload.get('syntomografia_ekdousas'),
+                                    payload.get('imerominia_ekdosis'), payload.get('imerominia_lixis'))
+        return {'ok': True, 'id': new_id}
 
     if cmd == 'update_adeia':
-        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
+        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'),
+                              payload.get('syntomografia_ekdousas'),
+                              payload.get('imerominia_ekdosis'), payload.get('imerominia_lixis'))
+        return {'ok': True}
+
+    if cmd == 'get_adeia_ylika':
+        return database.get_adeia_ylika(payload['adeia_id'])
+
+    if cmd == 'set_adeia_yliko':
+        database.set_adeia_yliko(payload['adeia_id'], payload['yliko_id'], float(payload['egekrimeni_posotita']))
+        return {'ok': True}
+
+    if cmd == 'delete_adeia_yliko':
+        database.delete_adeia_yliko(payload['id'])
         return {'ok': True}
 
     if cmd == 'delete_adeia':

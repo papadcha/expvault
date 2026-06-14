@@ -787,15 +787,39 @@ body.electron .main    { padding-top: 60px; }
         <div class="form-row"><div><label>Αριθμός Άδειας *</label><input type="text" id="adeia-num"></div></div>
         <div class="form-row"><div><label>Περιγραφή / Αρχή</label><input type="text" id="adeia-perigrafi"></div></div>
         <div class="form-row"><div><label>Συντομογραφία Εκδούσας (για βιβλίο)</label><input type="text" id="adeia-syntomografia" placeholder="π.χ. ΔΑ ΧΑΛ/ΚΗΣ"></div></div>
+        <div class="form-row cols-2">
+          <div><label>Ημ. Έκδοσης</label><input type="date" id="adeia-ekdosi"></div>
+          <div><label>Ημ. Λήξης</label><input type="date" id="adeia-lixis"></div>
+        </div>
         <div class="form-actions">
           <button class="btn btn-success" onclick="saveAdeia()">💾 Αποθήκευση</button>
           <button class="btn btn-outline" onclick="clearAdeiaForm()">✖</button>
           <button class="btn btn-danger btn-sm" id="adeia-del-btn" onclick="deleteAdeia()" style="display:none;">🗑 Διαγραφή</button>
         </div>
+
+        <!-- Εγκεκριμένες ποσότητες — εμφανίζεται μόνο κατά επεξεργασία -->
+        <div id="adeia-ylika-section" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:12px;">
+          <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Εγκεκριμένες Ποσότητες</div>
+          <table style="width:100%;font-size:12px;">
+            <thead><tr>
+              <th style="text-align:left;">Υλικό</th>
+              <th style="text-align:right;">Εγκεκρ.</th>
+              <th style="text-align:right;">Χρησιμ.</th>
+              <th style="text-align:right;">Υπόλοιπο</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="adeia-ylika-body"></tbody>
+          </table>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-end;">
+            <div style="flex:2;"><label style="font-size:11px;">Υλικό</label><select id="adeia-yliko-new" style="width:100%;"><option value="">— Επιλογή —</option></select></div>
+            <div style="flex:1;"><label style="font-size:11px;">Εγκεκρ. Ποσότητα</label><input type="number" id="adeia-posotita-new" step="0.001" min="0.001" style="width:100%;"></div>
+            <button class="btn btn-sm btn-accent" onclick="addAdeiaYliko()">+ Προσθήκη</button>
+          </div>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">Λίστα Αδειών</div>
-        <table><thead><tr><th>Αρ. Άδειας</th><th>Περιγραφή</th><th>Συντομογραφία</th></tr></thead><tbody id="adeia-body"></tbody></table>
+        <table><thead><tr><th>Αρ. Άδειας</th><th>Περιγραφή</th><th>Συντομογραφία</th><th>Λήξη</th></tr></thead><tbody id="adeia-body"></tbody></table>
       </div>
     </div>
   </div>
@@ -1429,30 +1453,94 @@ function clearPromForm() {
 // ── ΑΔΕΙΕΣ ───────────────────────────────────────────────────────────────────
 async function loadAdeies() {
   allAdeies = await py('get_adeies');
+  // Γέμισμα dropdown υλικών στη φόρμα άδειας
+  const ylikoSel = document.getElementById('adeia-yliko-new');
+  if (ylikoSel) {
+    ylikoSel.innerHTML = '<option value="">— Επιλογή —</option>' +
+      allYlika.map(y => `<option value="${y.id}">${y.onoma}${y.diatomi_mm?` (${y.diatomi_mm}mm)`:''} — ${y.monada_metrisis}</option>`).join('');
+  }
   const body=document.getElementById('adeia-body');
   body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" onclick='fillAdeiaForm(${JSON.stringify(a)})'>
     <td><strong>${a.arithmos_adeias}</strong></td><td>${a.perigrafi||'—'}</td><td>${a.syntomografia_ekdousas||'—'}</td>
-  </tr>`).join('')||'<tr><td colspan="2" style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
+    <td style="white-space:nowrap">${a.imerominia_lixis ? fmtDate(a.imerominia_lixis) : '—'}</td>
+  </tr>`).join('')||'<tr><td colspan="4" style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
 }
 
-function fillAdeiaForm(a) {
+async function fillAdeiaForm(a) {
   document.getElementById('adeia-edit-id').value=a.id;
   document.getElementById('adeia-form-title').textContent='Επεξεργασία Άδειας';
   document.getElementById('adeia-num').value=a.arithmos_adeias;
   document.getElementById('adeia-syntomografia').value=a.syntomografia_ekdousas||'';
   document.getElementById('adeia-perigrafi').value=a.perigrafi||'';
+  document.getElementById('adeia-ekdosi').value=a.imerominia_ekdosis||'';
+  document.getElementById('adeia-lixis').value=a.imerominia_lixis||'';
   document.getElementById('adeia-del-btn').style.display='inline-flex';
+  document.getElementById('adeia-ylika-section').style.display='';
+  await loadAdeiaYlika(a.id);
+}
+
+async function loadAdeiaYlika(adeia_id) {
+  const rows = await py('get_adeia_ylika', { adeia_id });
+  const tbody = document.getElementById('adeia-ylika-body');
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);padding:6px 0;font-size:12px;">Δεν υπάρχουν εγκεκριμένες ποσότητες</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map(r => {
+    const yp = r.egekrimeni_posotita - r.xrisimopoiimeni;
+    const ypCls = yp < 0 ? 'color:#c53030;font-weight:600' : yp === 0 ? 'color:#276749' : '';
+    return `<tr>
+      <td>${r.onoma}${r.diatomi_mm?` (${r.diatomi_mm}mm)`:''}</td>
+      <td class="text-right mono">${r.egekrimeni_posotita.toFixed(3)} ${r.monada_metrisis}</td>
+      <td class="text-right mono">${r.xrisimopoiimeni.toFixed(3)}</td>
+      <td class="text-right mono" style="${ypCls}">${yp.toFixed(3)}</td>
+      <td><button class="btn btn-danger btn-sm" style="padding:2px 6px;" onclick="removeAdeiaYliko(${r.id},${r.adeia_id})">✖</button></td>
+    </tr>`;
+  }).join('');
+}
+
+async function addAdeiaYliko() {
+  const adeia_id = parseInt(document.getElementById('adeia-edit-id').value);
+  const yliko_id = parseInt(document.getElementById('adeia-yliko-new').value);
+  const posotita = parseFloat(document.getElementById('adeia-posotita-new').value);
+  if (!adeia_id || !yliko_id || isNaN(posotita) || posotita <= 0) {
+    alert('Επιλέξτε υλικό και εισάγετε έγκυρη ποσότητα.'); return;
+  }
+  await py('set_adeia_yliko', { adeia_id, yliko_id, egekrimeni_posotita: posotita });
+  document.getElementById('adeia-yliko-new').value = '';
+  document.getElementById('adeia-posotita-new').value = '';
+  await loadAdeiaYlika(adeia_id);
+}
+
+async function removeAdeiaYliko(id, adeia_id) {
+  await py('delete_adeia_yliko', { id });
+  await loadAdeiaYlika(adeia_id);
 }
 
 async function saveAdeia() {
   const id=document.getElementById('adeia-edit-id').value;
-  const body={arithmos_adeias:document.getElementById('adeia-num').value.trim(), perigrafi:document.getElementById('adeia-perigrafi').value, syntomografia_ekdousas:document.getElementById('adeia-syntomografia').value.trim()||null};
+  const body={
+    arithmos_adeias: document.getElementById('adeia-num').value.trim(),
+    perigrafi:       document.getElementById('adeia-perigrafi').value,
+    syntomografia_ekdousas: document.getElementById('adeia-syntomografia').value.trim()||null,
+    imerominia_ekdosis: document.getElementById('adeia-ekdosi').value||null,
+    imerominia_lixis:   document.getElementById('adeia-lixis').value||null,
+  };
   if (!body.arithmos_adeias) { alert('Ο αριθμός άδειας είναι υποχρεωτικός.'); return; }
   const _unlock = _lock(event?.target);
   try {
-    if (id) await py('update_adeia', { id: parseInt(id), ...body });
-    else     await py('add_adeia', body);
-    clearAdeiaForm(); loadAdeies();
+    if (id) {
+      await py('update_adeia', { id: parseInt(id), ...body });
+    } else {
+      const r = await py('add_adeia', body);
+      // Φόρτωσε αυτόματα για να εμφανιστεί το section ποσοτήτων
+      document.getElementById('adeia-edit-id').value = r.id;
+      document.getElementById('adeia-form-title').textContent = 'Επεξεργασία Άδειας';
+      document.getElementById('adeia-del-btn').style.display = 'inline-flex';
+      document.getElementById('adeia-ylika-section').style.display = '';
+      await loadAdeiaYlika(r.id);
+    }
+    loadAdeies();
   } catch(e) { alert('Σφάλμα: '+e.message); }
   finally { _unlock(); }
 }
@@ -1465,9 +1553,12 @@ async function deleteAdeia() {
 function clearAdeiaForm() {
   document.getElementById('adeia-edit-id').value='';
   document.getElementById('adeia-form-title').textContent='Νέα Άδεια';
-  document.getElementById('adeia-num').value='';
-  document.getElementById('adeia-perigrafi').value='';
+  ['adeia-num','adeia-perigrafi','adeia-syntomografia','adeia-ekdosi','adeia-lixis'].forEach(id => {
+    document.getElementById(id).value='';
+  });
   document.getElementById('adeia-del-btn').style.display='none';
+  document.getElementById('adeia-ylika-section').style.display='none';
+  document.getElementById('adeia-ylika-body').innerHTML='';
 }
 
 // ── PDF IMPORT ────────────────────────────────────────────────────────────────

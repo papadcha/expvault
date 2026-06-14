@@ -64,6 +64,15 @@ def init_db():
                     conn.execute("UPDATE kiniseis SET agora_ref=? WHERE id=?", (agora[0], kat[0]))
         except Exception:
             pass
+        # Migration: ημερομηνίες άδειας
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(adeies)").fetchall()]
+            if 'imerominia_ekdosis' not in cols:
+                conn.execute("ALTER TABLE adeies ADD COLUMN imerominia_ekdosis TEXT")
+            if 'imerominia_lixis' not in cols:
+                conn.execute("ALTER TABLE adeies ADD COLUMN imerominia_lixis TEXT")
+        except Exception:
+            pass
         conn.executescript('''
             CREATE TABLE IF NOT EXISTS ylika (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -120,6 +129,14 @@ def init_db():
                 posotita_agoras REAL NOT NULL DEFAULT 0,
                 posotita_katanalosis REAL NOT NULL DEFAULT 0,
                 posotita_epistrofis REAL NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS adeia_ylika (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                adeia_id INTEGER NOT NULL REFERENCES adeies(id) ON DELETE CASCADE,
+                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
+                egekrimeni_posotita REAL NOT NULL,
+                UNIQUE(adeia_id, yliko_id)
             );
 
             INSERT OR IGNORE INTO auxon_counter(id, next_val) VALUES (1, 1);
@@ -192,13 +209,50 @@ def get_all_adeies():
     with get_db() as conn:
         return [dict(r) for r in conn.execute("SELECT * FROM adeies ORDER BY arithmos_adeias").fetchall()]
 
-def add_adeia(arithmos, perigrafi, syntomografia_ekdousas=None):
+def add_adeia(arithmos, perigrafi, syntomografia_ekdousas=None, imerominia_ekdosis=None, imerominia_lixis=None):
     with get_db() as conn:
-        conn.execute("INSERT INTO adeies(arithmos_adeias,perigrafi,syntomografia_ekdousas) VALUES(?,?,?)", (arithmos, perigrafi or None, syntomografia_ekdousas))
+        cur = conn.execute(
+            "INSERT INTO adeies(arithmos_adeias,perigrafi,syntomografia_ekdousas,imerominia_ekdosis,imerominia_lixis) VALUES(?,?,?,?,?)",
+            (arithmos, perigrafi or None, syntomografia_ekdousas, imerominia_ekdosis or None, imerominia_lixis or None)
+        )
+        return cur.lastrowid
 
-def update_adeia(id, arithmos, perigrafi, syntomografia_ekdousas=None):
+def update_adeia(id, arithmos, perigrafi, syntomografia_ekdousas=None, imerominia_ekdosis=None, imerominia_lixis=None):
     with get_db() as conn:
-        conn.execute("UPDATE adeies SET arithmos_adeias=?,perigrafi=?,syntomografia_ekdousas=? WHERE id=?", (arithmos, perigrafi or None, syntomografia_ekdousas, id))
+        conn.execute(
+            "UPDATE adeies SET arithmos_adeias=?,perigrafi=?,syntomografia_ekdousas=?,imerominia_ekdosis=?,imerominia_lixis=? WHERE id=?",
+            (arithmos, perigrafi or None, syntomografia_ekdousas, imerominia_ekdosis or None, imerominia_lixis or None, id)
+        )
+
+def get_adeia_ylika(adeia_id):
+    """Εγκεκριμένες ποσότητες ανά υλικό για μία άδεια, με χρησιμοποιημένη & υπόλοιπο."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT ay.id, ay.adeia_id, ay.yliko_id, ay.egekrimeni_posotita,
+                   y.onoma, y.diatomi_mm, y.monada_metrisis,
+                   COALESCE(SUM(k.posotita), 0.0) as xrisimopoiimeni
+            FROM adeia_ylika ay
+            JOIN ylika y ON ay.yliko_id = y.id
+            LEFT JOIN kiniseis k ON k.adeia_id = ay.adeia_id
+                AND k.yliko_id = ay.yliko_id
+                AND k.tipos = 'ΕΙΣΑΓΩΓΗ'
+            WHERE ay.adeia_id = ?
+            GROUP BY ay.id
+            ORDER BY y.onoma
+        """, (adeia_id,)).fetchall()
+        return [dict(r) for r in rows]
+
+def set_adeia_yliko(adeia_id, yliko_id, egekrimeni_posotita):
+    with get_db() as conn:
+        conn.execute("""
+            INSERT INTO adeia_ylika(adeia_id, yliko_id, egekrimeni_posotita)
+            VALUES(?,?,?)
+            ON CONFLICT(adeia_id, yliko_id) DO UPDATE SET egekrimeni_posotita=excluded.egekrimeni_posotita
+        """, (adeia_id, yliko_id, egekrimeni_posotita))
+
+def delete_adeia_yliko(id):
+    with get_db() as conn:
+        conn.execute("DELETE FROM adeia_ylika WHERE id=?", (id,))
 
 def delete_adeia(id):
     with get_db() as conn:
