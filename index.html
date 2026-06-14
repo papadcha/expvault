@@ -332,7 +332,7 @@ body.electron .main    { padding-top: 60px; }
       <div class="form-row cols-3">
         <div><label>Ημερομηνία *</label><input type="date" id="kin-imerominia"></div>
         <div><label>Τύπος *</label>
-          <select id="kin-tipos">
+          <select id="kin-tipos" onchange="toggleAgoraRefRow('kin')">
             <option value="ΕΙΣΑΓΩΓΗ">📥 Εισαγωγή (Αγορά)</option>
             <option value="ΚΑΤΑΝΑΛΩΣΗ">🔥 Κατανάλωση</option>
             <option value="ΕΠΙΣΤΡΟΦΗ">🔄 Επιστροφή</option>
@@ -349,6 +349,13 @@ body.electron .main    { padding-top: 60px; }
       <div class="form-row cols-2">
         <div><label>Παρατηρήσεις</label><input type="text" id="kin-paratirishis"></div>
         <div><label>Υπογραφή</label><input type="text" id="kin-ypografi"></div>
+      </div>
+      <div class="form-row" id="kin-agora-ref-row" style="display:none;">
+        <div>
+          <label>Συσχετισμένο Παραστατικό Αγοράς (agora_ref)</label>
+          <input type="text" id="kin-agora-ref" list="kin-agora-datalist" placeholder="π.χ. ΔΙΧΝ 19586">
+          <datalist id="kin-agora-datalist"></datalist>
+        </div>
       </div>
       <div class="form-actions">
         <button class="btn btn-success" onclick="saveKinisi()">💾 Αποθήκευση</button>
@@ -818,7 +825,7 @@ body.electron .main    { padding-top: 60px; }
     <div class="form-row cols-3">
       <div><label>Ημερομηνία *</label><input type="date" id="ek-imerominia"></div>
       <div><label>Τύπος *</label>
-        <select id="ek-tipos">
+        <select id="ek-tipos" onchange="toggleAgoraRefRow('ek')">
           <option value="ΕΙΣΑΓΩΓΗ">📥 Εισαγωγή (Αγορά)</option>
           <option value="ΚΑΤΑΝΑΛΩΣΗ">🔥 Κατανάλωση</option>
           <option value="ΕΠΙΣΤΡΟΦΗ">🔄 Επιστροφή</option>
@@ -835,6 +842,13 @@ body.electron .main    { padding-top: 60px; }
     <div class="form-row cols-2">
       <div><label>Παρατηρήσεις</label><input type="text" id="ek-paratirishis"></div>
       <div><label>Υπογραφή</label><input type="text" id="ek-ypografi"></div>
+    </div>
+    <div class="form-row" id="ek-agora-ref-row" style="display:none;">
+      <div>
+        <label>Συσχετισμένο Παραστατικό Αγοράς (agora_ref)</label>
+        <input type="text" id="ek-agora-ref" list="ek-agora-datalist" placeholder="π.χ. ΔΙΧΝ 19586">
+        <datalist id="ek-agora-datalist"></datalist>
+      </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeEditKinisiModal()">Άκυρο</button>
@@ -1019,6 +1033,30 @@ async function loadDropdowns() {
   fillYlikoSelects();
   fillPromSelects();
   fillAdeiesSelects();
+  await fillAgoraDatalist();
+}
+
+async function fillAgoraDatalist() {
+  const kiniseis = await py('get_kiniseis', { tipos: 'ΕΙΣΑΓΩΓΗ' });
+  const parst = [...new Set(
+    kiniseis.filter(k => k.arithmos_parstatikos).map(k => k.arithmos_parstatikos)
+  )].sort();
+  const opts = parst.map(p => `<option value="${p}">`).join('');
+  ['kin-agora-datalist', 'ek-agora-datalist'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = opts;
+  });
+}
+
+function toggleAgoraRefRow(prefix) {
+  const tipos = document.getElementById(`${prefix}-tipos`).value;
+  const row   = document.getElementById(`${prefix}-agora-ref-row`);
+  if (tipos === 'ΕΠΙΣΤΡΟΦΗ') {
+    row.style.display = '';
+  } else {
+    row.style.display = 'none';
+    document.getElementById(`${prefix}-agora-ref`).value = '';
+  }
 }
 
 function ylikoLabel(y) { return y.onoma + (y.diatomi_mm ? ` (${y.diatomi_mm}mm)` : '') + ` — ${y.monada_metrisis}`; }
@@ -1131,6 +1169,8 @@ async function editKinisi(k) {
   document.getElementById('ek-prom').value = k.promitheftis_id || '';
   document.getElementById('ek-paratirishis').value = k.paratirishis || '';
   document.getElementById('ek-ypografi').value = k.ypografi || '';
+  document.getElementById('ek-agora-ref').value = k.agora_ref || '';
+  document.getElementById('ek-agora-ref-row').style.display = k.tipos === 'ΕΠΙΣΤΡΟΦΗ' ? '' : 'none';
 
   document.getElementById('edit-kinisi-modal').classList.add('open');
 }
@@ -1141,10 +1181,11 @@ function closeEditKinisiModal() {
 
 async function saveEditKinisi() {
   const id = parseInt(document.getElementById('ek-id').value);
+  const tipos = document.getElementById('ek-tipos').value;
   const body = {
     id,
     imerominia:           document.getElementById('ek-imerominia').value,
-    tipos:                document.getElementById('ek-tipos').value,
+    tipos,
     yliko_id:             parseInt(document.getElementById('ek-yliko').value),
     posotita:             parseFloat(document.getElementById('ek-posotita').value),
     arithmos_parstatikos: document.getElementById('ek-parstatiko').value,
@@ -1152,6 +1193,7 @@ async function saveEditKinisi() {
     promitheftis_id:      document.getElementById('ek-prom').value || null,
     paratirishis:         document.getElementById('ek-paratirishis').value,
     ypografi:             document.getElementById('ek-ypografi').value,
+    agora_ref:            tipos === 'ΕΠΙΣΤΡΟΦΗ' ? (document.getElementById('ek-agora-ref').value.trim() || null) : null,
   };
   if (!body.imerominia || !body.tipos || !body.yliko_id || isNaN(body.posotita)) {
     alert('Συμπληρώστε τα υποχρεωτικά πεδία (Ημερομηνία, Τύπος, Υλικό, Ποσότητα).');
@@ -1169,16 +1211,18 @@ async function saveEditKinisi() {
 
 async function saveKinisi() {
   const id = document.getElementById('kin-edit-id').value;
+  const tipos = document.getElementById('kin-tipos').value;
   const body = {
     imerominia:  document.getElementById('kin-imerominia').value,
-    tipos:       document.getElementById('kin-tipos').value,
+    tipos,
     yliko_id:    parseInt(document.getElementById('kin-yliko').value),
     posotita:    parseFloat(document.getElementById('kin-posotita').value),
     arithmos_parstatikos: document.getElementById('kin-parstatiko').value,
     adeia_id:    document.getElementById('kin-adeia').value || null,
     promitheftis_id: document.getElementById('kin-prom').value || null,
     paratirishis: document.getElementById('kin-paratirishis').value,
-    ypografi:    document.getElementById('kin-ypografi').value
+    ypografi:    document.getElementById('kin-ypografi').value,
+    agora_ref:   tipos === 'ΕΠΙΣΤΡΟΦΗ' ? (document.getElementById('kin-agora-ref').value.trim() || null) : null,
   };
   if (!body.imerominia || !body.tipos || !body.yliko_id || isNaN(body.posotita)) {
     alert('Συμπληρώστε τα υποχρεωτικά πεδία (Ημερομηνία, Τύπος, Υλικό, Ποσότητα).');
@@ -1279,7 +1323,7 @@ async function autoKataxorisiAll() {
 function clearKinisiForm() {
   document.getElementById('kin-edit-id').value = '';
   document.getElementById('kin-form-title').textContent = 'Νέα Καταχώρηση';
-  ['kin-imerominia','kin-posotita','kin-parstatiko','kin-paratirishis','kin-ypografi'].forEach(id => {
+  ['kin-imerominia','kin-posotita','kin-parstatiko','kin-paratirishis','kin-ypografi','kin-agora-ref'].forEach(id => {
     document.getElementById(id).value = '';
   });
   document.getElementById('kin-imerominia').value = todayInput();
@@ -1287,6 +1331,7 @@ function clearKinisiForm() {
   document.getElementById('kin-yliko').value = '';
   document.getElementById('kin-adeia').value = '';
   document.getElementById('kin-prom').value = '';
+  document.getElementById('kin-agora-ref-row').style.display = 'none';
 }
 
 function clearFilters() {

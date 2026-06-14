@@ -94,7 +94,7 @@ def handle(cmd, payload):
             payload['yliko_id'], float(payload['posotita']),
             payload.get('arithmos_parstatikos'), payload.get('adeia_id'),
             payload.get('promitheftis_id'), payload.get('paratirishis'),
-            payload.get('ypografi')
+            payload.get('ypografi'), agora_ref=payload.get('agora_ref')
         )
         return {'ok': True}
 

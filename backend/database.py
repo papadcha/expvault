@@ -275,16 +275,17 @@ def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
               promitheftis_id or None, paratirishis or None, ypografi or None, agora_ref or None))
 
 def update_kinisi(id, imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
-                  adeia_id, promitheftis_id, paratirishis, ypografi):
+                  adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None):
     arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
+    agora_ref = _clean_parst(agora_ref)
     with get_db() as conn:
         conn.execute('''
             UPDATE kiniseis SET imerominia=?,tipos=?,yliko_id=?,posotita=?,
-                arithmos_parstatikos=?,adeia_id=?,promitheftis_id=?,paratirishis=?,ypografi=?
+                arithmos_parstatikos=?,adeia_id=?,promitheftis_id=?,paratirishis=?,ypografi=?,agora_ref=?
             WHERE id=?
         ''', (imerominia, tipos, yliko_id, posotita, arithmos_parstatikos or None,
               adeia_id or None, promitheftis_id or None,
-              paratirishis or None, ypografi or None, id))
+              paratirishis or None, ypografi or None, agora_ref or None, id))
 
 def update_agora_ref(arithmos_parstatikos, agora_ref):
     with get_db() as conn:
