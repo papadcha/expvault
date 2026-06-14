@@ -887,30 +887,6 @@ body.electron .main    { padding-top: 60px; }
 </div>
 
 
-    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;">Αλλαγή αρ. παραστατικού ή ημερομηνίας σε όλες τις κινήσεις ταυτόχρονα.</p>
-    <div class="form-row">
-      <div>
-        <label>Τρέχον Παραστατικό *</label>
-        <select id="batch-from-parst" style="width:100%;"></select>
-      </div>
-    </div>
-    <div class="form-row cols-2">
-      <div>
-        <label>Νέο Παραστατικό</label>
-        <input type="text" id="batch-new-parst" placeholder="π.χ. ΔΙΧΝ - 19586">
-      </div>
-      <div>
-        <label>Νέα Ημερομηνία</label>
-        <input type="date" id="batch-new-date">
-      </div>
-    </div>
-    <div id="batch-preview" style="background:var(--surface2);border-radius:6px;padding:10px;font-size:12px;margin:8px 0;min-height:32px;"></div>
-    <div class="modal-actions">
-      <button class="btn btn-success" onclick="doBatchEdit()">✅ Εφαρμογή</button>
-      <button class="btn btn-outline" onclick="closeBatchEdit()">Άκυρο</button>
-    </div>
-  </div>
-</div>
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let allYlika = [], allProm = [], allAdeies = [];
