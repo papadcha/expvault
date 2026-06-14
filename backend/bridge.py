@@ -242,6 +242,23 @@ def handle(cmd, payload):
             f.write(data)
         return {'ok': True, 'path': out_path}
 
+    # ── EXPORT LISTA AGORES ───────────────────────────────────────────────────
+    if cmd == 'export_lista_agores':
+        kiniseis = database.get_kiniseis(
+            apo=payload.get('apo'),
+            eos=payload.get('eos'),
+            tipos='ΕΙΣΑΓΩΓΗ'
+        )
+        data = exports.export_lista_agores(
+            kiniseis,
+            payload.get('apo_label', ''),
+            payload.get('eos_label', '')
+        )
+        out_path = payload['out_path']
+        with open(out_path, 'wb') as f:
+            f.write(data)
+        return {'ok': True, 'path': out_path}
+
     return {'error': f'Άγνωστη εντολή: {cmd}'}
 
 

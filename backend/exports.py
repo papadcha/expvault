@@ -1137,4 +1137,191 @@ def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) 
     story.append(Paragraph(f"Αποτέλεσμα {result_lbl} — Για χρήση κατά την έκδοση παραστατικού", AS))
 
     doc.build(story)
+
+
+def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
+    """Κατάσταση Αγορών: στήλες=υλικά, γραμμές=ημερομηνίες, υποσύνολο ανά άδεια."""
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.utils import get_column_letter
+    from io import BytesIO
+
+    agores_kin = [k for k in kiniseis if k['tipos'] == 'ΕΙΣΑΓΩΓΗ']
+    vo = get_ylika_order(agores_kin, 'detail')  # [(yid, (onoma, monada)), ...]
+
+    # Ομαδοποίηση κινήσεων σε γραμμές αγοράς
+    rows_dict = OrderedDict()
+    for k in agores_kin:
+        yid   = k['yliko_id']
+        imer  = k['imerominia']
+        parst = k.get('arithmos_parstatikos') or ''
+        adeia = k.get('arithmos_adeias') or ''
+        prom  = k.get('promitheftis_syntomografia') or k.get('promitheftis_onoma') or ''
+        key   = (imer, parst, adeia, prom)
+        if key not in rows_dict:
+            rows_dict[key] = {'imerominia': imer, 'parstatiko': parst,
+                              'adeia': adeia, 'promitheftis': prom, 'ylika': {}}
+        rows_dict[key]['ylika'][yid] = rows_dict[key]['ylika'].get(yid, 0) + k['posotita']
+
+    rows = sorted(rows_dict.values(), key=lambda r: (r['imerominia'], r['parstatiko']))
+
+    # Ομαδοποίηση ανά άδεια (consecutive)
+    groups = []
+    cur_adeia, cur_group = None, []
+    for row in rows:
+        if row['adeia'] != cur_adeia:
+            if cur_group:
+                groups.append((cur_adeia, cur_group))
+            cur_adeia, cur_group = row['adeia'], [row]
+        else:
+            cur_group.append(row)
+    if cur_group:
+        groups.append((cur_adeia, cur_group))
+
+    # ── Styles ──────────────────────────────────────────────────────────────────
+    thin      = Side(style='thin', color="AABBD0")
+    thick_bot = Side(style='medium', color="4A7FC1")
+    brd       = Border(left=thin, right=thin, top=thin, bottom=thin)
+    brd_sub   = Border(left=thin, right=thin, top=thick_bot, bottom=thick_bot)
+
+    NAVY   = "1A365D"; LNAV = "4A7FC1"; LBLU  = "BEE3F8"
+    ADEIA  = "2C5282"; SUBT = "EBF8FF"; GRAND = "1A365D"
+    ALT    = "EEF2F7"
+
+    def hdr_style(cell, bg, bold=True, sz=9, wrap=False, halign='center'):
+        cell.fill = PatternFill("solid", fgColor=bg)
+        cell.font = Font(bold=bold, color="FFFFFF", size=sz)
+        cell.alignment = Alignment(horizontal=halign, vertical='center', wrap_text=wrap)
+        cell.border = brd
+
+    def data_style(cell, bg=None, bold=False, color="000000", halign='left', num=False):
+        if bg:
+            cell.fill = PatternFill("solid", fgColor=bg)
+        cell.font = Font(bold=bold, color=color, size=9)
+        cell.alignment = Alignment(horizontal='right' if num else halign,
+                                   vertical='center', wrap_text=False)
+        cell.border = brd
+
+    # ── Workbook ─────────────────────────────────────────────────────────────────
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Κατάσταση Αγορών'
+
+    n = len(vo)
+    TOTAL_COLS = 4 + n  # Α/Α | Ημ/νία | Παραστατικό | Προμηθευτής | [υλικά]
+
+    # ── Τίτλος (row 1) ───────────────────────────────────────────────────────────
+    ws.merge_cells(f'A1:{get_column_letter(TOTAL_COLS)}1')
+    ws['A1'] = f'ΚΑΤΑΣΤΑΣΗ ΑΓΟΡΩΝ — {apo_label} έως {eos_label}'
+    ws['A1'].fill = PatternFill("solid", fgColor=NAVY)
+    ws['A1'].font = Font(bold=True, color="FFFFFF", size=12)
+    ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
+    ws.row_dimensions[1].height = 22
+
+    # ── Headers (row 2) ───────────────────────────────────────────────────────────
+    hdrs   = ['Α/Α', 'Ημ/νία', 'Παραστατικό', 'Προμηθευτής'] + \
+             [f"{on}\n({mo})" for _, (on, mo) in vo]
+    widths = [5, 11, 18, 18] + [13] * n
+
+    for ci, (h, w) in enumerate(zip(hdrs, widths), 1):
+        cell = ws.cell(row=2, column=ci, value=h)
+        hdr_style(cell, LNAV, wrap=True)
+        ws.column_dimensions[get_column_letter(ci)].width = w
+    ws.row_dimensions[2].height = 32
+
+    # ── Data ─────────────────────────────────────────────────────────────────────
+    ri = 3
+    aa = 0
+    grand = {yid: 0.0 for yid, _ in vo}
+
+    for adeia_num, adeia_rows in groups:
+        adeia_lbl = adeia_num if adeia_num else '(χωρίς άδεια)'
+
+        # Άδεια header
+        ws.merge_cells(f'A{ri}:{get_column_letter(TOTAL_COLS)}{ri}')
+        cell = ws.cell(row=ri, column=1, value=f'Άδεια: {adeia_lbl}')
+        cell.fill = PatternFill("solid", fgColor=ADEIA)
+        cell.font = Font(bold=True, color="FFFFFF", size=9)
+        cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
+        cell.border = brd
+        ws.row_dimensions[ri].height = 16
+        ri += 1
+
+        adeia_sums = {yid: 0.0 for yid, _ in vo}
+        alt = False
+
+        for row in adeia_rows:
+            aa += 1
+            bg = ALT if alt else None
+            alt = not alt
+
+            ws.cell(row=ri, column=1, value=aa).border = brd
+            if bg: ws.cell(row=ri, column=1).fill = PatternFill("solid", fgColor=bg)
+            ws.cell(row=ri, column=1).font = Font(size=9)
+            ws.cell(row=ri, column=1).alignment = Alignment(horizontal='center', vertical='center')
+
+            for ci, val in enumerate([fmt_date(row['imerominia']), row['parstatiko'], row['promitheftis']], 2):
+                cell = ws.cell(row=ri, column=ci, value=val)
+                data_style(cell, bg)
+
+            for col_idx, (yid, _) in enumerate(vo, 5):
+                v = row['ylika'].get(yid) or None
+                cell = ws.cell(row=ri, column=col_idx, value=fmt_num(v) if v else '')
+                data_style(cell, bg, num=True)
+                if v:
+                    adeia_sums[yid] += v
+                    grand[yid] += v
+
+            ws.row_dimensions[ri].height = 14
+            ri += 1
+
+        # Υποσύνολο άδειας
+        ws.merge_cells(f'A{ri}:D{ri}')
+        cell = ws.cell(row=ri, column=1, value=f'Υποσύνολο Άδεια {adeia_lbl}')
+        cell.fill = PatternFill("solid", fgColor=LBLU)
+        cell.font = Font(bold=True, color=NAVY, size=9)
+        cell.alignment = Alignment(horizontal='right', vertical='center')
+        cell.border = brd_sub
+        for ci in range(2, 5):
+            ws.cell(row=ri, column=ci).fill = PatternFill("solid", fgColor=LBLU)
+            ws.cell(row=ri, column=ci).border = brd_sub
+
+        for col_idx, (yid, _) in enumerate(vo, 5):
+            v = adeia_sums[yid] or None
+            cell = ws.cell(row=ri, column=col_idx, value=fmt_num(v) if v else '')
+            cell.fill = PatternFill("solid", fgColor=LBLU)
+            cell.font = Font(bold=True, color=NAVY, size=9)
+            cell.alignment = Alignment(horizontal='right', vertical='center')
+            cell.border = brd_sub
+
+        ws.row_dimensions[ri].height = 15
+        ri += 1
+
+    # Γενικό σύνολο
+    ws.merge_cells(f'A{ri}:D{ri}')
+    cell = ws.cell(row=ri, column=1, value='ΓΕΝΙΚΟ ΣΥΝΟΛΟ')
+    cell.fill = PatternFill("solid", fgColor=GRAND)
+    cell.font = Font(bold=True, color="FFFFFF", size=10)
+    cell.alignment = Alignment(horizontal='right', vertical='center')
+    cell.border = brd
+    for ci in range(2, 5):
+        ws.cell(row=ri, column=ci).fill = PatternFill("solid", fgColor=GRAND)
+        ws.cell(row=ri, column=ci).border = brd
+
+    for col_idx, (yid, _) in enumerate(vo, 5):
+        v = grand[yid] or None
+        cell = ws.cell(row=ri, column=col_idx, value=fmt_num(v) if v else '')
+        cell.fill = PatternFill("solid", fgColor=GRAND)
+        cell.font = Font(bold=True, color="FFFFFF", size=10)
+        cell.alignment = Alignment(horizontal='right', vertical='center')
+        cell.border = brd
+
+    ws.row_dimensions[ri].height = 18
+
+    # Freeze headers
+    ws.freeze_panes = 'A3'
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
     return buf.getvalue()
