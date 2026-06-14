@@ -1452,6 +1452,7 @@ function clearPromForm() {
 
 // ── ΑΔΕΙΕΣ ───────────────────────────────────────────────────────────────────
 async function loadAdeies() {
+  if (!allYlika.length) allYlika = await py('get_ylika');
   allAdeies = await py('get_adeies');
   // Γέμισμα dropdown υλικών στη φόρμα άδειας
   const ylikoSel = document.getElementById('adeia-yliko-new');
