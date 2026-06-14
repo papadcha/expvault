@@ -68,8 +68,18 @@ def fmt_num(val):
 # Σειρά εμφάνισης υλικών στο export
 YLIKA_ORDER_IDS = [1, 4, 3, 2, 5, 10, 9, 33]
 
+def _is_nonel(ydata):
+    grp = ydata.get('export_group') or ''
+    return grp.startswith('NONEL ')
+
+def _nonel_sub(ydata):
+    """Επιστρέφει 'SNAPLINE', 'LP' ή 'UNIDET' από το export_group."""
+    grp = ydata.get('export_group') or ''
+    parts = grp.split()
+    return parts[1] if len(parts) > 1 else ''
+
 def _sort_key(yid, ydata):
-    if ydata.get('export_group') == 'NONEL':
+    if _is_nonel(ydata):
         return 999
     try:
         return YLIKA_ORDER_IDS.index(yid)
@@ -94,13 +104,13 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
                 added.add(yid)
         for k in kiniseis:
             yid = k['yliko_id']
-            if yid not in added and all_ylika.get(yid, {}).get('export_group') != 'NONEL':
+            if yid not in added and not _is_nonel(all_ylika.get(yid, {})):
                 result.append((yid, (k['yliko_onoma'], k['monada_metrisis'])))
                 added.add(yid)
         nonel_added = set()
         for k in kiniseis:
             yid = k['yliko_id']
-            if all_ylika.get(yid, {}).get('export_group') == 'NONEL' and yid not in nonel_added:
+            if _is_nonel(all_ylika.get(yid, {})) and yid not in nonel_added:
                 result.append((yid, (k['yliko_onoma'], k['monada_metrisis'])))
                 nonel_added.add(yid)
         return result
@@ -123,13 +133,13 @@ def get_ylika_order(kiniseis, nonel_mode='detail'):
         added.add(yid)
 
     for yid, ydata in seen_yids.items():
-        if yid in added or ydata.get('export_group') == 'NONEL':
+        if yid in added or _is_nonel(ydata):
             continue
         result.append((yid, (ydata.get('onoma', ''), ydata.get('monada_metrisis', ''))))
         added.add(yid)
 
     for yid, ydata in seen_yids.items():
-        if ydata.get('export_group') != 'NONEL':
+        if not _is_nonel(ydata):
             continue
         if nonel_mode == 'total':
             if 'NONEL_TOTAL' not in nonel_added:
@@ -157,18 +167,18 @@ def get_nonel_sums(row_ylika, all_ylika, nonel_mode):
     sums = {'SNAPLINE': 0, 'UNIDET': 0, 'LP': 0}
     for yid, pos in row_ylika.items():
         y = all_ylika.get(yid, {})
-        if y.get('export_group') == 'NONEL':
-            sub = y.get('export_subgroup', '')
+        if _is_nonel(y):
+            sub = _nonel_sub(y)
             if sub in sums:
                 sums[sub] += pos or 0
     sums['TOTAL'] = sum(sums.values())
     return sums
 
 def nonel_group_key(ydata):
-    """Εξάγει (subgroup, type_key) για ομαδοποίηση NONEL ανά καθυστέρηση.
-    π.χ. 'NONEL SNAPLINE, SL17 (4.8M)' → ('SNAPLINE', 'SL17')
+    """Εξάγει (subgroup, type_key) για ομαδοποίηση NONEL ανά τύπο/καθυστέρηση.
+    π.χ. export_group='NONEL SNAPLINE', onoma='NONEL SNAPLINE, SL17 (4.8M)' → ('SNAPLINE', 'SL17')
     """
-    sub = ydata.get('export_subgroup', '')
+    sub   = _nonel_sub(ydata)
     onoma = ydata.get('onoma', '')
     m = re.search(r'([A-Z][A-Z0-9.]*)\s*\(', onoma)
     return (sub, m.group(1) if m else onoma)
@@ -381,7 +391,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         for k in kiniseis:
             yid = k['yliko_id']
             ydata = _all_y.get(yid, {})
-            if ydata.get('export_group') != 'NONEL':
+            if not _is_nonel(ydata):
                 continue
             gkey = nonel_group_key(ydata)
             vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
@@ -642,7 +652,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
         for k in kiniseis:
             yid = k['yliko_id']
             ydata = _all_y.get(yid, {})
-            if ydata.get('export_group') != 'NONEL':
+            if not _is_nonel(ydata):
                 continue
             gkey = nonel_group_key(ydata)
             vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
@@ -857,7 +867,7 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
     def is_nonel(yid):
         if isinstance(yid, str):
             return 'NONEL' in yid
-        return _all_y.get(yid, {}).get('export_group') == 'NONEL'
+        return _is_nonel(_all_y.get(yid, {}))
 
     non_nonel  = [(yid, lbl) for yid, lbl in virtual_order if not is_nonel(yid)]
     nonel_cols = [(yid, lbl) for yid, lbl in virtual_order if is_nonel(yid)]
@@ -867,7 +877,7 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
         for k in kiniseis:
             yid = k['yliko_id']
             ydata = _all_y.get(yid, {})
-            if ydata.get('export_group') != 'NONEL':
+            if not _is_nonel(ydata):
                 continue
             gkey = nonel_group_key(ydata)
             vkey = 'NONEL_DLY_{}_{}'.format(*gkey)
@@ -1140,16 +1150,76 @@ def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) 
 
 
 def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
-    """Κατάσταση Αγορών: στήλες=υλικά, γραμμές=ημερομηνίες, υποσύνολο ανά άδεια."""
+    """Κατάσταση Αγορών: στήλες=υλικά με grouped headers, γραμμές=αγορές, υποσύνολο ανά άδεια."""
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
     from io import BytesIO
 
     agores_kin = [k for k in kiniseis if k['tipos'] == 'ΕΙΣΑΓΩΓΗ']
-    vo = get_ylika_order(agores_kin, 'detail')  # [(yid, (onoma, monada)), ...]
 
-    # Ομαδοποίηση κινήσεων σε γραμμές αγοράς
+    FONT = 'Iosevka'
+
+    # ── Σειρά ομάδων υλικών ───────────────────────────────────────────────────────
+    GROUP_ORDER = [None, 'POLADYN', 'ΘΡΥΑΛΛΙΔΑ', 'ΠΥΡΟΚΡΟΤΗΤΕΣ',
+                   'NONEL SNAPLINE', 'NONEL LP', 'NONEL UNIDET']
+    GROUP_COLORS = {
+        None:             "4A7FC1",
+        'POLADYN':        "4A7FC1",
+        'ΘΡΥΑΛΛΙΔΑ':     "4A7FC1",
+        'ΠΥΡΟΚΡΟΤΗΤΕΣ':  "4A7FC1",
+        'NONEL SNAPLINE': "1A365D",
+        'NONEL LP':       "1A365D",
+        'NONEL UNIDET':   "1A365D",
+    }
+    GROUP_SUB_COLORS = {
+        'POLADYN':        "2C5282",
+        'ΘΡΥΑΛΛΙΔΑ':     "2C5282",
+        'ΠΥΡΟΚΡΟΤΗΤΕΣ':  "2C5282",
+        'NONEL SNAPLINE': "2C5282",
+        'NONEL LP':       "2C5282",
+        'NONEL UNIDET':   "2C5282",
+    }
+
+    # ── Λίστα υλικών με σειρά ─────────────────────────────────────────────────────
+    yliko_data = {}   # yid -> {onoma, monada, export_group}
+    yid_order  = []
+    for k in agores_kin:
+        yid = k['yliko_id']
+        if yid not in yliko_data:
+            yliko_data[yid] = {
+                'onoma':        k['yliko_onoma'],
+                'monada':       k['monada_metrisis'],
+                'export_group': k.get('export_group'),
+            }
+            yid_order.append(yid)
+
+    buckets = {g: [] for g in GROUP_ORDER}
+    extra   = []
+    for yid in yid_order:
+        grp = yliko_data[yid]['export_group']
+        if grp in buckets:
+            buckets[grp].append(yid)
+        else:
+            extra.append(yid)
+    ordered_yids = []
+    for g in GROUP_ORDER:
+        ordered_yids.extend(buckets[g])
+    ordered_yids.extend(extra)
+
+    vo = [(yid, yliko_data[yid]) for yid in ordered_yids]
+    n  = len(vo)
+
+    # Ομαδοποίηση συνεχόμενων στηλών ανά export_group
+    col_groups = []  # list of (grp, [col_idx_0based, ...])
+    for i, (yid, yd) in enumerate(vo):
+        grp = yd['export_group']
+        if col_groups and col_groups[-1][0] == grp:
+            col_groups[-1][1].append(i)
+        else:
+            col_groups.append((grp, [i]))
+
+    # ── Ομαδοποίηση κινήσεων σε γραμμές αγοράς ───────────────────────────────────
     rows_dict = OrderedDict()
     for k in agores_kin:
         yid   = k['yliko_id']
@@ -1178,70 +1248,99 @@ def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes
     if cur_group:
         groups.append((cur_adeia, cur_group))
 
-    # ── Styles ──────────────────────────────────────────────────────────────────
+    # ── Styles ───────────────────────────────────────────────────────────────────
     thin      = Side(style='thin', color="AABBD0")
     thick_bot = Side(style='medium', color="4A7FC1")
     brd       = Border(left=thin, right=thin, top=thin, bottom=thin)
     brd_sub   = Border(left=thin, right=thin, top=thick_bot, bottom=thick_bot)
 
-    NAVY   = "1A365D"; LNAV = "4A7FC1"; LBLU  = "BEE3F8"
-    ADEIA  = "2C5282"; SUBT = "EBF8FF"; GRAND = "1A365D"
-    ALT    = "EEF2F7"
+    NAVY  = "1A365D"; LNAV = "4A7FC1"; LBLU = "BEE3F8"
+    ADEIA = "2C5282"; GRAND = "1A365D"; ALT  = "EEF2F7"
 
-    def hdr_style(cell, bg, bold=True, sz=9, wrap=False, halign='center'):
+    def hdr_style(cell, bg, bold=True, sz=9, wrap=False, halign='center', fg="FFFFFF"):
         cell.fill = PatternFill("solid", fgColor=bg)
-        cell.font = Font(bold=bold, color="FFFFFF", size=sz)
+        cell.font = Font(name=FONT, bold=bold, color=fg, size=sz)
         cell.alignment = Alignment(horizontal=halign, vertical='center', wrap_text=wrap)
         cell.border = brd
 
     def data_style(cell, bg=None, bold=False, color="000000", halign='left', num=False):
         if bg:
             cell.fill = PatternFill("solid", fgColor=bg)
-        cell.font = Font(bold=bold, color=color, size=9)
+        cell.font = Font(name=FONT, bold=bold, color=color, size=9)
         cell.alignment = Alignment(horizontal='right' if num else halign,
                                    vertical='center', wrap_text=False)
         cell.border = brd
 
-    # ── Workbook ─────────────────────────────────────────────────────────────────
+    # ── Workbook ──────────────────────────────────────────────────────────────────
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = 'Κατάσταση Αγορών'
 
-    n = len(vo)
     TOTAL_COLS = 4 + n  # Α/Α | Ημ/νία | Παραστατικό | Προμηθευτής | [υλικά]
+    TC = get_column_letter(TOTAL_COLS)
 
-    # ── Τίτλος (row 1) ───────────────────────────────────────────────────────────
-    ws.merge_cells(f'A1:{get_column_letter(TOTAL_COLS)}1')
+    # ── Row 1: Τίτλος ─────────────────────────────────────────────────────────────
+    ws.merge_cells(f'A1:{TC}1')
     ws['A1'] = f'ΚΑΤΑΣΤΑΣΗ ΑΓΟΡΩΝ — {apo_label} έως {eos_label}'
     ws['A1'].fill = PatternFill("solid", fgColor=NAVY)
-    ws['A1'].font = Font(bold=True, color="FFFFFF", size=12)
+    ws['A1'].font = Font(name=FONT, bold=True, color="FFFFFF", size=12)
     ws['A1'].alignment = Alignment(horizontal='center', vertical='center')
     ws.row_dimensions[1].height = 22
 
-    # ── Headers (row 2) ───────────────────────────────────────────────────────────
-    hdrs   = ['Α/Α', 'Ημ/νία', 'Παραστατικό', 'Προμηθευτής'] + \
-             [f"{on}\n({mo})" for _, (on, mo) in vo]
-    widths = [5, 11, 18, 18] + [13] * n
-
-    for ci, (h, w) in enumerate(zip(hdrs, widths), 1):
-        cell = ws.cell(row=2, column=ci, value=h)
-        hdr_style(cell, LNAV, wrap=True)
+    # ── Row 2: Group headers + fixed headers ──────────────────────────────────────
+    # Fixed columns: merge rows 2-3
+    fixed_hdrs = ['Α/Α', 'Ημ/νία', 'Παραστατικό', 'Προμηθευτής']
+    widths     = [5, 11, 18, 18]
+    for ci, (h, w) in enumerate(zip(fixed_hdrs, widths), 1):
+        ws.merge_cells(start_row=2, start_column=ci, end_row=3, end_column=ci)
+        hdr_style(ws.cell(row=2, column=ci, value=h), LNAV, wrap=True)
         ws.column_dimensions[get_column_letter(ci)].width = w
-    ws.row_dimensions[2].height = 32
 
-    # ── Data ─────────────────────────────────────────────────────────────────────
-    ri = 3
-    aa = 0
+    # Material columns grouped
+    for grp, idxs in col_groups:
+        col_start = 5 + idxs[0]
+        col_end   = 5 + idxs[-1]
+        grp_color = GROUP_COLORS.get(grp, LNAV)
+        sub_color = GROUP_SUB_COLORS.get(grp, LNAV)
+
+        if grp is None:
+            # Standalone: merge rows 2-3
+            for idx in idxs:
+                ci  = 5 + idx
+                yd  = vo[idx][1]
+                lbl = f"{yd['onoma']}\n({yd['monada']})"
+                ws.merge_cells(start_row=2, start_column=ci, end_row=3, end_column=ci)
+                hdr_style(ws.cell(row=2, column=ci, value=lbl), grp_color, wrap=True)
+                ws.column_dimensions[get_column_letter(ci)].width = 13
+        else:
+            # Row 2: group name merged across all sub-columns
+            if len(idxs) > 1:
+                ws.merge_cells(start_row=2, start_column=col_start, end_row=2, end_column=col_end)
+            hdr_style(ws.cell(row=2, column=col_start, value=grp), grp_color, sz=10)
+            # Row 3: individual material names
+            for idx in idxs:
+                ci  = 5 + idx
+                yd  = vo[idx][1]
+                lbl = f"{yd['onoma']}\n({yd['monada']})"
+                hdr_style(ws.cell(row=3, column=ci, value=lbl), sub_color, sz=8, wrap=True)
+                ws.column_dimensions[get_column_letter(ci)].width = 13
+
+    ws.row_dimensions[2].height = 20
+    ws.row_dimensions[3].height = 36
+
+    # ── Data (from row 4) ─────────────────────────────────────────────────────────
+    ri    = 4
+    aa    = 0
     grand = {yid: 0.0 for yid, _ in vo}
 
     for adeia_num, adeia_rows in groups:
         adeia_lbl = adeia_num if adeia_num else '(χωρίς άδεια)'
 
         # Άδεια header
-        ws.merge_cells(f'A{ri}:{get_column_letter(TOTAL_COLS)}{ri}')
+        ws.merge_cells(f'A{ri}:{TC}{ri}')
         cell = ws.cell(row=ri, column=1, value=f'Άδεια: {adeia_lbl}')
         cell.fill = PatternFill("solid", fgColor=ADEIA)
-        cell.font = Font(bold=True, color="FFFFFF", size=9)
+        cell.font = Font(name=FONT, bold=True, color="FFFFFF", size=9)
         cell.alignment = Alignment(horizontal='left', vertical='center', indent=1)
         cell.border = brd
         ws.row_dimensions[ri].height = 16
@@ -1252,25 +1351,25 @@ def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes
 
         for row in adeia_rows:
             aa += 1
-            bg = ALT if alt else None
+            bg  = ALT if alt else None
             alt = not alt
 
-            ws.cell(row=ri, column=1, value=aa).border = brd
-            if bg: ws.cell(row=ri, column=1).fill = PatternFill("solid", fgColor=bg)
-            ws.cell(row=ri, column=1).font = Font(size=9)
-            ws.cell(row=ri, column=1).alignment = Alignment(horizontal='center', vertical='center')
+            c1 = ws.cell(row=ri, column=1, value=aa)
+            c1.border = brd
+            c1.font = Font(name=FONT, size=9)
+            c1.alignment = Alignment(horizontal='center', vertical='center')
+            if bg: c1.fill = PatternFill("solid", fgColor=bg)
 
             for ci, val in enumerate([fmt_date(row['imerominia']), row['parstatiko'], row['promitheftis']], 2):
-                cell = ws.cell(row=ri, column=ci, value=val)
-                data_style(cell, bg)
+                data_style(ws.cell(row=ri, column=ci, value=val), bg)
 
             for col_idx, (yid, _) in enumerate(vo, 5):
-                v = row['ylika'].get(yid) or None
+                v    = row['ylika'].get(yid) or None
                 cell = ws.cell(row=ri, column=col_idx, value=fmt_num(v) if v else '')
                 data_style(cell, bg, num=True)
                 if v:
                     adeia_sums[yid] += v
-                    grand[yid] += v
+                    grand[yid]      += v
 
             ws.row_dimensions[ri].height = 14
             ri += 1
@@ -1279,20 +1378,20 @@ def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes
         ws.merge_cells(f'A{ri}:D{ri}')
         cell = ws.cell(row=ri, column=1, value=f'Υποσύνολο Άδεια {adeia_lbl}')
         cell.fill = PatternFill("solid", fgColor=LBLU)
-        cell.font = Font(bold=True, color=NAVY, size=9)
+        cell.font = Font(name=FONT, bold=True, color=NAVY, size=9)
         cell.alignment = Alignment(horizontal='right', vertical='center')
         cell.border = brd_sub
         for ci in range(2, 5):
-            ws.cell(row=ri, column=ci).fill = PatternFill("solid", fgColor=LBLU)
+            ws.cell(row=ri, column=ci).fill   = PatternFill("solid", fgColor=LBLU)
             ws.cell(row=ri, column=ci).border = brd_sub
 
         for col_idx, (yid, _) in enumerate(vo, 5):
-            v = adeia_sums[yid] or None
+            v    = adeia_sums[yid] or None
             cell = ws.cell(row=ri, column=col_idx, value=fmt_num(v) if v else '')
-            cell.fill = PatternFill("solid", fgColor=LBLU)
-            cell.font = Font(bold=True, color=NAVY, size=9)
+            cell.fill      = PatternFill("solid", fgColor=LBLU)
+            cell.font      = Font(name=FONT, bold=True, color=NAVY, size=9)
             cell.alignment = Alignment(horizontal='right', vertical='center')
-            cell.border = brd_sub
+            cell.border    = brd_sub
 
         ws.row_dimensions[ri].height = 15
         ri += 1
@@ -1300,28 +1399,39 @@ def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes
     # Γενικό σύνολο
     ws.merge_cells(f'A{ri}:D{ri}')
     cell = ws.cell(row=ri, column=1, value='ΓΕΝΙΚΟ ΣΥΝΟΛΟ')
-    cell.fill = PatternFill("solid", fgColor=GRAND)
-    cell.font = Font(bold=True, color="FFFFFF", size=10)
+    cell.fill      = PatternFill("solid", fgColor=GRAND)
+    cell.font      = Font(name=FONT, bold=True, color="FFFFFF", size=10)
     cell.alignment = Alignment(horizontal='right', vertical='center')
-    cell.border = brd
+    cell.border    = brd
     for ci in range(2, 5):
-        ws.cell(row=ri, column=ci).fill = PatternFill("solid", fgColor=GRAND)
+        ws.cell(row=ri, column=ci).fill   = PatternFill("solid", fgColor=GRAND)
         ws.cell(row=ri, column=ci).border = brd
 
     for col_idx, (yid, _) in enumerate(vo, 5):
-        v = grand[yid] or None
+        v    = grand[yid] or None
         cell = ws.cell(row=ri, column=col_idx, value=fmt_num(v) if v else '')
-        cell.fill = PatternFill("solid", fgColor=GRAND)
-        cell.font = Font(bold=True, color="FFFFFF", size=10)
+        cell.fill      = PatternFill("solid", fgColor=GRAND)
+        cell.font      = Font(name=FONT, bold=True, color="FFFFFF", size=10)
         cell.alignment = Alignment(horizontal='right', vertical='center')
-        cell.border = brd
+        cell.border    = brd
 
     ws.row_dimensions[ri].height = 18
 
-    # Freeze headers
-    ws.freeze_panes = 'A3'
+    ws.freeze_panes = 'A4'
+
+    # Page setup — landscape A3, fit to width, margins από reference
+    ws.page_setup.orientation = 'landscape'
+    ws.page_setup.paperSize   = 8   # A3
+    ws.page_setup.scale       = 85
+    ws.page_setup.fitToWidth  = 1
+    ws.page_setup.fitToHeight = 0
+    ws.page_margins.left   = 0.354167
+    ws.page_margins.right  = 0.196528
+    ws.page_margins.top    = 0.236111
+    ws.page_margins.bottom = 0.236111
+    ws.page_margins.header = 0
+    ws.page_margins.footer = 0
 
     buf = BytesIO()
     wb.save(buf)
-    return buf.getvalue()
     return buf.getvalue()

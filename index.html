@@ -735,8 +735,17 @@ body.electron .main    { padding-top: 60px; }
             </select>
           </div>
         </div>
-        <div class="form-row"><div><label>Ομάδα Export</label><input type="text" id="yl-export-group" placeholder="π.χ. NONEL, POLADYN, EM-EX"></div></div>
-        <div class="form-row"><div><label>Υποομάδα Export</label><input type="text" id="yl-export-subgroup" placeholder="π.χ. SNAPLINE, UNIDET, LP, 38X380"></div></div>
+        <div class="form-row"><div><label>Ομάδα Export</label>
+          <input type="text" id="yl-export-group" list="export-group-list" placeholder="π.χ. POLADYN, NONEL SNAPLINE…">
+          <datalist id="export-group-list">
+            <option value="POLADYN">
+            <option value="ΘΡΥΑΛΛΙΔΑ">
+            <option value="ΠΥΡΟΚΡΟΤΗΤΕΣ">
+            <option value="NONEL SNAPLINE">
+            <option value="NONEL LP">
+            <option value="NONEL UNIDET">
+          </datalist>
+        </div></div>
         <div class="form-row"><div><label>Παρατηρήσεις</label><input type="text" id="yl-paratirishis"></div></div>
         <div class="form-actions">
           <button class="btn btn-success" onclick="saveYliko()">💾 Αποθήκευση</button>
@@ -1388,7 +1397,6 @@ function fillYlikoForm(y) {
   document.getElementById('yl-diatomi').value = y.diatomi_mm||'';
   document.getElementById('yl-monada').value = y.monada_metrisis;
   document.getElementById('yl-export-group').value = y.export_group||'';
-  document.getElementById('yl-export-subgroup').value = y.export_subgroup||'';
   document.getElementById('yl-paratirishis').value = y.paratirishis||'';
   document.getElementById('yl-del-btn').style.display = 'inline-flex';
 }
@@ -1398,7 +1406,6 @@ async function saveYliko() {
   const body = {
     onoma: document.getElementById('yl-onoma').value.trim(),
       export_group: document.getElementById('yl-export-group').value.trim()||null,
-      export_subgroup: document.getElementById('yl-export-subgroup').value.trim()||null,
     diatomi_mm: document.getElementById('yl-diatomi').value || null,
     monada_metrisis: document.getElementById('yl-monada').value,
     paratirishis: document.getElementById('yl-paratirishis').value
@@ -1422,7 +1429,7 @@ async function deleteYliko() {
 function clearYlikoForm() {
   document.getElementById('yl-edit-id').value='';
   document.getElementById('yl-form-title').textContent='Νέο Υλικό';
-  ['yl-onoma','yl-diatomi','yl-paratirishis'].forEach(id=>document.getElementById(id).value='');
+  ['yl-onoma','yl-diatomi','yl-export-group','yl-paratirishis'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('yl-del-btn').style.display='none';
 }
 

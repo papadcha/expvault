@@ -64,6 +64,22 @@ def init_db():
                     conn.execute("UPDATE kiniseis SET agora_ref=? WHERE id=?", (agora[0], kat[0]))
         except Exception:
             pass
+        # Migration: export_group στα ylika
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(ylika)").fetchall()]
+            if 'export_group' not in cols:
+                conn.execute("ALTER TABLE ylika ADD COLUMN export_group TEXT")
+                # Αυτόματη συμπλήρωση από kategoria + όνομα
+                conn.execute("""UPDATE ylika SET export_group=CASE
+                    WHEN kategoria='SNAPLINE' THEN 'NONEL SNAPLINE'
+                    WHEN kategoria='LP'       THEN 'NONEL LP'
+                    WHEN kategoria='UNIDET'   THEN 'NONEL UNIDET'
+                    WHEN onoma LIKE '%POLADYN%'        THEN 'POLADYN'
+                    WHEN onoma LIKE '%ΘΡΥΑΛΛΙΔΑ%'     THEN 'ΘΡΥΑΛΛΙΔΑ'
+                    WHEN onoma LIKE '%ΠΥΡΟΚΡΟΤΗΤΕΣ%'  THEN 'ΠΥΡΟΚΡΟΤΗΤΕΣ'
+                    ELSE NULL END""")
+        except Exception:
+            pass
         # Migration: ημερομηνίες άδειας
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(adeies)").fetchall()]
@@ -158,22 +174,21 @@ def get_all_ylika():
 
 def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None):
     with get_db() as conn:
-        # Έλεγχος αν υπάρχει ήδη (case-insensitive)
         existing = conn.execute(
             "SELECT id FROM ylika WHERE UPPER(onoma)=UPPER(?) AND (diatomi_mm IS ? OR diatomi_mm=?)",
             (onoma.upper(), diatomi_mm, diatomi_mm)
         ).fetchone()
         if existing:
-            return existing[0]  # Επιστρέφει υπάρχον id
+            return existing[0]
         conn.execute(
-            "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,export_group,export_subgroup) VALUES(?,?,?,?,?,?)",
-            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, export_subgroup))
+            "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,export_group) VALUES(?,?,?,?,?)",
+            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group))
 
 def update_yliko(id, onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None):
     with get_db() as conn:
         conn.execute(
-            "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,export_group=?,export_subgroup=? WHERE id=?",
-            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, export_subgroup, id))
+            "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,export_group=? WHERE id=?",
+            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, id))
 
 def delete_yliko(id):
     with get_db() as conn:
@@ -304,7 +319,7 @@ def check_parstatiko_exists(arithmos_parstatikos):
 
 def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
     sql = '''
-        SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis,
+        SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis, y.export_group,
                p.onoma as promitheftis_onoma, p.syntomografia as promitheftis_syntomografia, a.arithmos_adeias, a.perigrafi as ekdousa_archi, a.syntomografia_ekdousas
         FROM kiniseis k
         JOIN ylika y ON k.yliko_id = y.id

@@ -35,7 +35,16 @@
 ✅  Export PDF (2 σελίδες, landscape A4, 4 NONEL modes)
 ✅  Export Excel (4 φύλλα ανά NONEL mode)
 ✅  Export Word .docx (Σελ.1: non-NONEL, Σελ.2: NONEL)
-✅  Κατάσταση Αγορών — Excel ανά υλικό με υποσύνολα ανά άδεια (για υπηρεσία)
+✅  Κατάσταση Αγορών — Excel με grouped στήλες ανά ομάδα υλικού (2-level header)
+        · Row 2: Ομάδες (POLADYN / ΘΡΥΑΛΛΙΔΑ / ΠΥΡΟΚΡΟΤΗΤΕΣ / NONEL SNAPLINE/LP/UNIDET)
+        · Row 3: Επιμέρους υλικά · Standalone: merge rows 2-3
+        · Iosevka font · Landscape A3 · scale 85% · margins από reference
+        · Υποσύνολο ανά άδεια + Γενικό Σύνολο
+✅  Βιβλίο Κινήσεων PDF/Excel/Word — fix NONEL detection (export_group startswith 'NONEL ')
+        · _is_nonel() / _nonel_sub() helpers αντί export_group=='NONEL' + export_subgroup
+        · Όλα τα modes (detail/subgroup/grouped/total) δοκιμασμένα
+✅  Υλικά: πεδίο "Ομάδα Export" με datalist (POLADYN/ΘΡΥΑΛΛΙΔΑ/ΠΥΡΟΚΡΟΤΗΤΕΣ/NONEL …)
+        · DB migration: αυτόματη ανάθεση export_group από kategoria + onoma patterns
 ✅  Διαχείριση Υλικών, Προμηθευτών, Αδειών
 ✅  Αποθέματα (υπόλοιπα ανά υλικό)
 ✅  Άδειες — ημερομηνίες έκδοσης/λήξης + εγκεκριμένες ποσότητες ανά υλικό
@@ -45,8 +54,7 @@
 
 ΕΚΚΡΕΜΟΤΗΤΕΣ — ΥΨΗΛΗ ΠΡΟΤΕΡΑΙΟΤΗΤΑ
 ──────────────────────────────────────
-#10/#18  Νέος σχεδιασμός + εξονυχιστικός έλεγχος PDF/Excel/Word exports
-         → Εκκρεμεί αποστολή σχεδίων από χρήστη
+#10/#18  Εξονυχιστικός έλεγχος PDF/Excel/Word exports — δοκιμή live από χρήστη ✅ 14/06
 
 
 ═══════════════════════════════════════════════════════════════
