@@ -1,6 +1,13 @@
+import re
 import sqlite3
 from contextlib import contextmanager
 from datetime import datetime
+
+def _clean_parst(s):
+    """Κανονικοποίηση αρ. παραστατικού: αφαίρεση παύλας, π.χ. 'ΔΙΧΝ-19586' → 'ΔΙΧΝ 19586'."""
+    if not s:
+        return s
+    return re.sub(r'\s*[-–]\s*', ' ', s).strip()
 
 DB_NAME = 'expvault.db'
 
@@ -241,6 +248,8 @@ def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
 
 def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
                adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None):
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
+    agora_ref = _clean_parst(agora_ref)
     # Δεν επιτρέπεται αποθήκευση αυτόματα υπολογισμένων καταναλώσεων
     if tipos == 'ΚΑΤΑΝΑΛΩΣΗ' and paratirishis == 'Αυτόματος υπολογισμός':
         raise ValueError("Απαγορεύεται η αποθήκευση αυτόματου υπολογισμού ως ΚΑΤΑΝΑΛΩΣΗ")
@@ -267,6 +276,7 @@ def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
 
 def update_kinisi(id, imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
                   adeia_id, promitheftis_id, paratirishis, ypografi):
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         conn.execute('''
             UPDATE kiniseis SET imerominia=?,tipos=?,yliko_id=?,posotita=?,
