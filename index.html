@@ -678,7 +678,7 @@ body.electron .main    { padding-top: 60px; }
         <div>
           <label>Εμφάνιση NONEL <span style="font-weight:400;color:var(--muted);font-size:12px;">(PDF / Word)</span></label>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
-            <label><input type="radio" name="nonel-mode" value="detail" checked> Αναλυτικό (27 στήλες)</label>
+            <label><input type="radio" name="nonel-mode" value="detail" checked> Αναλυτικό (<span id="nonel-detail-cols">…</span> στήλες)</label>
             <label><input type="radio" name="nonel-mode" value="subgroup"> Ανά καθυστέρηση (15 στήλες)</label>
             <label><input type="radio" name="nonel-mode" value="grouped"> NONEL ανά τύπο (SNAPLINE/UNIDET/LP)</label>
             <label><input type="radio" name="nonel-mode" value="total"> NONEL συνολικό (1 στήλη)</label>
@@ -1619,6 +1619,7 @@ async function loadExportDropdowns() {
   const sel = document.getElementById('exp-yliko');
   sel.innerHTML = '<option value="">Όλα τα υλικά</option>' +
     ylika.map(y=>`<option value="${y.id}">${ylikoLabel(y)}</option>`).join('');
+  document.getElementById('nonel-detail-cols').textContent = ylika.length;
 }
 
 async function doExport(fmt) {
