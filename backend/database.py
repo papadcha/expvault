@@ -225,22 +225,47 @@ def update_adeia(id, arithmos, perigrafi, syntomografia_ekdousas=None, imeromini
         )
 
 def get_adeia_ylika(adeia_id):
-    """Εγκεκριμένες ποσότητες ανά υλικό για μία άδεια, με χρησιμοποιημένη & υπόλοιπο."""
+    """Εγκεκριμένες ποσότητες ανά υλικό για μία άδεια, με χρησιμοποιημένη & υπόλοιπο.
+    Χρησιμοποιημένη = ΕΙΣΑΓΩΓΗ − ΕΠΙΣΤΡΟΦΗ (οι επιστροφές ελευθερώνουν ποσότητα)."""
     with get_db() as conn:
         rows = conn.execute("""
             SELECT ay.id, ay.adeia_id, ay.yliko_id, ay.egekrimeni_posotita,
                    y.onoma, y.diatomi_mm, y.monada_metrisis,
-                   COALESCE(SUM(k.posotita), 0.0) as xrisimopoiimeni
+                   COALESCE(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                     WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                     ELSE 0 END), 0.0) as xrisimopoiimeni
             FROM adeia_ylika ay
             JOIN ylika y ON ay.yliko_id = y.id
             LEFT JOIN kiniseis k ON k.adeia_id = ay.adeia_id
                 AND k.yliko_id = ay.yliko_id
-                AND k.tipos = 'ΕΙΣΑΓΩΓΗ'
+                AND k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
             WHERE ay.adeia_id = ?
             GROUP BY ay.id
             ORDER BY y.onoma
         """, (adeia_id,)).fetchall()
         return [dict(r) for r in rows]
+
+def get_adeia_yliko_remaining(adeia_id, yliko_id):
+    """Υπόλοιπο εγκεκριμένης ποσότητας για συγκεκριμένη άδεια + υλικό."""
+    with get_db() as conn:
+        row = conn.execute("""
+            SELECT ay.egekrimeni_posotita, y.monada_metrisis,
+                   COALESCE(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                     WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                     ELSE 0 END), 0.0) as xrisimopoiimeni
+            FROM adeia_ylika ay
+            JOIN ylika y ON ay.yliko_id = y.id
+            LEFT JOIN kiniseis k ON k.adeia_id = ay.adeia_id
+                AND k.yliko_id = ay.yliko_id
+                AND k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+            WHERE ay.adeia_id = ? AND ay.yliko_id = ?
+            GROUP BY ay.id
+        """, (adeia_id, yliko_id)).fetchone()
+        if not row:
+            return None
+        r = dict(row)
+        r['ypoloipo'] = r['egekrimeni_posotita'] - r['xrisimopoiimeni']
+        return r
 
 def set_adeia_yliko(adeia_id, yliko_id, egekrimeni_posotita):
     with get_db() as conn:

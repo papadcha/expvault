@@ -72,6 +72,9 @@ def handle(cmd, payload):
     if cmd == 'get_adeia_ylika':
         return database.get_adeia_ylika(payload['adeia_id'])
 
+    if cmd == 'get_adeia_yliko_remaining':
+        return database.get_adeia_yliko_remaining(payload['adeia_id'], payload['yliko_id']) or {}
+
     if cmd == 'set_adeia_yliko':
         database.set_adeia_yliko(payload['adeia_id'], payload['yliko_id'], float(payload['egekrimeni_posotita']))
         return {'ok': True}

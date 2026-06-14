@@ -338,14 +338,15 @@ body.electron .main    { padding-top: 60px; }
             <option value="ΕΠΙΣΤΡΟΦΗ">🔄 Επιστροφή</option>
           </select>
         </div>
-        <div><label>Είδος Εκρηκτικού *</label><select id="kin-yliko"><option value="">— Επιλογή —</option></select></div>
+        <div><label>Είδος Εκρηκτικού *</label><select id="kin-yliko" onchange="checkAdeiaYpoloipo()"><option value="">— Επιλογή —</option></select></div>
       </div>
       <div class="form-row cols-4">
         <div><label>Ποσότητα *</label><input type="number" id="kin-posotita" step="0.001" min="0.001"></div>
         <div><label>Αρ. Παραστατικού</label><input type="text" id="kin-parstatiko"></div>
-        <div><label>Άδεια</label><select id="kin-adeia"><option value="">— Καμία —</option></select></div>
+        <div><label>Άδεια</label><select id="kin-adeia" onchange="checkAdeiaYpoloipo()"><option value="">— Καμία —</option></select></div>
         <div><label>Προμηθευτής</label><select id="kin-prom"><option value="">— Κανένας —</option></select></div>
       </div>
+      <div id="kin-adeia-hint" style="display:none;font-size:12px;padding:6px 10px;border-radius:6px;margin-bottom:4px;"></div>
       <div class="form-row cols-2">
         <div><label>Παρατηρήσεις</label><input type="text" id="kin-paratirishis"></div>
         <div><label>Υπογραφή</label><input type="text" id="kin-ypografi"></div>
@@ -1220,6 +1221,23 @@ async function saveEditKinisi() {
   finally { _unlock(); }
 }
 
+async function checkAdeiaYpoloipo() {
+  const hint    = document.getElementById('kin-adeia-hint');
+  const adeia_id = parseInt(document.getElementById('kin-adeia').value);
+  const yliko_id = parseInt(document.getElementById('kin-yliko').value);
+  const tipos    = document.getElementById('kin-tipos').value;
+  if (!adeia_id || !yliko_id || tipos !== 'ΕΙΣΑΓΩΓΗ') { hint.style.display='none'; return; }
+  const r = await py('get_adeia_yliko_remaining', { adeia_id, yliko_id });
+  if (!r || r.egekrimeni_posotita === undefined) { hint.style.display='none'; return; }
+  const yp = r.ypoloipo;
+  const ok = yp > 0;
+  hint.style.display = '';
+  hint.style.background = ok ? '#c6f6d5' : '#fed7d7';
+  hint.style.border = ok ? '1px solid #68d391' : '1px solid #fc8181';
+  hint.style.color  = ok ? '#276749' : '#742a2a';
+  hint.innerHTML = `📋 Υπόλοιπο άδειας: <strong>${yp.toFixed(3)} ${r.monada_metrisis}</strong> (εγκεκρ. ${r.egekrimeni_posotita.toFixed(3)}, χρησιμ. ${r.xrisimopoiimeni.toFixed(3)})`;
+}
+
 async function saveKinisi() {
   const id = document.getElementById('kin-edit-id').value;
   const tipos = document.getElementById('kin-tipos').value;
@@ -1343,6 +1361,7 @@ function clearKinisiForm() {
   document.getElementById('kin-adeia').value = '';
   document.getElementById('kin-prom').value = '';
   document.getElementById('kin-agora-ref-row').style.display = 'none';
+  document.getElementById('kin-adeia-hint').style.display = 'none';
 }
 
 function clearFilters() {
