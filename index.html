@@ -2290,6 +2290,18 @@ async function applyRename() {
     msg.innerHTML = '<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Επιλέξτε παραστατικό και εισάγετε τουλάχιστον ένα πεδίο για αλλαγή.</div>';
     return;
   }
+  // Προειδοποίηση αν το νέο παραστατικό ήδη υπάρχει (θα γίνει merge)
+  if (newParst && newParst !== oldParst) {
+    const existingParst = [...document.getElementById('rn-datalist').options].map(o => o.value);
+    if (existingParst.includes(newParst)) {
+      const confirmed = confirm(
+        `⚠️ Το παραστατικό "${newParst}" υπάρχει ήδη στη βάση.\n\n` +
+        `Αν συνεχίσετε, όλες οι κινήσεις του "${oldParst}" θα ΣΥΓΧΩΝΕΥΤΟΥΝ με αυτές του "${newParst}".\n\n` +
+        `Είστε σίγουροι;`
+      );
+      if (!confirmed) return;
+    }
+  }
   try {
     const payload = { old_parst: oldParst, new_parst: newParst, new_date: newDate };
     if (newAdeiaId)   payload.new_adeia_id      = parseInt(newAdeiaId);

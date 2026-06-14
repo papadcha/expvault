@@ -308,6 +308,7 @@ def get_last_eisagogi_parstatiko():
 def batch_update_parstatiko(old_parst, new_parst=None, new_date=None,
                             new_adeia_id=None, new_promitheftis_id=None, new_agora_ref=None):
     """Μαζική ενημέρωση παραστατικού σε όλες τις κινήσεις."""
+    new_parst = _clean_parst(new_parst) if new_parst else new_parst
     sets, vals = [], []
     if new_parst:
         sets.append('arithmos_parstatikos=?'); vals.append(new_parst)
@@ -323,11 +324,18 @@ def batch_update_parstatiko(old_parst, new_parst=None, new_date=None,
     with get_db() as conn:
         conn.execute(f"UPDATE kiniseis SET {', '.join(sets)} WHERE arithmos_parstatikos=?", vals)
         n = conn.execute("SELECT changes()").fetchone()[0]
+        # Ενημέρωση agora_ref σε επιστροφές εντός του ίδιου παραστατικού
         if new_agora_ref is not None:
             target = new_parst or old_parst
             conn.execute(
                 "UPDATE kiniseis SET agora_ref=? WHERE arithmos_parstatikos=? AND tipos='ΕΠΙΣΤΡΟΦΗ'",
                 (new_agora_ref or None, target)
+            )
+        # Αν αλλάζει το όνομα αγοράς, ενημέρωσε και agora_ref linked επιστροφών
+        if new_parst and new_parst != old_parst:
+            conn.execute(
+                "UPDATE kiniseis SET agora_ref=? WHERE agora_ref=? AND tipos='ΕΠΙΣΤΡΟΦΗ'",
+                (new_parst, old_parst)
             )
         return n
 
