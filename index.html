@@ -1059,16 +1059,13 @@ function fillAdeiesSelects() {
 }
 
 // ── ΚΙΝΗΣΕΙΣ ─────────────────────────────────────────────────────────────────
+const KIN_PAGE_SIZE = 25;
+
 async function loadKiniseis() {
-  const params = new URLSearchParams();
   const yl = document.getElementById('flt-yliko')?.value;
   const tp = document.getElementById('flt-tipos')?.value;
   const ap = document.getElementById('flt-apo')?.value;
   const eo = document.getElementById('flt-eos')?.value;
-  if (yl) params.set('yliko_id', yl);
-  if (tp) params.set('tipos', tp);
-  if (ap) params.set('apo', ap);
-  if (eo) params.set('eos', eo);
 
   const kin = await py('get_kiniseis', {
     yliko_id: yl ? parseInt(yl) : undefined,
@@ -1076,14 +1073,24 @@ async function loadKiniseis() {
     apo: ap || undefined,
     eos: eo || undefined
   });
-  const body = document.getElementById('kin-body');
 
-  if (!kin.length) {
+  window._kinAll = [...kin].reverse(); // νεότερες πρώτα
+  renderKiniseis(KIN_PAGE_SIZE);
+}
+
+function renderKiniseis(limit) {
+  const body = document.getElementById('kin-body');
+  const all  = window._kinAll || [];
+
+  if (!all.length) {
     body.innerHTML = '<tr><td colspan="10"><div class="empty-state"><div class="icon">📋</div><p>Δεν βρέθηκαν κινήσεις</p></div></td></tr>';
     return;
   }
 
-  body.innerHTML = kin.map(k => `<tr>
+  const display  = limit ? all.slice(0, limit) : all;
+  const hasMore  = limit && all.length > limit;
+
+  body.innerHTML = display.map(k => `<tr>
     <td class="mono">${k.auxon_arithmos}</td>
     <td>${fmtDate(k.imerominia)}</td>
     <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'badge-kat':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣ':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'🔥 ΚΑΤ':k.tipos==='ΕΠΙΣΤΡΟΦΗ'?'🔄 ΕΠΙ':'📤 ΕΞΑ'}</span></td>
@@ -1097,7 +1104,11 @@ async function loadKiniseis() {
       <button class="btn btn-outline btn-sm" onclick='editKinisi(${JSON.stringify(k)})'>✏️</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDelete('kinisi',${k.id})">🗑</button>
     </td>
-  </tr>`).join('');
+  </tr>`).join('') + (hasMore ? `<tr><td colspan="10" style="text-align:center;padding:10px;">
+    <button class="btn btn-outline btn-sm" onclick="renderKiniseis(null)">
+      ▼ Εμφάνιση όλων (${all.length} κινήσεις)
+    </button>
+  </td></tr>` : '');
 }
 
 async function editKinisi(k) {
