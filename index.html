@@ -801,7 +801,7 @@ body.electron .main    { padding-top: 60px; }
     <div class="modal-title">⚠️ Επιβεβαίωση</div>
     <p id="confirm-msg"></p>
     <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeConfirm()">Άκυρο</button>
+      <button class="btn btn-outline" id="confirm-cancel-btn" onclick="closeConfirm()">Άκυρο</button>
       <button class="btn btn-danger" id="confirm-ok-btn">Διαγραφή</button>
     </div>
   </div>
@@ -935,6 +935,14 @@ async function py(cmd, payload = {}) {
 
 // ── DATE HELPERS ─────────────────────────────────────────────────────────────
 function todayInput() { return new Date().toISOString().slice(0,10); }
+
+function _lock(btn) {
+  if (!btn) return () => {};
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '⏳ …';
+  return () => { btn.disabled = false; btn.innerHTML = orig; };
+}
 function fmtDate(s) { if (!s) return ''; const [y,m,d] = s.split('-'); return d?`${d}/${m}/${y}`:s; }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
@@ -1149,12 +1157,14 @@ async function saveEditKinisi() {
     alert('Συμπληρώστε τα υποχρεωτικά πεδία (Ημερομηνία, Τύπος, Υλικό, Ποσότητα).');
     return;
   }
+  const _unlock = _lock(event?.target);
   try {
     await py('update_kinisi', body);
     closeEditKinisiModal();
     await loadKiniseis();
     await checkEkkremotita(body.yliko_id, body.imerominia, body.arithmos_parstatikos);
   } catch(e) { alert('Σφάλμα αποθήκευσης: ' + e.message); }
+  finally { _unlock(); }
 }
 
 async function saveKinisi() {
@@ -1174,6 +1184,7 @@ async function saveKinisi() {
     alert('Συμπληρώστε τα υποχρεωτικά πεδία (Ημερομηνία, Τύπος, Υλικό, Ποσότητα).');
     return;
   }
+  const _unlock = _lock(event?.target);
   try {
     if (id) await py('update_kinisi', { id: parseInt(id), ...body });
     else     await py('add_kinisi', body);
@@ -1181,6 +1192,7 @@ async function saveKinisi() {
     await loadKiniseis();
     await checkEkkremotita(body.yliko_id, body.imerominia, body.arithmos_parstatikos);
   } catch(e) { alert('Σφάλμα: ' + e.message); }
+  finally { _unlock(); }
 }
 
 async function checkEkkremotita(yliko_id, imerominia, parstatiko='') {
@@ -1317,11 +1329,13 @@ async function saveYliko() {
     paratirishis: document.getElementById('yl-paratirishis').value
   };
   if (!body.onoma) { alert('Το όνομα είναι υποχρεωτικό.'); return; }
+  const _unlock = _lock(event?.target);
   try {
     if (id) await py('update_yliko', { id: parseInt(id), ...body });
     else     await py('add_yliko', body);
     clearYlikoForm(); loadYlika();
   } catch(e) { alert('Σφάλμα: ' + e.message); }
+  finally { _unlock(); }
 }
 
 async function deleteYliko() {
@@ -1358,11 +1372,13 @@ async function saveProm() {
   const id=document.getElementById('prom-edit-id').value;
   const body={onoma:document.getElementById('prom-onoma').value.trim(), syntomografia:document.getElementById('prom-syntomografia').value.trim()||null};
   if (!body.onoma) { alert('Το όνομα είναι υποχρεωτικό.'); return; }
+  const _unlock = _lock(event?.target);
   try {
     if (id) await py('update_promitheftis', { id: parseInt(id), ...body });
     else     await py('add_promitheftis', body);
     clearPromForm(); loadProm();
   } catch(e) { alert('Σφάλμα: '+e.message); }
+  finally { _unlock(); }
 }
 
 async function deleteProm() {
@@ -1400,11 +1416,13 @@ async function saveAdeia() {
   const id=document.getElementById('adeia-edit-id').value;
   const body={arithmos_adeias:document.getElementById('adeia-num').value.trim(), perigrafi:document.getElementById('adeia-perigrafi').value, syntomografia_ekdousas:document.getElementById('adeia-syntomografia').value.trim()||null};
   if (!body.arithmos_adeias) { alert('Ο αριθμός άδειας είναι υποχρεωτικός.'); return; }
+  const _unlock = _lock(event?.target);
   try {
     if (id) await py('update_adeia', { id: parseInt(id), ...body });
     else     await py('add_adeia', body);
     clearAdeiaForm(); loadAdeies();
   } catch(e) { alert('Σφάλμα: '+e.message); }
+  finally { _unlock(); }
 }
 
 async function deleteAdeia() {
@@ -2028,6 +2046,7 @@ function confirmDelete(type, id) {
   };
   document.getElementById('confirm-msg').textContent = msgs[type] || 'Επιβεβαίωση διαγραφής;';
   document.getElementById('confirm-modal').classList.add('open');
+  setTimeout(() => document.getElementById('confirm-cancel-btn').focus(), 50);
 }
 
 document.getElementById('confirm-ok-btn').onclick = async () => {
@@ -2418,25 +2437,27 @@ function closeParstEditModal() {
 }
 
 async function saveParstEdit() {
-  for (const k of _peKiniseis) {
-    const posotita  = parseFloat(document.getElementById(`pe-pos-${k.id}`).value);
-    const imerominia = document.getElementById(`pe-date-${k.id}`).value;
-    const ypografi  = document.getElementById(`pe-ypografi-${k.id}`).value;
-    if (!imerominia || isNaN(posotita) || posotita <= 0) {
-      alert('Ελέγξτε ημερομηνία και ποσότητα.');
-      return;
-    }
-    try {
+  const _unlock = _lock(event?.target);
+  try {
+    for (const k of _peKiniseis) {
+      const posotita  = parseFloat(document.getElementById(`pe-pos-${k.id}`).value);
+      const imerominia = document.getElementById(`pe-date-${k.id}`).value;
+      const ypografi  = document.getElementById(`pe-ypografi-${k.id}`).value;
+      if (!imerominia || isNaN(posotita) || posotita <= 0) {
+        alert('Ελέγξτε ημερομηνία και ποσότητα.');
+        return;
+      }
       await py('update_kinisi', {
         id: k.id, imerominia, tipos: k.tipos, yliko_id: k.yliko_id,
         posotita, arithmos_parstatikos: k.arithmos_parstatikos,
         adeia_id: k.adeia_id, promitheftis_id: k.promitheftis_id,
         paratirishis: k.paratirishis, ypografi
       });
-    } catch(e) { alert('Σφάλμα αποθήκευσης: ' + e.message); return; }
-  }
-  closeParstEditModal();
-  await loadKiniseis();
+    }
+    closeParstEditModal();
+    await loadKiniseis();
+  } catch(e) { alert('Σφάλμα αποθήκευσης: ' + e.message); }
+  finally { _unlock(); }
 }
 
 document.getElementById('parst-edit-modal').addEventListener('click', function(e) {
