@@ -126,7 +126,7 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 .badge-neg { background: #fde8e8; color: #7b1c1c; }
 
 /* ── STATS ── */
-.stats-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin-bottom: 24px; }
+.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
 .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; text-align: center; }
 .stat-card .stat-val { font-size: 28px; font-weight: 600; font-family: var(--mono); color: var(--navy2); }
 .stat-card .stat-label { font-size: 11px; color: var(--muted); margin-top: 4px; letter-spacing: 0.5px; text-transform: uppercase; }
@@ -285,7 +285,6 @@ body.electron .main    { padding-top: 60px; }
     <div class="stats-grid" id="dash-stats">
       <div class="stat-card"><div class="stat-val" id="stat-kiniseis">—</div><div class="stat-label">Σύνολο Κινήσεων</div></div>
       <div class="stat-card accent-card"><div class="stat-val" id="stat-eisagogi">—</div><div class="stat-label">Εισαγωγές</div></div>
-      <div class="stat-card"><div class="stat-val" id="stat-katanalosi">—</div><div class="stat-label">Καταναλώσεις</div></div>
       <div class="stat-card"><div class="stat-val" id="stat-epistrofi">—</div><div class="stat-label">Επιστροφές</div></div>
       <div class="stat-card"><div class="stat-val" id="stat-ylika">—</div><div class="stat-label">Είδη Υλικών</div></div>
     </div>
@@ -943,11 +942,10 @@ async function loadDashboard() {
     py('get_kiniseis')
   ]);
 
-  document.getElementById('stat-kiniseis').textContent  = kin.length;
-  document.getElementById('stat-eisagogi').textContent  = kin.filter(k=>k.tipos==='ΕΙΣΑΓΩΓΗ').length;
-  document.getElementById('stat-katanalosi').textContent = kin.filter(k=>k.tipos==='ΚΑΤΑΝΑΛΩΣΗ').length;
-  document.getElementById('stat-epistrofi').textContent  = kin.filter(k=>k.tipos==='ΕΠΙΣΤΡΟΦΗ').length;
-  document.getElementById('stat-ylika').textContent     = apo.length;
+  document.getElementById('stat-kiniseis').textContent = kin.length;
+  document.getElementById('stat-eisagogi').textContent = kin.filter(k=>k.tipos==='ΕΙΣΑΓΩΓΗ').length;
+  document.getElementById('stat-epistrofi').textContent = kin.filter(k=>k.tipos==='ΕΠΙΣΤΡΟΦΗ').length;
+  document.getElementById('stat-ylika').textContent    = apo.length;
 
   const apoBody = document.getElementById('dash-apo-body');
   apoBody.innerHTML = apo.length ? apo.map(r => {
