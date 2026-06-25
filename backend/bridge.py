@@ -17,6 +17,7 @@ database.init_db()
 import pdf_parser
 import importlib
 import exports
+import backup
 
 def handle(cmd, payload):
     # ── ΥΛΙΚΑ ────────────────────────────────────────────────────────────────
@@ -25,12 +26,12 @@ def handle(cmd, payload):
 
     if cmd == 'add_yliko':
         database.add_yliko(payload['onoma'], payload.get('diatomi_mm'),
-                           payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'))
+                           payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'), payload.get('nomiki_katigoria'))
         return {'ok': True}
 
     if cmd == 'update_yliko':
         database.update_yliko(payload['id'], payload['onoma'], payload.get('diatomi_mm'),
-                              payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'))
+                              payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'), payload.get('nomiki_katigoria'))
         return {'ok': True}
 
     if cmd == 'delete_yliko':
@@ -58,11 +59,29 @@ def handle(cmd, payload):
         return database.get_all_adeies()
 
     if cmd == 'add_adeia':
-        database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
-        return {'ok': True}
+        new_id = database.add_adeia(payload['arithmos_adeias'], payload.get('perigrafi'),
+                                    payload.get('syntomografia_ekdousas'),
+                                    payload.get('imerominia_ekdosis'), payload.get('imerominia_lixis'))
+        return {'ok': True, 'id': new_id}
 
     if cmd == 'update_adeia':
-        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'), payload.get('syntomografia_ekdousas'))
+        database.update_adeia(payload['id'], payload['arithmos_adeias'], payload.get('perigrafi'),
+                              payload.get('syntomografia_ekdousas'),
+                              payload.get('imerominia_ekdosis'), payload.get('imerominia_lixis'))
+        return {'ok': True}
+
+    if cmd == 'get_adeia_ylika':
+        return database.get_adeia_ylika(payload['adeia_id'])
+
+    if cmd == 'get_adeia_yliko_remaining':
+        return database.get_adeia_yliko_remaining(payload['adeia_id'], payload['yliko_id']) or {}
+
+    if cmd == 'set_adeia_yliko':
+        database.set_adeia_yliko(payload['adeia_id'], payload['yliko_id'], float(payload['egekrimeni_posotita']))
+        return {'ok': True}
+
+    if cmd == 'delete_adeia_yliko':
+        database.delete_adeia_yliko(payload['id'])
         return {'ok': True}
 
     if cmd == 'delete_adeia':
@@ -83,7 +102,8 @@ def handle(cmd, payload):
             payload['imerominia'], payload['tipos'], payload['yliko_id'],
             float(payload['posotita']), payload.get('arithmos_parstatikos'),
             payload.get('adeia_id'), payload.get('promitheftis_id'),
-            payload.get('paratirishis'), payload.get('ypografi')
+            payload.get('paratirishis'), payload.get('ypografi'),
+            agora_ref=payload.get('agora_ref')
         )
         return {'ok': True}
 
@@ -93,7 +113,7 @@ def handle(cmd, payload):
             payload['yliko_id'], float(payload['posotita']),
             payload.get('arithmos_parstatikos'), payload.get('adeia_id'),
             payload.get('promitheftis_id'), payload.get('paratirishis'),
-            payload.get('ypografi')
+            payload.get('ypografi'), agora_ref=payload.get('agora_ref')
         )
         return {'ok': True}
 
@@ -109,7 +129,10 @@ def handle(cmd, payload):
         n = database.batch_update_parstatiko(
             payload['old_parst'],
             payload.get('new_parst'),
-            payload.get('new_date')
+            payload.get('new_date'),
+            new_adeia_id=payload.get('new_adeia_id'),
+            new_promitheftis_id=payload.get('new_promitheftis_id'),
+            new_agora_ref=payload.get('new_agora_ref'),
         )
         return {'ok': True, 'updated': n}
 
@@ -139,6 +162,18 @@ def handle(cmd, payload):
     if cmd == 'check_parstatiko':
         return database.check_parstatiko_exists(payload.get('arithmos_parstatikos'))
 
+    if cmd == 'get_agores_with_pending_epistrofes':
+        return database.get_agores_with_pending_epistrofes()
+
+    if cmd == 'assign_epistrofi_parstatiko':
+        n = database.assign_epistrofi_parstatiko(
+            payload['agora_ref'], payload['new_parstatiko'], payload.get('new_date')
+        )
+        return {'ok': True, 'updated': n}
+
+    if cmd == 'get_epistrofes_without_parstatiko':
+        return database.get_epistrofes_without_parstatiko(payload['agora_ref'])
+
     if cmd == 'get_kiniseis_by_parstatiko_yliko':
         return database.get_kiniseis_by_parstatiko_yliko(
             payload['arithmos_parstatikos'], payload['yliko_id']
@@ -146,6 +181,13 @@ def handle(cmd, payload):
 
     if cmd == 'delete_kiniseis_by_parstatiko':
         database.delete_kiniseis_by_parstatiko(payload.get('arithmos_parstatikos'))
+        return {'ok': True}
+
+    if cmd == 'delete_parstatiko_with_related':
+        database.delete_parstatiko_with_related(
+            payload['arithmos_parstatikos'],
+            include_agora_ref=payload.get('include_agora_ref', True)
+        )
         return {'ok': True}
 
     # ── ΕΛΕΓΧΟΣ ΕΚΚΡΕΜΟΤΗΤΑΣ ─────────────────────────────────────────────────
@@ -164,6 +206,94 @@ def handle(cmd, payload):
         result = pdf_parser.parse_pdf(payload['path'])
         return {'ok': True, **result}
 
+    # ── PDF TEMPLATES ─────────────────────────────────────────────────────────
+    if cmd == 'extract_pdf_text':
+        raw_text = pdf_parser.extract_text_from_pdf(payload['path'])
+        return {'ok': True, 'raw_text': raw_text}
+
+    if cmd == 'list_pdf_templates':
+        import pdf_templates
+        return {'ok': True, 'templates': pdf_templates.list_templates()}
+
+    if cmd == 'delete_pdf_template':
+        import pdf_templates
+        pdf_templates.delete_template(payload['id'])
+        return {'ok': True}
+
+    if cmd == 'preview_pdf_template':
+        import pdf_templates
+        result = pdf_templates.preview_pattern(
+            payload['raw_text'],
+            payload['item_pattern'],
+            payload.get('parstatiko_pattern'),
+            payload.get('imerominia_pattern'),
+            payload.get('adeia_pattern'),
+            payload.get('ekdousa_archi_pattern'),
+            payload.get('promitheftis_pattern'),
+            payload.get('tipos_keyword'),
+        )
+        return {'ok': True, **result}
+
+    if cmd == 'save_pdf_template':
+        import pdf_templates
+        tid = pdf_templates.save_template(
+            payload['name'],
+            payload['item_pattern'],
+            payload.get('parstatiko_pattern'),
+            payload.get('imerominia_pattern'),
+            payload.get('adeia_pattern'),
+            payload.get('ekdousa_archi_pattern'),
+            payload.get('promitheftis_pattern'),
+            payload.get('tipos_keyword'),
+        )
+        return {'ok': True, 'id': tid}
+
+    if cmd == 'build_and_preview_pdf_template':
+        import pdf_templates
+        patterns = {}
+        errors = []
+
+        # Item pattern (onoma + posotita + optional monada)
+        try:
+            isel = payload['item_selection']
+            patterns['item_pattern'] = pdf_templates.build_item_pattern(
+                isel['line'],
+                tuple(isel['onoma_range']),
+                tuple(isel['posotita_range']),
+                tuple(isel['monada_range']) if isel.get('monada_range') else None,
+            )
+        except Exception as e:
+            errors.append(f'Γραμμή υλικού: {e}')
+            patterns['item_pattern'] = ''
+
+        # Header patterns
+        for field, pat_key in [
+            ('parstatiko',    'parstatiko_pattern'),
+            ('imerominia',    'imerominia_pattern'),
+            ('adeia',         'adeia_pattern'),
+            ('ekdousa_archi', 'ekdousa_archi_pattern'),
+            ('promitheftis',  'promitheftis_pattern'),
+        ]:
+            sel = payload.get(f'{field}_selection')
+            if sel:
+                try:
+                    patterns[pat_key] = pdf_templates.build_header_pattern(
+                        sel['line'], tuple(sel['value_range'])
+                    )
+                except Exception as e:
+                    errors.append(f'{field}: {e}')
+                    patterns[pat_key] = None
+            else:
+                patterns[pat_key] = None
+
+        patterns['tipos_keyword'] = payload.get('tipos_keyword') or None
+
+        preview = {}
+        if patterns.get('item_pattern') and payload.get('raw_text'):
+            preview = pdf_templates.preview_pattern(payload['raw_text'], **patterns)
+
+        return {'ok': True, 'patterns': patterns, 'preview': preview, 'errors': errors}
+
     if cmd == 'export_ypologismos_pdf':
         pdf = exports.export_ypologismos_pdf(
             payload['parstatiko_agoras'], payload['senario'], payload['grammes']
@@ -172,7 +302,7 @@ def handle(cmd, payload):
         return {'ok': True}
 
     # ── EXPORT PDF ────────────────────────────────────────────────────────────
-    if cmd in ('export_pdf', 'export_excel'):
+    if cmd in ('export_pdf', 'export_excel', 'export_docx'):
         importlib.reload(exports)
     if cmd == 'export_pdf':
         kiniseis = database.get_kiniseis(
@@ -204,6 +334,64 @@ def handle(cmd, payload):
         with open(out_path, 'wb') as f:
             f.write(data)
         return {'ok': True, 'path': out_path}
+
+    # ── EXPORT DOCX ───────────────────────────────────────────────────────────
+    if cmd == 'export_docx':
+        kiniseis = database.get_kiniseis(
+            yliko_id=payload.get('yliko_id'),
+            apo=payload.get('apo'),
+            eos=payload.get('eos')
+        )
+        _mod = importlib.import_module('exports'); importlib.reload(_mod)
+        data = _mod.export_docx(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('nonel_mode','detail'))
+        out_path = payload['out_path']
+        with open(out_path, 'wb') as f:
+            f.write(data)
+        return {'ok': True, 'path': out_path}
+
+    # ── EXPORT LISTA AGORES ───────────────────────────────────────────────────
+    if cmd == 'export_lista_agores':
+        kiniseis = database.get_kiniseis(
+            apo=payload.get('apo'),
+            eos=payload.get('eos'),
+            tipos='ΕΙΣΑΓΩΓΗ'
+        )
+        data = exports.export_lista_agores(
+            kiniseis,
+            payload.get('apo_label', ''),
+            payload.get('eos_label', '')
+        )
+        out_path = payload['out_path']
+        with open(out_path, 'wb') as f:
+            f.write(data)
+        return {'ok': True, 'path': out_path}
+
+    # ── ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ ─────────────────────────────────────────────────
+    if cmd in ('export_deltio_drastiriotitas_excel', 'export_deltio_drastiriotitas_pdf'):
+        importlib.reload(exports)
+        kiniseis = database.get_kiniseis(
+            apo=payload.get('apo'),
+            eos=payload.get('eos')
+        )
+        fn = exports.export_deltio_drastiriotitas_excel if cmd.endswith('excel') else exports.export_deltio_drastiriotitas_pdf
+        data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''))
+        out_path = payload['out_path']
+        with open(out_path, 'wb') as f:
+            f.write(data)
+        return {'ok': True, 'path': out_path}
+
+    # ── BACKUP ───────────────────────────────────────────────────────────────
+    if cmd == 'get_backup_config':
+        return backup.get_config()
+
+    if cmd == 'save_backup_config':
+        return backup.save_config(payload['paths'], payload.get('max_keep', 30))
+
+    if cmd == 'run_backup':
+        return backup.run_all_backups()
+
+    if cmd == 'list_backups':
+        return backup.list_backups(payload['folder'])
 
     return {'error': f'Άγνωστη εντολή: {cmd}'}
 

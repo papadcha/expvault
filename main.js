@@ -110,6 +110,8 @@ function setupIPC() {
   ipcMain.handle('save-file-dialog', async (event, { defaultName, ext }) => {
     const filters = ext === 'pdf'
       ? [{ name: 'PDF Files', extensions: ['pdf'] }]
+      : ext === 'docx'
+      ? [{ name: 'Word Files', extensions: ['docx'] }]
       : [{ name: 'Excel Files', extensions: ['xlsx'] }];
     const downloadsPath = app.getPath('downloads');
     const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
@@ -117,6 +119,13 @@ function setupIPC() {
       filters
     });
     return canceled ? null : filePath;
+  });
+
+  ipcMain.handle('open-dir-dialog', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory', 'createDirectory']
+    });
+    return canceled ? null : filePaths[0];
   });
 
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
@@ -144,6 +153,34 @@ function createWindow() {
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => mainWindow.show());
+
+  let _closeInProgress = false;
+  mainWindow.on('close', async (e) => {
+    if (_closeInProgress) return;
+
+    let hasPaths = false;
+    try {
+      const cfg = await callPython('get_backup_config');
+      hasPaths = Array.isArray(cfg?.paths) && cfg.paths.some(p => p);
+    } catch {}
+
+    if (!hasPaths) return;
+
+    e.preventDefault();
+    _closeInProgress = true;
+
+    mainWindow.webContents.send('backup-progress', 'start');
+    try {
+      await callPython('run_backup');
+      mainWindow.webContents.send('backup-progress', 'done');
+    } catch (err) {
+      console.error('[Backup] Error on close:', err.message);
+      mainWindow.webContents.send('backup-progress', 'error');
+    }
+    await new Promise(r => setTimeout(r, 900));
+    mainWindow.close();
+  });
+
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
