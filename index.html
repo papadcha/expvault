@@ -179,6 +179,14 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
 .empty-state p { font-size: 14px; }
 
+/* ── PDF TEMPLATES ── */
+.tpl-cap-badge { font-family: var(--mono); font-size: 11px; max-width: 240px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+.tpl-capture-btn { min-width: 200px; text-align: left; justify-content: flex-start; }
+.tpl-field-group { font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase;
+  color: var(--navy2); margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+.tpl-cap-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+
 /* ── ELECTRON TITLEBAR ── */
 #titlebar {
   position: fixed; top: 0; left: 0; right: 0; height: 36px;
@@ -246,6 +254,9 @@ body.electron .main    { padding-top: 60px; }
     <div class="nav-section">Εισαγωγή</div>
     <div class="nav-item" data-page="pdf-import">
       <span class="nav-icon">📂</span> Εισαγωγή PDF
+    </div>
+    <div class="nav-item" data-page="pdf-templates">
+      <span class="nav-icon">🧩</span> Πρότυπα PDF
     </div>
     <div class="nav-item" data-page="ypologismos">
       <span class="nav-icon">🧮</span> Υπολογισμός
@@ -862,6 +873,124 @@ body.electron .main    { padding-top: 60px; }
     </div>
   </div>
 
+  <!-- ── ΠΡΟΤΥΠΑ PDF ── -->
+  <div class="page" id="page-pdf-templates">
+    <div class="page-header">
+      <h2>Πρότυπα Παραστατικών</h2>
+      <p>Εκπαίδευση parser για νέους τύπους παραστατικών — επιλογή πεδίων απευθείας από το κείμενο</p>
+    </div>
+
+    <!-- Βήμα 1: Upload -->
+    <div class="card">
+      <div class="card-title">Βήμα 1 — Φόρτωση PDF</div>
+      <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+        <button class="btn btn-accent" onclick="tplLoadPdf()">📂 Επιλογή PDF</button>
+        <span id="tpl-pdf-status" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+    </div>
+
+    <!-- Βήμα 2: Επιλογή πεδίων -->
+    <div id="tpl-capture-section" style="display:none;">
+      <div class="card">
+        <div class="card-title">Βήμα 2 — Επιλογή Πεδίων</div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:14px;">
+          Επέλεξε κείμενο στο παρακάτω πλαίσιο και πάτα το αντίστοιχο κουμπί για να το καταγράψεις.
+        </p>
+
+        <textarea id="tpl-raw-text" readonly
+          style="font-family:var(--mono);font-size:11px;background:#1a1a2e;color:#a8d8a8;
+                 border:none;border-radius:6px;padding:14px;width:100%;height:300px;
+                 resize:vertical;line-height:1.7;white-space:pre;overflow:auto;"></textarea>
+
+        <div style="margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+
+          <!-- Γραμμή Υλικού -->
+          <div>
+            <div class="tpl-field-group">Γραμμή Υλικού</div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('onoma')">📌 Όνομα Υλικού *</button>
+              <span class="tpl-cap-badge" id="tpl-cap-onoma"></span>
+            </div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('posotita')">📌 Ποσότητα *</button>
+              <span class="tpl-cap-badge" id="tpl-cap-posotita"></span>
+            </div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('monada')">📌 Μονάδα Μέτρησης</button>
+              <span class="tpl-cap-badge" id="tpl-cap-monada"></span>
+            </div>
+            <p style="font-size:11px;color:var(--muted);margin-top:4px;">Τα τρία πεδία πρέπει να είναι στην ίδια γραμμή.</p>
+          </div>
+
+          <!-- Στοιχεία Κεφαλίδας -->
+          <div>
+            <div class="tpl-field-group">Στοιχεία Κεφαλίδας</div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('parstatiko')">📌 Αρ. Παραστατικού</button>
+              <span class="tpl-cap-badge" id="tpl-cap-parstatiko"></span>
+            </div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('imerominia')">📌 Ημερομηνία</button>
+              <span class="tpl-cap-badge" id="tpl-cap-imerominia"></span>
+            </div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('adeia')">📌 Αρ. Άδειας</button>
+              <span class="tpl-cap-badge" id="tpl-cap-adeia"></span>
+            </div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('ekdousa_archi')">📌 Εκδούσα Αρχή</button>
+              <span class="tpl-cap-badge" id="tpl-cap-ekdousa_archi"></span>
+            </div>
+            <div class="tpl-cap-row">
+              <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('promitheftis')">📌 Προμηθευτής</button>
+              <span class="tpl-cap-badge" id="tpl-cap-promitheftis"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Τύπος εγγράφου -->
+        <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border);">
+          <div class="tpl-field-group" style="margin-bottom:10px;">Τύπος Εγγράφου</div>
+          <div class="tpl-cap-row">
+            <button class="btn btn-outline btn-sm tpl-capture-btn" onclick="tplCapture('tipos_keyword')">📌 Keyword ΕΠΙΣΤΡΟΦΗ</button>
+            <span class="tpl-cap-badge" id="tpl-cap-tipos_keyword"></span>
+            <span style="font-size:11px;color:var(--muted);">αν βρεθεί στο κείμενο → ΕΠΙΣΤΡΟΦΗ, αλλιώς → ΕΙΣΑΓΩΓΗ</span>
+          </div>
+        </div>
+
+        <div style="margin-top:4px;padding:8px 12px;background:#fffbea;border:1px solid #f6e05e;border-radius:5px;font-size:12px;color:#7d6608;">
+          ⚠ Τα πεδία με * (Όνομα Υλικού, Ποσότητα) είναι υποχρεωτικά. Τα υπόλοιπα είναι προαιρετικά.
+        </div>
+
+        <div class="form-actions" style="margin-top:16px;border-top:1px solid var(--border);padding-top:16px;">
+          <button class="btn btn-primary" onclick="tplPreview(event)">🔍 Δοκιμή Προτύπου</button>
+          <button class="btn btn-outline" onclick="tplReset()">↺ Καθαρισμός</button>
+        </div>
+      </div>
+
+      <!-- Αποτέλεσμα δοκιμής -->
+      <div id="tpl-preview-section" style="display:none;" class="card">
+        <div class="card-title">Αποτέλεσμα Δοκιμής</div>
+        <div id="tpl-preview-alert"></div>
+        <div id="tpl-preview-body"></div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border);flex-wrap:wrap;">
+          <label style="margin:0;white-space:nowrap;font-size:11px;font-weight:600;">Όνομα Προτύπου *</label>
+          <input type="text" id="tpl-name" placeholder="π.χ. NITROCHEM-τιμολόγιο"
+            style="max-width:280px;flex:1;" onkeydown="if(event.key==='Enter')tplSave(event)">
+          <button class="btn btn-success" onclick="tplSave(event)">💾 Αποθήκευση Προτύπου</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Αποθηκευμένα πρότυπα -->
+    <div class="card">
+      <div class="card-title">Αποθηκευμένα Πρότυπα</div>
+      <div id="tpl-list-body">
+        <div class="empty-state"><div class="icon">🧩</div><p>Δεν υπάρχουν πρότυπα ακόμα</p></div>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <!-- ── CONFIRM MODAL ── -->
@@ -975,6 +1104,7 @@ function onPageLoad(page) {
   if (page === 'ypologismos')  { loadYpologismos(); showSenario(1); }
   if (page === 'pdf-import')    { document.getElementById('pdf-results').style.display='none'; }
   if (page === 'parstatika')    loadParstatikaPage();
+  if (page === 'pdf-templates') loadTplList();
 }
 
 // ── API HELPERS ──────────────────────────────────────────────────────────────
@@ -2683,6 +2813,228 @@ async function saveParstEdit() {
 document.getElementById('parst-edit-modal').addEventListener('click', function(e) {
   if (e.target === this) closeParstEditModal();
 });
+
+// ── PDF TEMPLATES ────────────────────────────────────────────────────────────
+
+let _tplRawText = '';
+let _tplSels = {};
+let _tplBuiltPatterns = null;
+
+const TPL_HEADER_FIELDS = ['parstatiko','imerominia','adeia','ekdousa_archi','promitheftis'];
+const TPL_ALL_FIELDS = ['onoma','posotita','monada',...TPL_HEADER_FIELDS,'tipos_keyword'];
+
+function tplReset() {
+  _tplSels = {};
+  _tplBuiltPatterns = null;
+  TPL_ALL_FIELDS.forEach(f => {
+    const el = document.getElementById('tpl-cap-' + f);
+    if (el) el.innerHTML = '';
+  });
+  document.getElementById('tpl-preview-section').style.display = 'none';
+}
+
+async function tplLoadPdf() {
+  if (!window.api) { alert('Χρησιμοποιήστε την εφαρμογή μέσω Electron'); return; }
+  const path = await window.api.openFile();
+  if (!path) return;
+  const statusEl = document.getElementById('tpl-pdf-status');
+  statusEl.textContent = '⏳ Ανάγνωση…';
+  try {
+    const res = await py('extract_pdf_text', { path });
+    _tplRawText = res.raw_text;
+    document.getElementById('tpl-raw-text').value = _tplRawText;
+    document.getElementById('tpl-capture-section').style.display = 'block';
+    statusEl.textContent = '✅ ' + path.split(/[\\/]/).pop();
+    tplReset();
+  } catch(e) {
+    statusEl.textContent = '❌ ' + e.message;
+  }
+}
+
+function tplCapture(field) {
+  const ta = document.getElementById('tpl-raw-text');
+  const start = ta.selectionStart;
+  const end   = ta.selectionEnd;
+  if (start === end) { alert('Επέλεξε πρώτα κείμενο στο πλαίσιο PDF.'); return; }
+
+  const fullText = ta.value;
+  const lineStart = fullText.lastIndexOf('\n', start - 1) + 1;
+  const lineEndIdx = fullText.indexOf('\n', end);
+  const line = fullText.slice(lineStart, lineEndIdx === -1 ? undefined : lineEndIdx);
+  const selStart = start - lineStart;
+  const selEnd   = end   - lineStart;
+  const preview  = fullText.slice(start, end);
+
+  _tplSels[field] = { line, sel_start: selStart, sel_end: selEnd, preview };
+
+  const badge = document.getElementById('tpl-cap-' + field);
+  if (badge) {
+    badge.innerHTML = `<span style="background:#e8f4ea;color:#1a7a4a;border:1px solid #c3e6cb;
+      border-radius:4px;padding:2px 8px;display:inline-block;max-width:220px;
+      overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;"
+      title="${preview.replace(/"/g,'&quot;')}">✓ "${preview}"</span>`;
+  }
+
+  // Έλεγχος: onoma/posotita/monada πρέπει στην ίδια γραμμή
+  if (['onoma','posotita','monada'].includes(field)) {
+    const defined = ['onoma','posotita','monada'].filter(f => _tplSels[f]);
+    const lines = new Set(defined.map(f => _tplSels[f].line));
+    if (lines.size > 1 && badge) {
+      badge.innerHTML += '<span style="color:var(--danger);font-size:11px;margin-left:6px;">⚠ διαφ. γραμμή!</span>';
+    }
+  }
+}
+
+async function tplPreview(evt) {
+  if (!_tplSels.onoma || !_tplSels.posotita) {
+    alert('Υποχρεωτικά πεδία: Όνομα Υλικού και Ποσότητα.');
+    return;
+  }
+  // Έλεγχος ότι item fields είναι στην ίδια γραμμή
+  const itemDefined = ['onoma','posotita','monada'].filter(f => _tplSels[f]);
+  const itemLines = new Set(itemDefined.map(f => _tplSels[f].line));
+  if (itemLines.size > 1) {
+    alert('Τα πεδία Όνομα, Ποσότητα, Μονάδα πρέπει να είναι στην ίδια γραμμή.');
+    return;
+  }
+
+  const _unlock = _lock(evt?.target);
+  try {
+    const payload = {
+      raw_text: _tplRawText,
+      item_selection: {
+        line:          _tplSels.onoma.line,
+        onoma_range:   [_tplSels.onoma.sel_start,    _tplSels.onoma.sel_end],
+        posotita_range:[_tplSels.posotita.sel_start, _tplSels.posotita.sel_end],
+        monada_range:  _tplSels.monada ? [_tplSels.monada.sel_start, _tplSels.monada.sel_end] : null,
+      },
+    };
+    for (const f of TPL_HEADER_FIELDS) {
+      if (_tplSels[f]) {
+        payload[f + '_selection'] = {
+          line:        _tplSels[f].line,
+          value_range: [_tplSels[f].sel_start, _tplSels[f].sel_end],
+        };
+      }
+    }
+    if (_tplSels.tipos_keyword) payload.tipos_keyword = _tplSels.tipos_keyword.preview;
+
+    const res = await py('build_and_preview_pdf_template', payload);
+    _tplBuiltPatterns = res.patterns;
+    _tplRenderPreview(res.preview, res.errors || []);
+    document.getElementById('tpl-preview-section').style.display = 'block';
+    document.getElementById('tpl-preview-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch(e) {
+    alert('Σφάλμα: ' + e.message);
+  } finally { _unlock(); }
+}
+
+function _tplRenderPreview(preview, errors) {
+  const alertEl = document.getElementById('tpl-preview-alert');
+  const bodyEl  = document.getElementById('tpl-preview-body');
+
+  alertEl.innerHTML = errors.length
+    ? errors.map(e => `<div class="alert alert-error">⚠ ${e}</div>`).join('')
+    : '';
+
+  if (!preview || Object.keys(preview).length === 0) {
+    bodyEl.innerHTML = '<p style="color:var(--muted);">Δεν επιστράφηκαν αποτελέσματα.</p>';
+    return;
+  }
+
+  const tiposBadge = preview.tipos === 'ΕΠΙΣΤΡΟΦΗ'
+    ? '<span class="badge badge-out">🔄 ΕΠΙΣΤΡΟΦΗ</span>'
+    : '<span class="badge badge-in">📥 ΕΙΣΑΓΩΓΗ</span>';
+
+  const grammes = (preview.grammes || []);
+  const grammeRows = grammes.map(g =>
+    `<tr><td>${g.onoma||'—'}</td>
+         <td class="mono text-right">${g.posotita||'—'}</td>
+         <td>${g.monada||'—'}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:12px;">Δεν βρέθηκαν υλικά</td></tr>';
+
+  bodyEl.innerHTML = `
+    <div class="form-row cols-3" style="margin-bottom:14px;">
+      <div><label>Τύπος</label><div style="margin-top:4px;">${tiposBadge}</div></div>
+      <div><label>Αρ. Παραστατικού</label><div class="mono" style="font-size:13px;margin-top:4px;">${preview.arithmos_parstatikos||'—'}</div></div>
+      <div><label>Ημερομηνία</label><div class="mono" style="font-size:13px;margin-top:4px;">${preview.imerominia||'—'}</div></div>
+    </div>
+    <div class="form-row cols-3" style="margin-bottom:16px;">
+      <div><label>Άδεια</label><div class="mono" style="font-size:13px;margin-top:4px;">${preview.adeia||'—'}</div></div>
+      <div><label>Εκδούσα Αρχή</label><div style="font-size:13px;margin-top:4px;">${preview.ekdousa_archi||'—'}</div></div>
+      <div><label>Προμηθευτής</label><div style="font-size:13px;margin-top:4px;">${preview.promitheftis||'—'}</div></div>
+    </div>
+    <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
+                color:var(--navy2);margin-bottom:8px;">Υλικά (${grammes.length})</div>
+    <div class="table-wrap">
+      <table><thead><tr>
+        <th>Όνομα</th><th class="text-right">Ποσότητα</th><th>Μονάδα</th>
+      </tr></thead><tbody>${grammeRows}</tbody></table>
+    </div>`;
+}
+
+async function tplSave(evt) {
+  if (!_tplBuiltPatterns) { alert('Κάνε πρώτα Δοκιμή.'); return; }
+  const name = document.getElementById('tpl-name').value.trim();
+  if (!name) { alert('Δώσε όνομα στο πρότυπο.'); return; }
+  const _unlock = _lock(evt?.target);
+  try {
+    await py('save_pdf_template', { name, ..._tplBuiltPatterns });
+    document.getElementById('tpl-name').value = '';
+    document.getElementById('tpl-preview-section').style.display = 'none';
+    tplReset();
+    await loadTplList();
+  } catch(e) {
+    alert('Σφάλμα αποθήκευσης: ' + e.message);
+  } finally { _unlock(); }
+}
+
+async function loadTplList() {
+  try {
+    const res = await py('list_pdf_templates');
+    const body = document.getElementById('tpl-list-body');
+    if (!res.templates || !res.templates.length) {
+      body.innerHTML = '<div class="empty-state"><div class="icon">🧩</div><p>Δεν υπάρχουν πρότυπα ακόμα</p></div>';
+      return;
+    }
+    const rows = res.templates.map(t => {
+      const fields = [
+        t.parstatiko_pattern   ? 'Παρ/κό' : null,
+        t.imerominia_pattern   ? 'Ημ/νία' : null,
+        t.adeia_pattern        ? 'Άδεια'  : null,
+        t.ekdousa_archi_pattern? 'Εκδ.Αρχή': null,
+        t.promitheftis_pattern ? 'Προμ.'  : null,
+        t.tipos_keyword        ? `ΕΠΙΣΤ.: "${t.tipos_keyword}"` : null,
+      ].filter(Boolean).join(' · ');
+      return `
+        <tr>
+          <td style="font-weight:500;">${t.name}</td>
+          <td style="font-size:12px;color:var(--muted);">${fields || '—'}</td>
+          <td class="mono" style="font-size:11px;color:var(--muted);">${(t.created_at||'').slice(0,16)}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-danger btn-sm" onclick="tplDelete(${t.id},'${t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">🗑</button>
+          </td>
+        </tr>`;
+    }).join('');
+    body.innerHTML = `<div class="table-wrap"><table>
+      <thead><tr>
+        <th>Όνομα</th><th>Πεδία</th><th>Δημιουργήθηκε</th><th></th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+  } catch(e) {
+    document.getElementById('tpl-list-body').innerHTML =
+      `<div class="alert alert-error">Σφάλμα φόρτωσης: ${e.message}</div>`;
+  }
+}
+
+async function tplDelete(id, name) {
+  if (!confirm(`Διαγραφή προτύπου "${name}";`)) return;
+  try {
+    await py('delete_pdf_template', { id });
+    await loadTplList();
+  } catch(e) { alert('Σφάλμα: ' + e.message); }
+}
 
 // ── ELECTRON DETECTION ───────────────────────────────────────────────────────
 if (window.api) {

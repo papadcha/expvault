@@ -205,6 +205,94 @@ def handle(cmd, payload):
         result = pdf_parser.parse_pdf(payload['path'])
         return {'ok': True, **result}
 
+    # ── PDF TEMPLATES ─────────────────────────────────────────────────────────
+    if cmd == 'extract_pdf_text':
+        raw_text = pdf_parser.extract_text_from_pdf(payload['path'])
+        return {'ok': True, 'raw_text': raw_text}
+
+    if cmd == 'list_pdf_templates':
+        import pdf_templates
+        return {'ok': True, 'templates': pdf_templates.list_templates()}
+
+    if cmd == 'delete_pdf_template':
+        import pdf_templates
+        pdf_templates.delete_template(payload['id'])
+        return {'ok': True}
+
+    if cmd == 'preview_pdf_template':
+        import pdf_templates
+        result = pdf_templates.preview_pattern(
+            payload['raw_text'],
+            payload['item_pattern'],
+            payload.get('parstatiko_pattern'),
+            payload.get('imerominia_pattern'),
+            payload.get('adeia_pattern'),
+            payload.get('ekdousa_archi_pattern'),
+            payload.get('promitheftis_pattern'),
+            payload.get('tipos_keyword'),
+        )
+        return {'ok': True, **result}
+
+    if cmd == 'save_pdf_template':
+        import pdf_templates
+        tid = pdf_templates.save_template(
+            payload['name'],
+            payload['item_pattern'],
+            payload.get('parstatiko_pattern'),
+            payload.get('imerominia_pattern'),
+            payload.get('adeia_pattern'),
+            payload.get('ekdousa_archi_pattern'),
+            payload.get('promitheftis_pattern'),
+            payload.get('tipos_keyword'),
+        )
+        return {'ok': True, 'id': tid}
+
+    if cmd == 'build_and_preview_pdf_template':
+        import pdf_templates
+        patterns = {}
+        errors = []
+
+        # Item pattern (onoma + posotita + optional monada)
+        try:
+            isel = payload['item_selection']
+            patterns['item_pattern'] = pdf_templates.build_item_pattern(
+                isel['line'],
+                tuple(isel['onoma_range']),
+                tuple(isel['posotita_range']),
+                tuple(isel['monada_range']) if isel.get('monada_range') else None,
+            )
+        except Exception as e:
+            errors.append(f'Γραμμή υλικού: {e}')
+            patterns['item_pattern'] = ''
+
+        # Header patterns
+        for field, pat_key in [
+            ('parstatiko',    'parstatiko_pattern'),
+            ('imerominia',    'imerominia_pattern'),
+            ('adeia',         'adeia_pattern'),
+            ('ekdousa_archi', 'ekdousa_archi_pattern'),
+            ('promitheftis',  'promitheftis_pattern'),
+        ]:
+            sel = payload.get(f'{field}_selection')
+            if sel:
+                try:
+                    patterns[pat_key] = pdf_templates.build_header_pattern(
+                        sel['line'], tuple(sel['value_range'])
+                    )
+                except Exception as e:
+                    errors.append(f'{field}: {e}')
+                    patterns[pat_key] = None
+            else:
+                patterns[pat_key] = None
+
+        patterns['tipos_keyword'] = payload.get('tipos_keyword') or None
+
+        preview = {}
+        if patterns.get('item_pattern') and payload.get('raw_text'):
+            preview = pdf_templates.preview_pattern(payload['raw_text'], **patterns)
+
+        return {'ok': True, 'patterns': patterns, 'preview': preview, 'errors': errors}
+
     if cmd == 'export_ypologismos_pdf':
         pdf = exports.export_ypologismos_pdf(
             payload['parstatiko_agoras'], payload['senario'], payload['grammes']
