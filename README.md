@@ -17,9 +17,12 @@ Electron (UI)  ←→  Python IPC Bridge (stdin/stdout JSON)  ←→  SQLite
 | `index.html` | SPA frontend (root του project) |
 | `backend/bridge.py` | Python IPC handler |
 | `backend/database.py` | SQLite operations |
-| `backend/exports.py` | PDF/Excel export |
+| `backend/exports.py` | PDF / Excel / Word export |
 | `backend/pdf_parser.py` | EpsilonNet PDF parser |
+| `backend/pdf_templates.py` | Εκμάθηση & αναγνώριση νέων τύπων PDF |
+| `backend/backup.py` | Τοπικό + cloud backup βάσης δεδομένων |
 | `backend/expvault.db` | Βάση δεδομένων |
+| `backend/backup_config.json` | Ρυθμίσεις backup (δημιουργείται αυτόματα) |
 
 ---
 
@@ -38,7 +41,7 @@ sudo pacman -S python python-pip    # Arch
 sudo apt install python3 python3-pip  # Ubuntu/Debian
 
 # Python βιβλιοθήκες
-pip install pypdf reportlab openpyxl --break-system-packages
+pip install pypdf reportlab openpyxl python-docx --break-system-packages
 
 # Fonts (για PDF export)
 sudo pacman -S ttf-liberation       # Arch
@@ -53,7 +56,7 @@ sudo apt install fonts-liberation   # Ubuntu/Debian
 npm install -g electron
 
 # Python: κατέβασε από https://python.org
-pip install pypdf reportlab openpyxl
+pip install pypdf reportlab openpyxl python-docx
 
 # Fonts: εγκατάσταση Liberation Fonts από https://github.com/liberationfonts/liberation-fonts
 ```
@@ -68,7 +71,7 @@ brew install node python
 npm install -g electron
 
 # Python βιβλιοθήκες
-pip3 install pypdf reportlab openpyxl
+pip3 install pypdf reportlab openpyxl python-docx
 
 # Fonts
 brew install --cask font-liberation
@@ -92,13 +95,14 @@ electron .
 
 | Πίνακας | Περιγραφή |
 |---------|-----------|
-| `ylika` | Είδη εκρηκτικών υλών |
+| `ylika` | Είδη εκρηκτικών υλών (+ export_group, nomiki_katigoria) |
 | `promitheftes` | Προμηθευτές |
-| `adeies` | Άδειες + εκδούσα αρχή |
-| `kiniseis` | Κινήσεις βιβλίου |
+| `adeies` | Άδειες + εκδούσα αρχή + εγκεκριμένες ποσότητες |
+| `kiniseis` | Κινήσεις βιβλίου (ΕΙΣΑΓΩΓΗ / ΚΑΤΑΝΑΛΩΣΗ / ΕΠΙΣΤΡΟΦΗ) |
 | `auxon_counter` | Αυξών αριθμός κινήσεων |
 | `ypologismos` | Προσωρινοί υπολογισμοί επιστροφής/κατανάλωσης |
 | `ypologismos_grammes` | Γραμμές υπολογισμού ανά υλικό |
+| `pdf_templates` | Πρότυπα αναγνώρισης PDF ανά προμηθευτή |
 
 ### Τύποι κινήσεων (`kiniseis.tipos`)
 
@@ -144,6 +148,7 @@ electron .
 | **Πρότυπα PDF** | Εκπαίδευση αναγνωρίσεων για νέους προμηθευτές μέσω επιλογής τιμών στο raw text |
 | **Πίνακας Ελέγχου** | Έλεγχος ισορροπίας (Αγορές = Καταναλώσεις + Επιστροφές), τελευταίες κινήσεις |
 | **Αποθέματα** | Τρέχον απόθεμα ανά υλικό |
+| **Backup** | Αυτόματο αντίγραφο ασφαλείας κατά το κλείσιμο σε τοπικό + cloud φάκελο |
 
 ### Τυπική ημερήσια ροή
 
@@ -193,12 +198,10 @@ electron .
 
 ## Εκκρεμή (TODO)
 
-- [ ] Καλύτερο UX στα "Είδη Εκρηκτικών"
-- [ ] Εξαγωγή σε .docx
-- [ ] Banner εκκρεμότητας + καταχώρηση από Υπολογισμό στο Βιβλίο
-- [ ] Parser δελτίου επιστροφής Επιχείρησης
-- [ ] Διαφοροποίηση ΔΑ Επιχείρησης από προμηθευτή αγοράς
+- [ ] Νέος σχεδιασμός σελίδων export Word/Excel (εκκρεμεί αποστολή reference αρχείων)
+- [ ] Parser δελτίου επιστροφής Επιχείρησης (ΔΑ Επιχείρησης)
 - [ ] Αποθήκευση προτίμησης font
+- [ ] Restore από backup (UI επαναφοράς αντιγράφου)
 
 ---
 
@@ -208,35 +211,9 @@ electron .
 # Καθαρισμός Electron cache
 rm -rf ~/.config/expvault
 
-# Migration βάσης (νέοι τύποι kiniseis)
-cd backend && python3 -c "
-import sqlite3
-conn = sqlite3.connect('expvault.db')
-conn.executescript('''
-  PRAGMA foreign_keys=OFF;
-  CREATE TABLE kiniseis_new (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    auxon_arithmos INTEGER NOT NULL,
-    imerominia TEXT NOT NULL,
-    tipos TEXT NOT NULL CHECK(tipos IN (\"ΕΙΣΑΓΩΓΗ\",\"ΚΑΤΑΝΑΛΩΣΗ\",\"ΕΠΙΣΤΡΟΦΗ\",\"ΕΞΑΓΩΓΗ\")),
-    yliko_id INTEGER NOT NULL REFERENCES ylika(id),
-    posotita REAL NOT NULL CHECK(posotita > 0),
-    arithmos_parstatikos TEXT,
-    adeia_id INTEGER REFERENCES adeies(id),
-    promitheftis_id INTEGER REFERENCES promitheftes(id),
-    paratirishis TEXT,
-    ypografi TEXT,
-    created_at TEXT DEFAULT (datetime(\"now\"))
-  );
-  INSERT INTO kiniseis_new SELECT * FROM kiniseis;
-  DROP TABLE kiniseis;
-  ALTER TABLE kiniseis_new RENAME TO kiniseis;
-  PRAGMA foreign_keys=ON;
-''')
-conn.commit()
-conn.close()
-"
+# Εκκίνηση σε dev mode
+electron .
 
-# Deploy (αντιγράφει από ~/Downloads και κάνει git push)
-./deploy.sh "Περιγραφή αλλαγής"
+# Έλεγχος βάσης
+cd backend && python3 -c "import database; database.init_db(); print('OK')"
 ```
