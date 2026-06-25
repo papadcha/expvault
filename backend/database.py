@@ -9,6 +9,40 @@ def _clean_parst(s):
         return s
     return re.sub(r'\s*[-–]\s*', ' ', s).strip()
 
+NOMIKES_KATIGORIES = [
+    'Πυρίτιδα & Δυναμιτίδα', 'ANFO', 'Slurries', 'Γαλακτώματα',
+    'Ζελατινοδυναμιτίδα', 'Καψύλια κοινά + NONEL', 'Καψύλλια ηλεκτρικά',
+    'Θρυαλλίδα κοινή', 'Θρυαλλίδα ακαριαία', 'Λοιπά εκρηκτικά',
+]
+
+def classify_nomiki_katigoria(onoma):
+    """Νόμιμη κατηγορία εκρηκτικού βάσει περιγραφής (βλ. κατηγοριες_εκρηκτικων.txt).
+    Ο έλεγχος ΗΛΕΚΤΡ προηγείται του ΠΥΡΟΚΡ/NONEL γιατί 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ' περιέχει και τις δύο λέξεις."""
+    if not onoma:
+        return None
+    o = onoma.upper()
+    if 'ΣΑΚΟΥΛ' in o or 'ΠΕΝΣ' in o or 'CRIMPER' in o:
+        return None
+    if 'SLURR' in o:
+        return 'Slurries'
+    if 'EM-EX' in o or 'EMEX' in o or 'ΓΑΛΑΚΤΩΜ' in o:
+        return 'Γαλακτώματα'
+    if 'POLADYN' in o or 'ΖΕΛΑΤ' in o:
+        return 'Ζελατινοδυναμιτίδα'
+    if 'AN-FO' in o or 'ANFO' in o or 'ΠΕΤΡΑΜΜΩΝ' in o:
+        return 'ANFO'
+    if 'ΠΥΡΙΤ' in o or 'ΔΥΝΑΜΙΤ' in o:
+        return 'Πυρίτιδα & Δυναμιτίδα'
+    if 'ΗΛΕΚΤΡ' in o:
+        return 'Καψύλλια ηλεκτρικά'
+    if 'NONEL' in o or 'ΝΟΝΕΛ' in o or 'ΚΟΙΝΟΙ' in o or 'ΠΥΡΟΚΡ' in o:
+        return 'Καψύλια κοινά + NONEL'
+    if 'ΑΚΑΡ' in o:
+        return 'Θρυαλλίδα ακαριαία'
+    if 'ΒΡΑΔΥΚ' in o:
+        return 'Θρυαλλίδα κοινή'
+    return 'Λοιπά εκρηκτικά'
+
 DB_NAME = 'expvault.db'
 
 @contextmanager
@@ -78,6 +112,16 @@ def init_db():
                     WHEN onoma LIKE '%ΘΡΥΑΛΛΙΔΑ%'     THEN 'ΘΡΥΑΛΛΙΔΑ'
                     WHEN onoma LIKE '%ΠΥΡΟΚΡΟΤΗΤΕΣ%'  THEN 'ΠΥΡΟΚΡΟΤΗΤΕΣ'
                     ELSE NULL END""")
+        except Exception:
+            pass
+        # Migration: nomiki_katigoria στα ylika (νόμιμη κατηγορία για Δελτίο Δραστηριότητας)
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(ylika)").fetchall()]
+            if 'nomiki_katigoria' not in cols:
+                conn.execute("ALTER TABLE ylika ADD COLUMN nomiki_katigoria TEXT")
+                for r in conn.execute("SELECT id, onoma FROM ylika").fetchall():
+                    conn.execute("UPDATE ylika SET nomiki_katigoria=? WHERE id=?",
+                                 (classify_nomiki_katigoria(r[1]), r[0]))
         except Exception:
             pass
         # Migration: ημερομηνίες άδειας
@@ -172,7 +216,7 @@ def get_all_ylika():
         return [dict(r) for r in conn.execute(
             "SELECT * FROM ylika ORDER BY onoma").fetchall()]
 
-def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None):
+def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None, nomiki_katigoria=None):
     with get_db() as conn:
         existing = conn.execute(
             "SELECT id FROM ylika WHERE UPPER(onoma)=UPPER(?) AND (diatomi_mm IS ? OR diatomi_mm=?)",
@@ -180,15 +224,17 @@ def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export
         ).fetchone()
         if existing:
             return existing[0]
+        nomiki_katigoria = nomiki_katigoria or classify_nomiki_katigoria(onoma)
         conn.execute(
-            "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,export_group) VALUES(?,?,?,?,?)",
-            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group))
+            "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,export_group,nomiki_katigoria) VALUES(?,?,?,?,?,?)",
+            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, nomiki_katigoria))
 
-def update_yliko(id, onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None):
+def update_yliko(id, onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None, nomiki_katigoria=None):
     with get_db() as conn:
+        nomiki_katigoria = nomiki_katigoria or classify_nomiki_katigoria(onoma)
         conn.execute(
-            "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,export_group=? WHERE id=?",
-            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, id))
+            "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,export_group=?,nomiki_katigoria=? WHERE id=?",
+            (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, nomiki_katigoria, id))
 
 def delete_yliko(id):
     with get_db() as conn:
@@ -319,7 +365,7 @@ def check_parstatiko_exists(arithmos_parstatikos):
 
 def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
     sql = '''
-        SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis, y.export_group,
+        SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis, y.export_group, y.nomiki_katigoria,
                p.onoma as promitheftis_onoma, p.syntomografia as promitheftis_syntomografia, a.arithmos_adeias, a.perigrafi as ekdousa_archi, a.syntomografia_ekdousas
         FROM kiniseis k
         JOIN ylika y ON k.yliko_id = y.id

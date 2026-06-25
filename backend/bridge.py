@@ -25,12 +25,12 @@ def handle(cmd, payload):
 
     if cmd == 'add_yliko':
         database.add_yliko(payload['onoma'], payload.get('diatomi_mm'),
-                           payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'))
+                           payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'), payload.get('nomiki_katigoria'))
         return {'ok': True}
 
     if cmd == 'update_yliko':
         database.update_yliko(payload['id'], payload['onoma'], payload.get('diatomi_mm'),
-                              payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'))
+                              payload['monada_metrisis'], payload.get('paratirishis'), payload.get('export_group'), payload.get('export_subgroup'), payload.get('nomiki_katigoria'))
         return {'ok': True}
 
     if cmd == 'delete_yliko':
@@ -272,6 +272,21 @@ def handle(cmd, payload):
             payload.get('apo_label', ''),
             payload.get('eos_label', '')
         )
+        out_path = payload['out_path']
+        with open(out_path, 'wb') as f:
+            f.write(data)
+        return {'ok': True, 'path': out_path}
+
+    # ── ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ ─────────────────────────────────────────────────
+    if cmd in ('export_deltio_drastiriotitas_excel', 'export_deltio_drastiriotitas_pdf'):
+        importlib.reload(exports)
+        kiniseis = database.get_kiniseis(
+            apo=payload.get('apo'),
+            eos=payload.get('eos'),
+            tipos='ΚΑΤΑΝΑΛΩΣΗ'
+        )
+        fn = exports.export_deltio_drastiriotitas_excel if cmd.endswith('excel') else exports.export_deltio_drastiriotitas_pdf
+        data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)

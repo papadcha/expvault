@@ -713,6 +713,19 @@ body.electron .main    { padding-top: 60px; }
       </div>
       <div id="la-msg" class="mt-8"></div>
     </div>
+
+    <div class="card" style="max-width:560px;margin-top:16px;">
+      <div class="card-title">Δελτίο Δραστηριότητας (σύνολα κατανάλωσης ανά κατηγορία)</div>
+      <div class="form-row cols-2">
+        <div><label>Από ημερομηνία</label><input type="date" id="dd-apo"></div>
+        <div><label>Έως ημερομηνία</label><input type="date" id="dd-eos"></div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-success" onclick="exportDeltioDrastiriotitas('excel')">📊 Εξαγωγή Excel</button>
+        <button class="btn btn-primary" onclick="exportDeltioDrastiriotitas('pdf')">📄 Εξαγωγή PDF</button>
+      </div>
+      <div id="dd-msg" class="mt-8"></div>
+    </div>
   </div>
 
   <!-- ── ΥΛΙΚΑ ── -->
@@ -746,6 +759,21 @@ body.electron .main    { padding-top: 60px; }
             <option value="NONEL UNIDET">
           </datalist>
         </div></div>
+        <div class="form-row"><div><label>Νόμιμη Κατηγορία (Δελτίο Δραστηριότητας)</label>
+          <input type="text" id="yl-nomiki-katigoria" list="nomiki-katigoria-list" placeholder="συμπληρώνεται αυτόματα — μπορεί να διορθωθεί">
+          <datalist id="nomiki-katigoria-list">
+            <option value="Πυρίτιδα & Δυναμιτίδα">
+            <option value="ANFO">
+            <option value="Slurries">
+            <option value="Γαλακτώματα">
+            <option value="Ζελατινοδυναμιτίδα">
+            <option value="Καψύλια κοινά + NONEL">
+            <option value="Καψύλλια ηλεκτρικά">
+            <option value="Θρυαλλίδα κοινή">
+            <option value="Θρυαλλίδα ακαριαία">
+            <option value="Λοιπά εκρηκτικά">
+          </datalist>
+        </div></div>
         <div class="form-row"><div><label>Παρατηρήσεις</label><input type="text" id="yl-paratirishis"></div></div>
         <div class="form-actions">
           <button class="btn btn-success" onclick="saveYliko()">💾 Αποθήκευση</button>
@@ -757,7 +785,7 @@ body.electron .main    { padding-top: 60px; }
         <div class="card-title">Λίστα Υλικών</div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Όνομα</th><th>mm</th><th>Μονάδα</th><th>Παρατηρήσεις</th></tr></thead>
+            <thead><tr><th>Όνομα</th><th>mm</th><th>Μονάδα</th><th>Νόμιμη Κατηγορία</th><th>Παρατηρήσεις</th></tr></thead>
             <tbody id="yl-body"></tbody>
           </table>
         </div>
@@ -1386,8 +1414,9 @@ async function loadYlika() {
     <td><strong>${y.onoma}</strong></td>
     <td>${y.diatomi_mm||'—'}</td>
     <td>${y.monada_metrisis}</td>
+    <td>${y.nomiki_katigoria||'—'}</td>
     <td>${y.paratirishis||'—'}</td>
-  </tr>`).join('') || '<tr><td colspan="4" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';
+  </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';
 }
 
 function fillYlikoForm(y) {
@@ -1397,6 +1426,7 @@ function fillYlikoForm(y) {
   document.getElementById('yl-diatomi').value = y.diatomi_mm||'';
   document.getElementById('yl-monada').value = y.monada_metrisis;
   document.getElementById('yl-export-group').value = y.export_group||'';
+  document.getElementById('yl-nomiki-katigoria').value = y.nomiki_katigoria||'';
   document.getElementById('yl-paratirishis').value = y.paratirishis||'';
   document.getElementById('yl-del-btn').style.display = 'inline-flex';
 }
@@ -1406,6 +1436,7 @@ async function saveYliko() {
   const body = {
     onoma: document.getElementById('yl-onoma').value.trim(),
       export_group: document.getElementById('yl-export-group').value.trim()||null,
+    nomiki_katigoria: document.getElementById('yl-nomiki-katigoria').value.trim()||null,
     diatomi_mm: document.getElementById('yl-diatomi').value || null,
     monada_metrisis: document.getElementById('yl-monada').value,
     paratirishis: document.getElementById('yl-paratirishis').value
@@ -1429,7 +1460,7 @@ async function deleteYliko() {
 function clearYlikoForm() {
   document.getElementById('yl-edit-id').value='';
   document.getElementById('yl-form-title').textContent='Νέο Υλικό';
-  ['yl-onoma','yl-diatomi','yl-export-group','yl-paratirishis'].forEach(id=>document.getElementById(id).value='');
+  ['yl-onoma','yl-diatomi','yl-export-group','yl-nomiki-katigoria','yl-paratirishis'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('yl-del-btn').style.display='none';
 }
 
@@ -1836,6 +1867,33 @@ async function exportListaAgores() {
     const savePath = await window.api.saveFile({ defaultName: 'katastasi_agoron.xlsx', ext: 'xlsx' });
     if (!savePath) return;
     await py('export_lista_agores', {
+      apo: ap || null, eos: eo || null,
+      apo_label: ap || '—', eos_label: eo || '—',
+      out_path: savePath
+    });
+    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${savePath}</div>`;
+  } catch(e) {
+    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${e.message}</div>`;
+  } finally {
+    btn.textContent = origText;
+    btn.disabled = false;
+  }
+}
+
+async function exportDeltioDrastiriotitas(fmt) {
+  const btn = event.target;
+  const origText = btn.textContent;
+  btn.textContent = '⏳ Παραγωγή...';
+  btn.disabled = true;
+  const msgEl = document.getElementById('dd-msg');
+  msgEl.innerHTML = '';
+  try {
+    const ap = document.getElementById('dd-apo').value;
+    const eo = document.getElementById('dd-eos').value;
+    const ext = fmt === 'excel' ? 'xlsx' : 'pdf';
+    const savePath = await window.api.saveFile({ defaultName: `deltio_drastiriotitas.${ext}`, ext });
+    if (!savePath) return;
+    await py(`export_deltio_drastiriotitas_${fmt}`, {
       apo: ap || null, eos: eo || null,
       apo_label: ap || '—', eos_label: eo || '—',
       out_path: savePath

@@ -1084,9 +1084,9 @@ def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) 
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
-    register_fonts()
-    F  = 'Sans'      if FONT_REGULAR else 'Helvetica'
-    FB = 'Sans-Bold' if FONT_BOLD    else 'Helvetica-Bold'
+    F, FB = register_fonts()
+    if not FONT_REGULAR:
+        F, FB = 'Helvetica', 'Helvetica-Bold'
 
     buf = __import__('io').BytesIO()
     doc = SimpleDocTemplate(buf, pagesize=A4,
@@ -1147,6 +1147,7 @@ def export_ypologismos_pdf(parstatiko_agoras: str, senario: int, grammes: list) 
     story.append(Paragraph(f"Αποτέλεσμα {result_lbl} — Για χρήση κατά την έκδοση παραστατικού", AS))
 
     doc.build(story)
+    return buf.getvalue()
 
 
 def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
@@ -1434,4 +1435,154 @@ def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes
 
     buf = BytesIO()
     wb.save(buf)
+    return buf.getvalue()
+
+
+# ── ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ ─────────────────────────────────────────────────────
+# Σύνολα κατανάλωσης ανά νόμιμη κατηγορία εκρηκτικού, για μια περίοδο.
+
+MONADES_NOMIKON_KATIGORION = {
+    'Πυρίτιδα & Δυναμιτίδα':  'kg',
+    'ANFO':                    'kg',
+    'Slurries':                'kg',
+    'Γαλακτώματα':            'kg',
+    'Ζελατινοδυναμιτίδα':     'kg',
+    'Καψύλια κοινά + NONEL':  'τεμ',
+    'Καψύλλια ηλεκτρικά':     'τεμ',
+    'Θρυαλλίδα κοινή':        'm',
+    'Θρυαλλίδα ακαριαία':     'm',
+    'Λοιπά εκρηκτικά':         'kg',
+}
+
+def _deltio_sums(kiniseis):
+    from database import NOMIKES_KATIGORIES
+    sums = OrderedDict((kat, 0.0) for kat in NOMIKES_KATIGORIES)
+    for k in kiniseis:
+        if k['tipos'] != 'ΚΑΤΑΝΑΛΩΣΗ':
+            continue
+        kat = k.get('nomiki_katigoria')
+        if kat in sums:
+            sums[kat] += k['posotita']
+    return sums
+
+def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from io import BytesIO
+
+    sums = _deltio_sums(kiniseis)
+
+    FONT = 'Iosevka'
+    NAVY = "1A365D"; LBLU = "BEE3F8"; ALT = "EEF2F7"
+    thin = Side(style='thin', color="AABBD0")
+    brd  = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = 'Δελτίο Δραστηριότητας'
+
+    ws.merge_cells('A1:C1')
+    c = ws.cell(row=1, column=1, value='ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΣΥΝΟΛΑ ΚΑΤΑΝΑΛΩΣΗΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ')
+    c.font = Font(name=FONT, bold=True, size=13)
+    c.alignment = Alignment(horizontal='center')
+
+    ws.merge_cells('A2:C2')
+    c = ws.cell(row=2, column=1, value=f'Περίοδος: {apo_label} έως {eos_label}')
+    c.font = Font(name=FONT, size=10)
+    c.alignment = Alignment(horizontal='center')
+
+    headers = ['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση']
+    for ci, h in enumerate(headers, 1):
+        cell = ws.cell(row=4, column=ci, value=h)
+        cell.fill      = PatternFill("solid", fgColor=NAVY)
+        cell.font      = Font(name=FONT, bold=True, color="FFFFFF", size=10)
+        cell.alignment = Alignment(horizontal='center', vertical='center')
+        cell.border    = brd
+
+    ri = 5
+    for kat, total in sums.items():
+        cell = ws.cell(row=ri, column=1, value=kat)
+        cell.font = Font(name=FONT, size=10)
+        cell.alignment = Alignment(horizontal='left')
+        cell.border = brd
+        if ri % 2 == 0:
+            cell.fill = PatternFill("solid", fgColor=ALT)
+
+        cell = ws.cell(row=ri, column=2, value=MONADES_NOMIKON_KATIGORION[kat])
+        cell.font = Font(name=FONT, size=10)
+        cell.alignment = Alignment(horizontal='center')
+        cell.border = brd
+        if ri % 2 == 0:
+            cell.fill = PatternFill("solid", fgColor=ALT)
+
+        cell = ws.cell(row=ri, column=3, value=fmt_num(total) or '0,00')
+        cell.font = Font(name=FONT, size=10)
+        cell.alignment = Alignment(horizontal='right')
+        cell.border = brd
+        if ri % 2 == 0:
+            cell.fill = PatternFill("solid", fgColor=ALT)
+        ri += 1
+
+    ws.column_dimensions['A'].width = 32
+    ws.column_dimensions['B'].width = 10
+    ws.column_dimensions['C'].width = 16
+
+    ws.page_setup.orientation = 'portrait'
+    ws.page_setup.fitToWidth  = 1
+    ws.page_setup.fitToHeight = 0
+
+    buf = BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.units import cm
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+    from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
+    from io import BytesIO
+
+    fname, fbold = register_fonts()
+    F  = fname if FONT_REGULAR else 'Helvetica'
+    FB = fbold if FONT_BOLD    else 'Helvetica-Bold'
+
+    sums = _deltio_sums(kiniseis)
+
+    buf = BytesIO()
+    doc = SimpleDocTemplate(buf, pagesize=A4,
+                            leftMargin=2*cm, rightMargin=2*cm,
+                            topMargin=2*cm, bottomMargin=2*cm)
+
+    TS = ParagraphStyle('t', fontSize=13, fontName=FB, alignment=TA_CENTER, spaceAfter=4)
+    SS = ParagraphStyle('s', fontSize=9,  fontName=F,  alignment=TA_CENTER, spaceAfter=12)
+
+    story = [
+        Paragraph("ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΣΥΝΟΛΑ ΚΑΤΑΝΑΛΩΣΗΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ", TS),
+        Paragraph(f"Περίοδος: {apo_label} έως {eos_label}", SS),
+    ]
+
+    rows = [['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση']]
+    for kat, total in sums.items():
+        rows.append([kat, MONADES_NOMIKON_KATIGORION[kat], fmt_num(total) or '0,00'])
+
+    col_w = [9*cm, 2.5*cm, 3.5*cm]
+    t = Table(rows, colWidths=col_w)
+    t.setStyle(TableStyle([
+        ('BACKGROUND',    (0,0), (-1,0), colors.HexColor('#1a365d')),
+        ('TEXTCOLOR',     (0,0), (-1,0), colors.white),
+        ('FONTNAME',      (0,0), (-1,0), FB),
+        ('FONTNAME',      (0,1), (-1,-1), F),
+        ('FONTSIZE',      (0,0), (-1,-1), 10),
+        ('ALIGN',         (0,0), (-1,-1), 'CENTER'),
+        ('ALIGN',         (0,1), (0,-1), 'LEFT'),
+        ('ROWBACKGROUNDS',(0,1), (-1,-1), [colors.white, colors.HexColor('#f7f9fc')]),
+        ('GRID',          (0,0), (-1,-1), 0.5, colors.HexColor('#cbd5e0')),
+        ('TOPPADDING',    (0,0), (-1,-1), 6),
+        ('BOTTOMPADDING', (0,0), (-1,-1), 6),
+    ]))
+    story.append(t)
+
+    doc.build(story)
     return buf.getvalue()
