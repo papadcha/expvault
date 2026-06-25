@@ -994,6 +994,62 @@ body.electron .main    { padding-top: 60px; }
     </div>
   </div>
 
+  <!-- ══════════════════════════════════════════ BACKUP ════════════════════ -->
+  <div class="page" id="page-backup">
+    <div class="page-header">
+      <h2>💾 Backup</h2>
+      <p>Αυτόματο αντίγραφο ασφαλείας κατά το κλείσιμο της εφαρμογής.</p>
+    </div>
+
+    <div style="max-width:680px;">
+      <!-- Φάκελος 1 (τοπικό) -->
+      <div style="margin-bottom:22px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
+          Τοπικός Φάκελος
+          <span style="font-weight:400;color:var(--muted);"> — εξωτερικός δίσκος, NAS κ.λπ.</span>
+        </label>
+        <div style="display:flex;gap:8px;">
+          <input id="bk-path0" type="text" placeholder="π.χ. /mnt/usb/expvault-backup"
+            style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
+          <button onclick="bkPickDir(0)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
+        </div>
+      </div>
+
+      <!-- Φάκελος 2 (cloud) -->
+      <div style="margin-bottom:22px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
+          Cloud Φάκελος
+          <span style="font-weight:400;color:var(--muted);"> — Google Drive, Dropbox, Nextcloud κ.λπ.</span>
+        </label>
+        <div style="display:flex;gap:8px;">
+          <input id="bk-path1" type="text" placeholder="π.χ. /home/χρήστης/Google Drive/expvault"
+            style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
+          <button onclick="bkPickDir(1)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
+        </div>
+      </div>
+
+      <!-- Ρυθμίσεις -->
+      <div style="margin-bottom:22px;display:flex;align-items:center;gap:16px;">
+        <label style="font-size:13px;color:var(--navy2);font-weight:600;">Διατήρηση τελευταίων</label>
+        <input id="bk-maxkeep" type="number" min="1" max="365" value="30"
+          style="width:70px;padding:7px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;text-align:center;">
+        <span style="font-size:13px;color:var(--muted);">αντιγράφων ανά φάκελο</span>
+      </div>
+
+      <!-- Κουμπιά -->
+      <div style="display:flex;gap:10px;margin-bottom:28px;">
+        <button onclick="bkSave()" style="padding:9px 22px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-weight:600;font-size:13px;cursor:pointer;">💾 Αποθήκευση Ρυθμίσεων</button>
+        <button onclick="bkNow()" style="padding:9px 22px;background:var(--card);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-weight:600;font-size:13px;cursor:pointer;">▶ Backup Τώρα</button>
+      </div>
+
+      <!-- Τελευταίο backup -->
+      <div id="bk-last" style="margin-bottom:28px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:13px;color:var(--muted);display:none;"></div>
+
+      <!-- Λίστα αντιγράφων -->
+      <div id="bk-lists"></div>
+    </div>
+  </div>
+
 </main>
 
 <!-- ── CONFIRM MODAL ── -->
@@ -1080,70 +1136,11 @@ body.electron .main    { padding-top: 60px; }
   </div>
 </div>
 
-  <!-- ══════════════════════════════════════════ BACKUP ════════════════════ -->
-  <div class="page" id="page-backup">
-    <div class="page-header">
-      <h2>💾 Backup</h2>
-      <p>Αυτόματο αντίγραφο ασφαλείας κατά το κλείσιμο της εφαρμογής.</p>
-    </div>
-
-    <div style="max-width:680px;">
-      <!-- Φάκελος 1 (τοπικό) -->
-      <div style="margin-bottom:22px;">
-        <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
-          Τοπικός Φάκελος
-          <span style="font-weight:400;color:var(--muted);"> — εξωτερικός δίσκος, NAS κ.λπ.</span>
-        </label>
-        <div style="display:flex;gap:8px;">
-          <input id="bk-path0" type="text" placeholder="π.χ. /mnt/usb/expvault-backup"
-            style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
-          <button onclick="bkPickDir(0)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
-        </div>
-      </div>
-
-      <!-- Φάκελος 2 (cloud) -->
-      <div style="margin-bottom:22px;">
-        <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
-          Cloud Φάκελος
-          <span style="font-weight:400;color:var(--muted);"> — Google Drive, Dropbox, Nextcloud κ.λπ.</span>
-        </label>
-        <div style="display:flex;gap:8px;">
-          <input id="bk-path1" type="text" placeholder="π.χ. /home/χρήστης/Google Drive/expvault"
-            style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
-          <button onclick="bkPickDir(1)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
-        </div>
-      </div>
-
-      <!-- Ρυθμίσεις -->
-      <div style="margin-bottom:22px;display:flex;align-items:center;gap:16px;">
-        <label style="font-size:13px;color:var(--navy2);font-weight:600;">Διατήρηση τελευταίων</label>
-        <input id="bk-maxkeep" type="number" min="1" max="365" value="30"
-          style="width:70px;padding:7px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;text-align:center;">
-        <span style="font-size:13px;color:var(--muted);">αντιγράφων ανά φάκελο</span>
-      </div>
-
-      <!-- Κουμπιά -->
-      <div style="display:flex;gap:10px;margin-bottom:28px;">
-        <button onclick="bkSave()" style="padding:9px 22px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-weight:600;font-size:13px;cursor:pointer;">💾 Αποθήκευση Ρυθμίσεων</button>
-        <button onclick="bkNow()" style="padding:9px 22px;background:var(--card);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-weight:600;font-size:13px;cursor:pointer;">▶ Backup Τώρα</button>
-      </div>
-
-      <!-- Τελευταίο backup -->
-      <div id="bk-last" style="margin-bottom:28px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:13px;color:var(--muted);display:none;"></div>
-
-      <!-- Λίστα αντιγράφων -->
-      <div id="bk-lists"></div>
-    </div>
-  </div>
-
-  <!-- Overlay progress κατά το κλείσιμο -->
-  <div id="bk-progress" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(15,32,64,0.97);border-top:2px solid var(--accent);padding:14px 24px;font-size:14px;color:#fff;display:none;align-items:center;gap:12px;">
-    <span id="bk-progress-icon" style="font-size:18px;">💾</span>
-    <span id="bk-progress-msg">Γίνεται backup...</span>
-  </div>
-
+<!-- Overlay progress κατά το κλείσιμο (position:fixed, εκτός main) -->
+<div id="bk-progress" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(15,32,64,0.97);border-top:2px solid var(--accent);padding:14px 24px;font-size:14px;color:#fff;align-items:center;gap:12px;">
+  <span id="bk-progress-icon" style="font-size:18px;">💾</span>
+  <span id="bk-progress-msg">Γίνεται backup...</span>
 </div>
-
 
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
