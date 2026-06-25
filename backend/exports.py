@@ -1455,15 +1455,20 @@ MONADES_NOMIKON_KATIGORION = {
 }
 
 def _deltio_sums(kiniseis):
+    """Κατανάλωση ανά κατηγορία = ΑΓΟΡΑ − ΕΠΙΣΤΡΟΦΗ (όπως στον Υπολογιστή, Σενάριο 2),
+    αφού η κατανάλωση δεν καταχωρείται πάντα ως ξεχωριστή κίνηση."""
     from database import NOMIKES_KATIGORIES
-    sums = OrderedDict((kat, 0.0) for kat in NOMIKES_KATIGORIES)
+    agores     = OrderedDict((kat, 0.0) for kat in NOMIKES_KATIGORIES)
+    epistrofes = OrderedDict((kat, 0.0) for kat in NOMIKES_KATIGORIES)
     for k in kiniseis:
-        if k['tipos'] != 'ΚΑΤΑΝΑΛΩΣΗ':
-            continue
         kat = k.get('nomiki_katigoria')
-        if kat in sums:
-            sums[kat] += k['posotita']
-    return sums
+        if kat not in agores:
+            continue
+        if k['tipos'] == 'ΕΙΣΑΓΩΓΗ':
+            agores[kat] += k['posotita']
+        elif k['tipos'] == 'ΕΠΙΣΤΡΟΦΗ':
+            epistrofes[kat] += k['posotita']
+    return OrderedDict((kat, max(0.0, agores[kat] - epistrofes[kat])) for kat in NOMIKES_KATIGORIES)
 
 def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
     import openpyxl

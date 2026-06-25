@@ -282,8 +282,7 @@ def handle(cmd, payload):
         importlib.reload(exports)
         kiniseis = database.get_kiniseis(
             apo=payload.get('apo'),
-            eos=payload.get('eos'),
-            tipos='ΚΑΤΑΝΑΛΩΣΗ'
+            eos=payload.get('eos')
         )
         fn = exports.export_deltio_drastiriotitas_excel if cmd.endswith('excel') else exports.export_deltio_drastiriotitas_pdf
         data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''))
