@@ -96,9 +96,10 @@
         · Pruning: διατηρεί τα τελευταία N αντίγραφα, διαγράφει παλαιότερα
         · Δοκιμασμένο live: backup σε 2 temp φακέλους, λίστα, UI "Backup Τώρα"
 ✅  Merge dev → main + smoke test — 25/06
-        · Merge επιτυχής (55 commits)
-        · Smoke test: 11/11 σελίδες OK, dashboard 424 κινήσεις / 36 αγορές /
-          28 επιστροφές / 27 υλικά, bridge get_ylika=29, backup config φορτώθηκε
+        · Merge επιτυχής (55 commits) · Smoke test: 12/12 σελίδες OK
+        · dashboard: 424 κινήσεις / 36 αγορές / 28 επιστροφές / 27 υλικά
+        · bridge: get_ylika=29, backup config φορτώθηκε
+        · 2ο merge (σύνοψη) + επαλήθευση: 12/12 ✅
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
