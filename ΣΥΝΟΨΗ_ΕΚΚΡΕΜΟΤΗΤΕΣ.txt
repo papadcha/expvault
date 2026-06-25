@@ -2,6 +2,7 @@
   ExpVault — Σύνοψη & Εκκρεμότητες  (25/06/2026)
 ═══════════════════════════════════════════════════════════════
 
+
 ΤΙ ΕΧΕΙ ΥΛΟΠΟΙΗΘΕΙ
 ────────────────────
 ✅  Καταχώρηση κινήσεων (Εισαγωγή / Επιστροφή / Κατανάλωση)
@@ -65,6 +66,18 @@
               στο ΑΓΟΡΑ−ΕΠΙΣΤΡΟΦΗ (η εγγραφή ΚΑΤΑΝΑΛΩΣΗ αγνοείται από το Δελτίο)
 ✅  Fix: Δελτίο Υπολογισμού PDF (Υπολογιστής) — crashάριζε λόγω font names που δεν
         ήταν καταχωρημένα (Sans/Sans-Bold) + έλειπε return· δοκιμασμένο live, Σενάριο 1+2 — 25/06
+✅  Πρότυπα Παραστατικών (backend/pdf_templates.py + UI) — 25/06
+        · Εκμάθηση νέων τύπων PDF από επιλογή χρήστη απευθείας στο raw text
+        · Καλύπτει όλα τα πεδία: imerominia, arithmos_parstatikos, promitheftis,
+          adeia, ekdousa_archi, tipos (keyword), grammes (onoma + posotita + monada)
+        · build_item_pattern: regex από 3 επιλογές στην ίδια γραμμή
+        · build_header_pattern: αριστερό anchor ή anchored-line (^...$) αν η τιμή
+          είναι μόνη στη γραμμή — αποφυγή false matches
+        · _shape_pattern: token-count matching (αντί lazy +?) για σωστό greedy
+        · DB: πίνακας pdf_templates με auto migration νέων στηλών
+        · Bridge: 6 εντολές (extract_pdf_text, list/save/delete/preview/build_and_preview)
+        · UI: νέα σελίδα "Πρότυπα PDF" — Upload → επιλογή πεδίων → Δοκιμή → Αποθήκευση
+        · Δοκιμασμένο live με Playwright (όλα τα πεδία εξάγονται σωστά)
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
