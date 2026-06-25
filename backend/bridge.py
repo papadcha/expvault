@@ -17,6 +17,7 @@ database.init_db()
 import pdf_parser
 import importlib
 import exports
+import backup
 
 def handle(cmd, payload):
     # ── ΥΛΙΚΑ ────────────────────────────────────────────────────────────────
@@ -378,6 +379,19 @@ def handle(cmd, payload):
         with open(out_path, 'wb') as f:
             f.write(data)
         return {'ok': True, 'path': out_path}
+
+    # ── BACKUP ───────────────────────────────────────────────────────────────
+    if cmd == 'get_backup_config':
+        return backup.get_config()
+
+    if cmd == 'save_backup_config':
+        return backup.save_config(payload['paths'], payload.get('max_keep', 30))
+
+    if cmd == 'run_backup':
+        return backup.run_all_backups()
+
+    if cmd == 'list_backups':
+        return backup.list_backups(payload['folder'])
 
     return {'error': f'Άγνωστη εντολή: {cmd}'}
 

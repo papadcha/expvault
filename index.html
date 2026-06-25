@@ -275,6 +275,9 @@ body.electron .main    { padding-top: 60px; }
     <div class="nav-item" data-page="adeies">
       <span class="nav-icon">📜</span> Άδειες
     </div>
+    <div class="nav-item" data-page="backup">
+      <span class="nav-icon">💾</span> Backup
+    </div>
   </div>
   <!-- Κουμπί εξόδου στο κάτω μέρος του sidebar -->
   <div id="sidebar-exit" style="display:none; padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.1);">
@@ -1077,6 +1080,70 @@ body.electron .main    { padding-top: 60px; }
   </div>
 </div>
 
+  <!-- ══════════════════════════════════════════ BACKUP ════════════════════ -->
+  <div class="page" id="page-backup">
+    <div class="page-header">
+      <h2>💾 Backup</h2>
+      <p>Αυτόματο αντίγραφο ασφαλείας κατά το κλείσιμο της εφαρμογής.</p>
+    </div>
+
+    <div style="max-width:680px;">
+      <!-- Φάκελος 1 (τοπικό) -->
+      <div style="margin-bottom:22px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
+          Τοπικός Φάκελος
+          <span style="font-weight:400;color:var(--muted);"> — εξωτερικός δίσκος, NAS κ.λπ.</span>
+        </label>
+        <div style="display:flex;gap:8px;">
+          <input id="bk-path0" type="text" placeholder="π.χ. /mnt/usb/expvault-backup"
+            style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
+          <button onclick="bkPickDir(0)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
+        </div>
+      </div>
+
+      <!-- Φάκελος 2 (cloud) -->
+      <div style="margin-bottom:22px;">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
+          Cloud Φάκελος
+          <span style="font-weight:400;color:var(--muted);"> — Google Drive, Dropbox, Nextcloud κ.λπ.</span>
+        </label>
+        <div style="display:flex;gap:8px;">
+          <input id="bk-path1" type="text" placeholder="π.χ. /home/χρήστης/Google Drive/expvault"
+            style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
+          <button onclick="bkPickDir(1)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
+        </div>
+      </div>
+
+      <!-- Ρυθμίσεις -->
+      <div style="margin-bottom:22px;display:flex;align-items:center;gap:16px;">
+        <label style="font-size:13px;color:var(--navy2);font-weight:600;">Διατήρηση τελευταίων</label>
+        <input id="bk-maxkeep" type="number" min="1" max="365" value="30"
+          style="width:70px;padding:7px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;text-align:center;">
+        <span style="font-size:13px;color:var(--muted);">αντιγράφων ανά φάκελο</span>
+      </div>
+
+      <!-- Κουμπιά -->
+      <div style="display:flex;gap:10px;margin-bottom:28px;">
+        <button onclick="bkSave()" style="padding:9px 22px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-weight:600;font-size:13px;cursor:pointer;">💾 Αποθήκευση Ρυθμίσεων</button>
+        <button onclick="bkNow()" style="padding:9px 22px;background:var(--card);border:1px solid var(--accent);border-radius:6px;color:var(--accent);font-weight:600;font-size:13px;cursor:pointer;">▶ Backup Τώρα</button>
+      </div>
+
+      <!-- Τελευταίο backup -->
+      <div id="bk-last" style="margin-bottom:28px;padding:12px 16px;background:var(--card);border-radius:8px;font-size:13px;color:var(--muted);display:none;"></div>
+
+      <!-- Λίστα αντιγράφων -->
+      <div id="bk-lists"></div>
+    </div>
+  </div>
+
+  <!-- Overlay progress κατά το κλείσιμο -->
+  <div id="bk-progress" style="display:none;position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(15,32,64,0.97);border-top:2px solid var(--accent);padding:14px 24px;font-size:14px;color:#fff;display:none;align-items:center;gap:12px;">
+    <span id="bk-progress-icon" style="font-size:18px;">💾</span>
+    <span id="bk-progress-msg">Γίνεται backup...</span>
+  </div>
+
+</div>
+
 
 <script>
 // ── STATE ─────────────────────────────────────────────────────────────────────
@@ -1105,6 +1172,7 @@ function onPageLoad(page) {
   if (page === 'pdf-import')    { document.getElementById('pdf-results').style.display='none'; }
   if (page === 'parstatika')    loadParstatikaPage();
   if (page === 'pdf-templates') loadTplList();
+  if (page === 'backup')        loadBackupPage();
 }
 
 // ── API HELPERS ──────────────────────────────────────────────────────────────
@@ -3034,6 +3102,126 @@ async function tplDelete(id, name) {
     await py('delete_pdf_template', { id });
     await loadTplList();
   } catch(e) { alert('Σφάλμα: ' + e.message); }
+}
+
+// ── BACKUP ───────────────────────────────────────────────────────────────────
+async function loadBackupPage() {
+  try {
+    const cfg = await py('get_backup_config');
+    const paths = cfg.paths ?? ['', ''];
+    document.getElementById('bk-path0').value = paths[0] ?? '';
+    document.getElementById('bk-path1').value = paths[1] ?? '';
+    document.getElementById('bk-maxkeep').value = cfg.max_keep ?? 30;
+
+    const lastEl = document.getElementById('bk-last');
+    if (cfg.last_backup) {
+      const ok = cfg.last_status !== 'error';
+      lastEl.style.display = 'block';
+      lastEl.innerHTML = (ok ? '✅' : '⚠️') + ` Τελευταίο backup: <strong>${cfg.last_backup}</strong>`;
+      lastEl.style.color = ok ? 'var(--text)' : '#e57373';
+    } else {
+      lastEl.style.display = 'none';
+    }
+
+    const listsEl = document.getElementById('bk-lists');
+    listsEl.innerHTML = '';
+    for (let i = 0; i < 2; i++) {
+      const p = paths[i];
+      if (!p) continue;
+      const label = i === 0 ? 'Τοπικός Φάκελος' : 'Cloud Φάκελος';
+      let rows = '';
+      try {
+        const backups = await py('list_backups', { folder: p });
+        if (backups.length === 0) {
+          rows = `<tr><td colspan="3" style="padding:10px;color:var(--muted);text-align:center;">Δεν υπάρχουν αντίγραφα ακόμα</td></tr>`;
+        } else {
+          rows = backups.slice(0, 10).map(b =>
+            `<tr>
+              <td style="padding:6px 10px;">${b.ts}</td>
+              <td style="padding:6px 10px;font-family:monospace;font-size:12px;color:var(--muted);">${b.name}</td>
+              <td style="padding:6px 10px;text-align:right;color:var(--muted);">${b.size_kb} KB</td>
+            </tr>`
+          ).join('');
+        }
+      } catch {
+        rows = `<tr><td colspan="3" style="padding:10px;color:#e57373;">Σφάλμα ανάγνωσης φακέλου</td></tr>`;
+      }
+      listsEl.innerHTML += `
+        <div style="margin-bottom:20px;">
+          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${label} — ${p}</div>
+          <table style="width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden;font-size:13px;">
+            <thead><tr style="background:rgba(0,0,0,0.2);">
+              <th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--navy2);">Ημερομηνία</th>
+              <th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--navy2);">Αρχείο</th>
+              <th style="padding:8px 10px;text-align:right;font-weight:600;color:var(--navy2);">Μέγεθος</th>
+            </tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>`;
+    }
+  } catch (e) {
+    console.error('loadBackupPage:', e);
+  }
+}
+
+async function bkPickDir(idx) {
+  if (!window.api?.openDir) return alert('Απαιτείται η εφαρμογή desktop.');
+  const dir = await window.api.openDir();
+  if (dir) document.getElementById(`bk-path${idx}`).value = dir;
+}
+
+async function bkSave() {
+  const paths = [
+    document.getElementById('bk-path0').value.trim(),
+    document.getElementById('bk-path1').value.trim(),
+  ];
+  const maxKeep = parseInt(document.getElementById('bk-maxkeep').value) || 30;
+  try {
+    await py('save_backup_config', { paths, max_keep: maxKeep });
+    alert('Οι ρυθμίσεις αποθηκεύτηκαν.');
+    loadBackupPage();
+  } catch (e) {
+    alert('Σφάλμα: ' + e.message);
+  }
+}
+
+async function bkNow() {
+  const btn = document.querySelector('#page-backup button[onclick="bkNow()"]');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Γίνεται backup...'; }
+  try {
+    const r = await py('run_backup');
+    if (r.ok) {
+      alert('Backup ολοκληρώθηκε επιτυχώς.');
+    } else {
+      const errs = (r.results || []).filter(x => !x.ok).map(x => x.error).join('\n');
+      alert('Σφάλμα backup:\n' + (errs || r.error || 'Άγνωστο σφάλμα'));
+    }
+    loadBackupPage();
+  } catch (e) {
+    alert('Σφάλμα: ' + e.message);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '▶ Backup Τώρα'; }
+  }
+}
+
+// Overlay κατά το κλείσιμο (αν backup τρέχει)
+if (window.api?.onBackupProgress) {
+  const bar = document.getElementById('bk-progress');
+  const icon = document.getElementById('bk-progress-icon');
+  const msg  = document.getElementById('bk-progress-msg');
+  window.api.onBackupProgress(status => {
+    if (status === 'start') {
+      bar.style.display = 'flex';
+      icon.textContent = '💾';
+      msg.textContent = 'Γίνεται backup... παρακαλώ περιμένετε.';
+    } else if (status === 'done') {
+      icon.textContent = '✅';
+      msg.textContent = 'Backup ολοκληρώθηκε.';
+    } else if (status === 'error') {
+      icon.textContent = '⚠️';
+      msg.textContent = 'Το backup απέτυχε — κλείσιμο εφαρμογής.';
+    }
+  });
 }
 
 // ── ELECTRON DETECTION ───────────────────────────────────────────────────────
