@@ -3,6 +3,7 @@
 ═══════════════════════════════════════════════════════════════
 
 
+
 ΤΙ ΕΧΕΙ ΥΛΟΠΟΙΗΘΕΙ
 ────────────────────
 ✅  Καταχώρηση κινήσεων (Εισαγωγή / Επιστροφή / Κατανάλωση)
@@ -78,6 +79,22 @@
         · Bridge: 6 εντολές (extract_pdf_text, list/save/delete/preview/build_and_preview)
         · UI: νέα σελίδα "Πρότυπα PDF" — Upload → επιλογή πεδίων → Δοκιμή → Αποθήκευση
         · Δοκιμασμένο live με Playwright (όλα τα πεδία εξάγονται σωστά)
+✅  Οδηγός Χρήσης — 25/06
+        · ΟΔΗΓΟΣ_ΧΡΗΣΗΣ.md: 9 κεφάλαια (Παράμετροι, Εισαγωγή PDF, Κινήσεις,
+          Υπολογιστής, Παραστατικά, Εξαγωγές, Πρότυπα PDF, Πίνακας Ελέγχου, FAQ)
+        · Απευθύνεται και σε χειριστή (βήμα-βήμα) και σε developer (τεχνικές σημειώσεις)
+        · README.md: νέα ενότητα «Οδηγός Χρήσης» με πίνακα λειτουργιών + σύνδεσμος
+✅  Backup τοπικό + cloud — 25/06
+        · backend/backup.py: do_backup (timestamped .db αντίγραφο), run_all_backups,
+          list_backups, get/save_config — ρυθμίσεις στο backup_config.json
+        · Bridge: 4 εντολές (get/save_backup_config, run_backup, list_backups)
+        · main.js: open-dir-dialog IPC + αυτόματο backup κατά το κλείσιμο (async,
+          εμφανίζει overlay "Γίνεται backup..." → "Ολοκληρώθηκε" → κλείνει)
+        · preload.js: openDir() + onBackupProgress() callback
+        · UI: νέα σελίδα "Backup" — 2 φάκελοι (τοπικό + cloud-synced), max_keep,
+          folder picker dialog, "Backup Τώρα", λίστα αντιγράφων ανά φάκελο
+        · Pruning: διατηρεί τα τελευταία N αντίγραφα, διαγράφει παλαιότερα
+        · Δοκιμασμένο live: backup σε 2 temp φακέλους, λίστα, UI "Backup Τώρα"
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
