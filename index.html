@@ -1049,7 +1049,25 @@ body.electron .main    { padding-top: 60px; }
       <!-- Λίστα αντιγράφων -->
       <div id="bk-lists"></div>
     </div>
+
+    <!-- ── Remotes rclone ── -->
+    <div style="max-width:680px;margin-top:36px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--navy2);">Remotes rclone</h3>
+        <div style="display:flex;gap:8px;">
+          <button onclick="bkRefreshRemotes()" style="padding:6px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;">🔄 Ανανέωση</button>
+          <button onclick="bkOpenRcloneTerminal()" style="padding:6px 14px;background:var(--accent);border:none;border-radius:6px;color:#fff;font-size:12px;font-weight:600;cursor:pointer;">+ Νέο Remote</button>
+        </div>
+      </div>
+      <div id="bk-remotes-table" style="background:var(--card);border-radius:8px;overflow:hidden;font-size:13px;">
+        <div style="padding:16px;color:var(--muted);text-align:center;">Φόρτωση...</div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:var(--muted);">
+        «Νέο Remote» ανοίγει terminal με <code>rclone config</code> — κλείστε το terminal και πατήστε 🔄 Ανανέωση.
+      </div>
+    </div>
   </div>
+
 
 </main>
 
@@ -3172,6 +3190,7 @@ async function loadBackupPage() {
   } catch (e) {
     console.error('loadBackupPage:', e);
   }
+  bkRefreshRemotes();
 }
 
 async function bkPickDir(idx) {
@@ -3188,6 +3207,70 @@ function bkSetRemote(btn) {
     input.value = remote;
     input.focus();
     input.setSelectionRange(input.value.length, input.value.length);
+  }
+}
+
+async function bkRefreshRemotes() {
+  const el = document.getElementById('bk-remotes-table');
+  if (!el) return;
+  try {
+    const remotes = await py('list_remotes_detail');
+
+    // Also refresh the chips in the cloud field
+    const chipsEl = document.getElementById('bk-remotes');
+    if (chipsEl) {
+      chipsEl.innerHTML = remotes.map(r =>
+        `<button onclick="bkSetRemote(this)" data-remote="${r.remote}"
+          style="padding:3px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:var(--navy2);font-size:12px;cursor:pointer;">${r.remote}</button>`
+      ).join('');
+    }
+
+    if (remotes.length === 0) {
+      el.innerHTML = `<div style="padding:16px;color:var(--muted);text-align:center;">Δεν υπάρχουν remotes — πατήστε «Νέο Remote».</div>`;
+      return;
+    }
+    const typeLabels = {
+      mega: 'Mega', drive: 'Google Drive', dropbox: 'Dropbox',
+      onedrive: 'OneDrive', s3: 'Amazon S3', b2: 'Backblaze B2',
+      sftp: 'SFTP', ftp: 'FTP', webdav: 'WebDAV',
+    };
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:rgba(0,0,0,0.2);">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--navy2);">Όνομα</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--navy2);">Πάροχος</th>
+          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:600;color:var(--navy2);"></th>
+        </tr></thead>
+        <tbody>${remotes.map(r => `
+          <tr style="border-top:1px solid rgba(255,255,255,0.05);">
+            <td style="padding:8px 12px;font-family:monospace;font-size:13px;">${r.remote}</td>
+            <td style="padding:8px 12px;color:var(--muted);font-size:12px;">${typeLabels[r.type] || r.type}</td>
+            <td style="padding:8px 12px;text-align:right;">
+              <button onclick="bkDeleteRemote('${r.name}')"
+                style="padding:3px 10px;background:none;border:1px solid rgba(229,115,115,0.4);border-radius:4px;color:#e57373;font-size:11px;cursor:pointer;">Διαγραφή</button>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>`;
+  } catch(e) {
+    el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${e.message}</div>`;
+  }
+}
+
+async function bkOpenRcloneTerminal() {
+  if (!window.api?.openRcloneTerminal) return alert('Απαιτείται η εφαρμογή desktop.');
+  const r = await window.api.openRcloneTerminal();
+  if (!r.ok) alert('⚠️ ' + r.error);
+}
+
+async function bkDeleteRemote(name) {
+  if (!confirm(`Διαγραφή remote "${name}";`)) return;
+  try {
+    const r = await py('delete_remote', { name });
+    if (!r.ok) { alert('Σφάλμα: ' + r.error); return; }
+    bkRefreshRemotes();
+  } catch(e) {
+    alert('Σφάλμα: ' + e.message);
   }
 }
 

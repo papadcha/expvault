@@ -48,6 +48,36 @@ def list_rclone_remotes() -> list:
         return []
 
 
+def list_remotes_detail() -> list:
+    import configparser
+    conf_path = Path.home() / '.config' / 'rclone' / 'rclone.conf'
+    if not conf_path.exists():
+        return []
+    cfg = configparser.ConfigParser()
+    cfg.read(str(conf_path))
+    result = []
+    for name in cfg.sections():
+        result.append({
+            'name':   name,
+            'remote': name + ':',
+            'type':   cfg[name].get('type', '?'),
+        })
+    return result
+
+
+def delete_remote(name: str) -> dict:
+    try:
+        r = subprocess.run(
+            ['rclone', 'config', 'delete', name],
+            capture_output=True, text=True, timeout=10
+        )
+        if r.returncode != 0:
+            return {'ok': False, 'error': r.stderr.strip() or r.stdout.strip()}
+        return {'ok': True}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
 # ── Local backup ──────────────────────────────────────────────────────────────
 
 def _do_local_backup(folder: str, max_keep: int) -> dict:
