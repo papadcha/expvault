@@ -1900,6 +1900,9 @@ async function parsePdf() {
     } else {
       container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">⚠️ Δεν αναγνωρίστηκαν αυτόματα υλικά. Συμπληρώστε χειροκίνητα.</div>';
     }
+    if (r.template_used) {
+      window._showToast(`✅ Χρησιμοποιήθηκε πρότυπο: ${r.template_used}`, 'success');
+    }
     window.pdfGrammesCount = s.grammes.length;
   } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
 }

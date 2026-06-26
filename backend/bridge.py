@@ -204,6 +204,13 @@ def handle(cmd, payload):
     # ── PDF PARSER ────────────────────────────────────────────────────────────
     if cmd == 'parse_pdf':
         result = pdf_parser.parse_pdf(payload['path'])
+        # Αν ο built-in parser δεν βρήκε υλικά, δοκίμασε τα αποθηκευμένα πρότυπα
+        if not result['suggested'].get('grammes'):
+            import pdf_templates
+            tpl_result = pdf_templates.try_parse_with_templates(result['raw_text'])
+            if tpl_result:
+                result['suggested'].update(tpl_result)
+                result['template_used'] = tpl_result.get('template_used', '')
         return {'ok': True, **result}
 
     # ── PDF TEMPLATES ─────────────────────────────────────────────────────────
