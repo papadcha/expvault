@@ -136,6 +136,17 @@
         · README: rclone στα προαπαιτούμενα, backup row, αφαίρεση TODO restore
         · ΟΔΗΓΟΣ_ΧΡΗΣΗΣ.md §8: υποενότητες 8.1–8.6, εξήγηση rclone,
           πίνακας διαχείρισης remotes, νέα §8.6 Restore (βήμα-βήμα + προειδοποίηση)
+✅  Fix πρότυπα PDF — fallback + multiline anchor — 26/06
+        · bridge.py: parse_pdf καλεί try_parse_with_templates όταν ο built-in parser
+          δεν βρίσκει υλικά (ήταν εντελώς αποσυνδεδεμένο)
+        · pdf_templates.py: build_header_pattern — χρησιμοποιεί επόμενη γραμμή ως
+          anchor όταν η τιμή είναι μόνη στη γραμμή (αποφεύγει false matches)
+        · _apply_header_pattern: multiline re.search για patterns με \n
+        · bridge: περνά next_line στο build_header_pattern
+        · Διόρθωση υπάρχοντος προτύπου NITROCHEM-Δελτίο Αποστολής στη βάση:
+          adeia_pattern: (\d+)\nΔ\.Α\. · ekdousa_archi_pattern: ^(Δ\.Α\.\s+\S+)\s*$
+        · Δοκιμασμένο live με 20259.pdf: 10 υλικά / άδεια 40935 /
+          Δ.Α. ΧΑΛΚΙΔΙΚΗΣ / ΔΙΧΝ00020259 / NITROCHEM Α.Ε. — όλα αυτόματα ✅
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
