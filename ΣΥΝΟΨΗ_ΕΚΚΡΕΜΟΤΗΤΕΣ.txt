@@ -129,8 +129,9 @@
         · Κουμπί "Επαναφορά" σε κάθε γραμμή της λίστας backup (τοπικό + cloud)
         · backup.py: restore_backup() — local: shutil.copy2, rclone: copyto σε temp + copy
         · Confirm modal πριν την επαναφορά + window.location.reload() μετά
-        · Δοκιμασμένο live end-to-end: modal → ΟΚ → rclone download → reload ✅
-          Μετά restore: 424 κινήσεις / 36 αγορές / 28 επιστροφές / 27 υλικά
+        · Δοκιμασμένο live end-to-end (rclone): modal → ΟΚ → download MEGA → reload ✅
+        · Δοκιμασμένο live end-to-end (τοπικό): modal → ΟΚ → shutil.copy2 → reload ✅
+          Και στις 2 περιπτώσεις: 424 κινήσεις / 36 αγορές / 28 επιστροφές / 27 υλικά
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
