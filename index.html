@@ -1162,6 +1162,31 @@ body.electron .main    { padding-top: 60px; }
 </div>
 
 <script>
+// ── TOAST (αντικαθιστά alert() σε όλη την εφαρμογή) ──────────────────────────
+(function() {
+  const el = document.createElement('div');
+  el.id = '_toast_container';
+  el.style.cssText = 'position:fixed;bottom:24px;right:24px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;';
+  document.body.appendChild(el);
+
+  function showToast(msg, type) {
+    const t = type || (msg.startsWith('✅') ? 'success' : msg.startsWith('⚠') ? 'warn' : 'error');
+    const colors = { success:'#1a7a4a', warn:'#b45309', error:'#b91c1c', info:'#1e3a5f' };
+    const bg = { success:'#d1fae5', warn:'#fef3c7', error:'#fee2e2', info:'#dbeafe' };
+    const d = document.createElement('div');
+    d.style.cssText = `background:${bg[t]||bg.error};color:${colors[t]||colors.error};` +
+      `border:1px solid ${colors[t]||colors.error};border-radius:8px;padding:10px 16px;` +
+      `font-size:13px;max-width:360px;box-shadow:0 4px 12px rgba(0,0,0,0.15);` +
+      `pointer-events:auto;line-height:1.4;white-space:pre-wrap;word-break:break-word;`;
+    d.textContent = msg;
+    el.appendChild(d);
+    setTimeout(() => d.remove(), t === 'error' ? 5000 : 3000);
+  }
+
+  window._showToast = showToast;
+  window.alert = msg => showToast(String(msg));
+})();
+
 // ── STATE ─────────────────────────────────────────────────────────────────────
 let allYlika = [], allProm = [], allAdeies = [];
 
@@ -2485,6 +2510,14 @@ document.getElementById('confirm-ok-btn').onclick = async () => {
 
 function closeConfirm() {
   document.getElementById('confirm-modal').classList.remove('open');
+  document.getElementById('confirm-ok-btn').onclick = null;
+}
+
+function showConfirm(msg, onOk) {
+  document.getElementById('confirm-msg').textContent = msg;
+  document.getElementById('confirm-modal').classList.add('open');
+  setTimeout(() => document.getElementById('confirm-cancel-btn').focus(), 50);
+  document.getElementById('confirm-ok-btn').onclick = () => { closeConfirm(); onOk(); };
 }
 
 // Κλείσιμο edit-kinisi-modal με click στο overlay
@@ -2716,12 +2749,28 @@ async function applyRename() {
   if (newParst && newParst !== oldParst) {
     const existingParst = [...document.getElementById('rn-datalist').options].map(o => o.value);
     if (existingParst.includes(newParst)) {
-      const confirmed = confirm(
-        `⚠️ Το παραστατικό "${newParst}" υπάρχει ήδη στη βάση.\n\n` +
-        `Αν συνεχίσετε, όλες οι κινήσεις του "${oldParst}" θα ΣΥΓΧΩΝΕΥΤΟΥΝ με αυτές του "${newParst}".\n\n` +
-        `Είστε σίγουροι;`
+      showConfirm(
+        `⚠️ Το παραστατικό "${newParst}" υπάρχει ήδη.\nΌλες οι κινήσεις του "${oldParst}" θα ΣΥΓΧΩΝΕΥΤΟΥΝ με το "${newParst}". Είστε σίγουροι;`,
+        async () => {
+          try {
+            const payload = { old_parst: oldParst, new_parst: newParst, new_date: newDate };
+            if (newAdeiaId)   payload.new_adeia_id       = parseInt(newAdeiaId);
+            if (newPromId)    payload.new_promitheftis_id = parseInt(newPromId);
+            if (newAgoraRef !== undefined) payload.new_agora_ref = newAgoraRef;
+            const r = await py('batch_update_parstatiko', payload);
+            msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Ενημερώθηκαν ${r.updated} κινήσεις.</div>`;
+            document.getElementById('rn-new-parst').value = '';
+            document.getElementById('rn-new-date').value  = '';
+            document.getElementById('rn-new-adeia').value = '';
+            document.getElementById('rn-new-prom').value  = '';
+            document.getElementById('rn-new-agora-ref').value = '';
+            document.getElementById('rn-search').value = newParst || oldParst;
+            document.getElementById('rn-preview').innerHTML = '';
+            await loadParstatikaPage();
+          } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`; }
+        }
       );
-      if (!confirmed) return;
+      return;
     }
   }
   try {
@@ -3113,11 +3162,12 @@ async function loadTplList() {
 }
 
 async function tplDelete(id, name) {
-  if (!confirm(`Διαγραφή προτύπου "${name}";`)) return;
-  try {
-    await py('delete_pdf_template', { id });
-    await loadTplList();
-  } catch(e) { alert('Σφάλμα: ' + e.message); }
+  showConfirm(`Διαγραφή προτύπου "${name}";`, async () => {
+    try {
+      await py('delete_pdf_template', { id });
+      await loadTplList();
+    } catch(e) { alert('Σφάλμα: ' + e.message); }
+  });
 }
 
 // ── BACKUP ───────────────────────────────────────────────────────────────────
@@ -3264,14 +3314,15 @@ async function bkOpenRcloneTerminal() {
 }
 
 async function bkDeleteRemote(name) {
-  if (!confirm(`Διαγραφή remote "${name}";`)) return;
-  try {
-    const r = await py('delete_remote', { name });
-    if (!r.ok) { alert('Σφάλμα: ' + r.error); return; }
-    bkRefreshRemotes();
-  } catch(e) {
-    alert('Σφάλμα: ' + e.message);
-  }
+  showConfirm(`Διαγραφή remote "${name}";`, async () => {
+    try {
+      const r = await py('delete_remote', { name });
+      if (!r.ok) { alert('Σφάλμα: ' + r.error); return; }
+      bkRefreshRemotes();
+    } catch(e) {
+      alert('Σφάλμα: ' + e.message);
+    }
+  });
 }
 
 async function bkSave() {
