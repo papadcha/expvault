@@ -20,7 +20,7 @@ Electron (UI)  ←→  Python IPC Bridge (stdin/stdout JSON)  ←→  SQLite
 | `backend/exports.py` | PDF / Excel / Word export |
 | `backend/pdf_parser.py` | EpsilonNet PDF parser |
 | `backend/pdf_templates.py` | Εκμάθηση & αναγνώριση νέων τύπων PDF |
-| `backend/backup.py` | Τοπικό + cloud backup βάσης δεδομένων |
+| `backend/backup.py` | Τοπικό + rclone cloud backup & restore βάσης δεδομένων |
 | `backend/expvault.db` | Βάση δεδομένων |
 | `backend/backup_config.json` | Ρυθμίσεις backup (δημιουργείται αυτόματα) |
 
@@ -42,6 +42,11 @@ sudo apt install python3 python3-pip  # Ubuntu/Debian
 
 # Python βιβλιοθήκες
 pip install pypdf reportlab openpyxl python-docx --break-system-packages
+
+# rclone (προαιρετικό — για cloud backup)
+sudo pacman -S rclone                # Arch
+sudo apt install rclone              # Ubuntu/Debian
+# Στη συνέχεια: rclone config (ή μέσα από την εφαρμογή → Backup → Νέο Remote)
 
 # Fonts (για PDF export)
 sudo pacman -S ttf-liberation       # Arch
@@ -148,7 +153,7 @@ electron .
 | **Πρότυπα PDF** | Εκπαίδευση αναγνωρίσεων για νέους προμηθευτές μέσω επιλογής τιμών στο raw text |
 | **Πίνακας Ελέγχου** | Έλεγχος ισορροπίας (Αγορές = Καταναλώσεις + Επιστροφές), τελευταίες κινήσεις |
 | **Αποθέματα** | Τρέχον απόθεμα ανά υλικό |
-| **Backup** | Αυτόματο αντίγραφο ασφαλείας κατά το κλείσιμο σε τοπικό + cloud φάκελο |
+| **Backup** | Αυτόματο αντίγραφο ασφαλείας κατά το κλείσιμο σε τοπικό φάκελο + rclone cloud (MEGA, Google Drive κ.λπ.) · Restore με ένα κλικ |
 
 ### Τυπική ημερήσια ροή
 
@@ -201,7 +206,6 @@ electron .
 - [ ] Νέος σχεδιασμός σελίδων export Word/Excel (εκκρεμεί αποστολή reference αρχείων)
 - [ ] Parser δελτίου επιστροφής Επιχείρησης (ΔΑ Επιχείρησης)
 - [ ] Αποθήκευση προτίμησης font
-- [ ] Restore από backup (UI επαναφοράς αντιγράφου)
 
 ---
 
