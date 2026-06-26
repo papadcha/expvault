@@ -125,6 +125,11 @@
         · 3 confirm() calls → showConfirm() με το υπάρχον custom modal
           (merge παραστατικού, tplDelete, bkDeleteRemote)
         · Δοκιμασμένο live: Πρότυπα PDF χωρίς πάγωμα, toast εμφανίζεται ✅
+✅  Restore backup (τοπικό + rclone) — 26/06
+        · Κουμπί "Επαναφορά" σε κάθε γραμμή της λίστας backup (τοπικό + cloud)
+        · backup.py: restore_backup() — local: shutil.copy2, rclone: copyto σε temp + copy
+        · Confirm modal πριν την επαναφορά + window.location.reload() μετά
+        · Δοκιμασμένο live: modal ανοίγει με σωστό path (mega:expvault-backup/...) ✅
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
