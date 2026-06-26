@@ -209,6 +209,8 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
+app.commandLine.appendSwitch('lang', 'el');
+
 app.whenReady().then(() => {
   setupIPC();
   startBridge();
