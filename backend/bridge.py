@@ -204,6 +204,13 @@ def handle(cmd, payload):
     # ── PDF PARSER ────────────────────────────────────────────────────────────
     if cmd == 'parse_pdf':
         result = pdf_parser.parse_pdf(payload['path'])
+        # Αν ο built-in parser δεν βρήκε υλικά, δοκίμασε τα αποθηκευμένα πρότυπα
+        if not result['suggested'].get('grammes'):
+            import pdf_templates
+            tpl_result = pdf_templates.try_parse_with_templates(result['raw_text'])
+            if tpl_result:
+                result['suggested'].update(tpl_result)
+                result['template_used'] = tpl_result.get('template_used', '')
         return {'ok': True, **result}
 
     # ── PDF TEMPLATES ─────────────────────────────────────────────────────────
@@ -267,6 +274,7 @@ def handle(cmd, payload):
             patterns['item_pattern'] = ''
 
         # Header patterns
+        raw_lines = payload.get('raw_text', '').split('\n')
         for field, pat_key in [
             ('parstatiko',    'parstatiko_pattern'),
             ('imerominia',    'imerominia_pattern'),
@@ -277,8 +285,16 @@ def handle(cmd, payload):
             sel = payload.get(f'{field}_selection')
             if sel:
                 try:
+                    # Βρίσκω την επόμενη γραμμή για context όταν η τιμή είναι μόνη
+                    sel_line = sel['line'].strip()
+                    next_ln = ''
+                    for i, l in enumerate(raw_lines):
+                        if l.strip() == sel_line:
+                            if i + 1 < len(raw_lines):
+                                next_ln = raw_lines[i + 1].strip()
+                            break
                     patterns[pat_key] = pdf_templates.build_header_pattern(
-                        sel['line'], tuple(sel['value_range'])
+                        sel['line'], tuple(sel['value_range']), next_line=next_ln
                     )
                 except Exception as e:
                     errors.append(f'{field}: {e}')
