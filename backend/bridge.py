@@ -393,6 +393,9 @@ def handle(cmd, payload):
     if cmd == 'list_backups':
         return backup.list_backups(payload['folder'])
 
+    if cmd == 'restore_backup':
+        return backup.restore_backup(payload['path'])
+
     if cmd == 'list_rclone_remotes':
         return backup.list_rclone_remotes()
 
