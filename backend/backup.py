@@ -49,9 +49,16 @@ def list_rclone_remotes() -> list:
 
 
 def list_remotes_detail() -> list:
-    import configparser
-    conf_path = Path.home() / '.config' / 'rclone' / 'rclone.conf'
-    if not conf_path.exists():
+    import configparser, sys
+    candidates = [
+        Path.home() / '.config' / 'rclone' / 'rclone.conf',
+    ]
+    if sys.platform == 'win32':
+        appdata = os.environ.get('APPDATA', '')
+        if appdata:
+            candidates.insert(0, Path(appdata) / 'rclone' / 'rclone.conf')
+    conf_path = next((p for p in candidates if p.exists()), None)
+    if conf_path is None:
         return []
     cfg = configparser.ConfigParser()
     cfg.read(str(conf_path))

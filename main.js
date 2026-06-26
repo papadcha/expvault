@@ -129,15 +129,27 @@ function setupIPC() {
   });
 
   ipcMain.handle('open-rclone-terminal', async () => {
-    function trySpawn(cmd, args) {
+    function trySpawn(cmd, args, opts = {}) {
       return new Promise((resolve) => {
         try {
-          const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+          const child = spawn(cmd, args, { detached: true, stdio: 'ignore', ...opts });
           child.on('error', () => resolve(false));
           child.unref();
           setTimeout(() => resolve(true), 200);
         } catch { resolve(false); }
       });
+    }
+    if (os.platform() === 'win32') {
+      // Δοκιμή Windows Terminal πρώτα, μετά PowerShell, μετά cmd
+      const attempts = [
+        ['wt.exe', ['powershell', '-NoExit', '-Command', 'rclone config']],
+        ['powershell.exe', ['-NoExit', '-Command', 'rclone config']],
+        ['cmd.exe', ['/K', 'rclone config']],
+      ];
+      for (const [cmd, args] of attempts) {
+        if (await trySpawn(cmd, args, { shell: false })) return { ok: true };
+      }
+      return { ok: false, error: 'Δεν βρέθηκε terminal — εκτελέστε χειροκίνητα: rclone config' };
     }
     const attempts = [
       ['alacritty', ['-e', 'rclone', 'config']],
