@@ -1015,17 +1015,18 @@ body.electron .main    { padding-top: 60px; }
         </div>
       </div>
 
-      <!-- Φάκελος 2 (cloud) -->
+      <!-- Φάκελος 2 (rclone cloud) -->
       <div style="margin-bottom:22px;">
         <label style="display:block;font-size:13px;font-weight:600;color:var(--navy2);margin-bottom:6px;">
-          Cloud Φάκελος
-          <span style="font-weight:400;color:var(--muted);"> — Google Drive, Dropbox, Nextcloud κ.λπ.</span>
+          Cloud (rclone)
+          <span style="font-weight:400;color:var(--muted);"> — Google Drive, Mega, Dropbox κ.λπ. χωρίς desktop client</span>
         </label>
         <div style="display:flex;gap:8px;">
-          <input id="bk-path1" type="text" placeholder="π.χ. /home/χρήστης/Google Drive/expvault"
+          <input id="bk-path1" type="text" placeholder="π.χ. mega:expvault-backup"
             style="flex:1;padding:8px 12px;background:var(--card);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:var(--text);font-size:13px;">
-          <button onclick="bkPickDir(1)" style="padding:8px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);cursor:pointer;font-size:13px;">📁 Επιλογή</button>
         </div>
+        <div id="bk-remotes" style="margin-top:7px;display:flex;flex-wrap:wrap;gap:6px;"></div>
+        <div style="margin-top:5px;font-size:11px;color:var(--muted);">Μορφή: <code>remote:φάκελος</code> — ίδια σύνταξη με rclone</div>
       </div>
 
       <!-- Ρυθμίσεις -->
@@ -3104,11 +3105,23 @@ async function tplDelete(id, name) {
 // ── BACKUP ───────────────────────────────────────────────────────────────────
 async function loadBackupPage() {
   try {
-    const cfg = await py('get_backup_config');
+    const [cfg, remotes] = await Promise.all([
+      py('get_backup_config'),
+      py('list_rclone_remotes').catch(() => []),
+    ]);
     const paths = cfg.paths ?? ['', ''];
     document.getElementById('bk-path0').value = paths[0] ?? '';
     document.getElementById('bk-path1').value = paths[1] ?? '';
     document.getElementById('bk-maxkeep').value = cfg.max_keep ?? 30;
+
+    // Show available rclone remotes as clickable chips
+    const remotesEl = document.getElementById('bk-remotes');
+    if (remotes.length > 0) {
+      remotesEl.innerHTML = remotes.map(r =>
+        `<button onclick="bkSetRemote(this)" data-remote="${r}"
+          style="padding:3px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:var(--navy2);font-size:12px;cursor:pointer;">${r}</button>`
+      ).join('');
+    }
 
     const lastEl = document.getElementById('bk-last');
     if (cfg.last_backup) {
@@ -3125,7 +3138,7 @@ async function loadBackupPage() {
     for (let i = 0; i < 2; i++) {
       const p = paths[i];
       if (!p) continue;
-      const label = i === 0 ? 'Τοπικός Φάκελος' : 'Cloud Φάκελος';
+      const label = i === 0 ? 'Τοπικός Φάκελος' : 'Cloud (rclone)';
       let rows = '';
       try {
         const backups = await py('list_backups', { folder: p });
@@ -3165,6 +3178,17 @@ async function bkPickDir(idx) {
   if (!window.api?.openDir) return alert('Απαιτείται η εφαρμογή desktop.');
   const dir = await window.api.openDir();
   if (dir) document.getElementById(`bk-path${idx}`).value = dir;
+}
+
+function bkSetRemote(btn) {
+  const remote = btn.dataset.remote;
+  const input = document.getElementById('bk-path1');
+  // If already starts with this remote, don't overwrite existing subfolder
+  if (!input.value.startsWith(remote)) {
+    input.value = remote;
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+  }
 }
 
 async function bkSave() {
