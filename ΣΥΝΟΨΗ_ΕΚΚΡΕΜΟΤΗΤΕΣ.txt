@@ -1,5 +1,5 @@
 ═══════════════════════════════════════════════════════════════
-  ExpVault — Σύνοψη & Εκκρεμότητες  (25/06/2026)
+  ExpVault — Σύνοψη & Εκκρεμότητες  (26/06/2026)
 ═══════════════════════════════════════════════════════════════
 
 
@@ -100,6 +100,24 @@
         · dashboard: 424 κινήσεις / 36 αγορές / 28 επιστροφές / 27 υλικά
         · bridge: get_ylika=29, backup config φορτώθηκε
         · 2ο merge (σύνοψη) + επαλήθευση: 12/12 ✅
+✅  rclone backup cloud χωρίς desktop client — 26/06
+        · backup.py: ανίχνευση rclone paths (remote:path) → rclone copyto για upload
+        · Pruning μέσω rclone lsjson/deletefile
+        · Fix _load() για κενό backup_config.json
+        · bridge.py: list_rclone_remotes endpoint
+        · UI: Cloud πεδίο → rclone format, placeholder "mega:expvault-backup"
+        · Chips με διαθέσιμα remotes (φορτώνονται αυτόματα κατά φόρτωση σελίδας)
+        · Δοκιμασμένο live: backup σε mega:expvault-backup (116KB) ✅
+✅  Διαχείριση rclone remotes από Backup σελίδα — 26/06
+        · Ενότητα "Remotes rclone": πίνακας (όνομα + πάροχος), κουμπιά Ανανέωση/Νέο Remote/Διαγραφή
+        · backup.py: list_remotes_detail (parse rclone.conf) + delete_remote
+        · main.js: IPC open-rclone-terminal → ανοίγει Alacritty/Konsole με rclone config
+        · Chips συγχρονίζονται αυτόματα μετά Ανανέωση
+        · Δοκιμασμένο live: πίνακας, Νέο Remote → Alacritty OK ✅
+✅  Date inputs dd/mm/yyyy (ελληνικό format) — 26/06
+        · app.commandLine.appendSwitch('lang', 'el') στο main.js
+        · Όλα τα <input type="date"> εμφανίζουν πλέον dd/mm/yyyy
+        · Δοκιμασμένο live: "26/06/2026" στη σελίδα Εκτύπωση/Εξαγωγή ✅
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
@@ -118,8 +136,6 @@
 ΕΚΚΡΕΜΟΤΗΤΕΣ — ΕΚΚΡΕΜΕΙ
 ──────────────────────────────────────
 #18  Νέος σχεδιασμός σελίδων export (Word/Excel) — εκκρεμεί αποστολή αρχείων reference από χρήστη
-#19  Backup online χωρίς desktop client — rclone integration για απευθείας ανέβασμα σε
-       Google Drive / Dropbox / OneDrive κ.λπ. χωρίς να χρειάζεται τοπικός συγχρονισμένος φάκελος
 
 
 ═══════════════════════════════════════════════════════════════
