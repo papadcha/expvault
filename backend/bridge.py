@@ -396,6 +396,12 @@ def handle(cmd, payload):
     if cmd == 'list_rclone_remotes':
         return backup.list_rclone_remotes()
 
+    if cmd == 'list_remotes_detail':
+        return backup.list_remotes_detail()
+
+    if cmd == 'delete_remote':
+        return backup.delete_remote(payload['name'])
+
     return {'error': f'Άγνωστη εντολή: {cmd}'}
 
 

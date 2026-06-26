@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require('electron');
+const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
@@ -126,6 +126,31 @@ function setupIPC() {
       properties: ['openDirectory', 'createDirectory']
     });
     return canceled ? null : filePaths[0];
+  });
+
+  ipcMain.handle('open-rclone-terminal', async () => {
+    function trySpawn(cmd, args) {
+      return new Promise((resolve) => {
+        try {
+          const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+          child.on('error', () => resolve(false));
+          child.unref();
+          setTimeout(() => resolve(true), 200);
+        } catch { resolve(false); }
+      });
+    }
+    const attempts = [
+      ['alacritty', ['-e', 'rclone', 'config']],
+      ['konsole',   ['-e', 'rclone', 'config']],
+      ['kitty',     ['rclone', 'config']],
+      ['gnome-terminal', ['--', 'rclone', 'config']],
+      ['xfce4-terminal', ['-e', 'rclone config']],
+      ['xterm',     ['-e', 'rclone config']],
+    ];
+    for (const [cmd, args] of attempts) {
+      if (await trySpawn(cmd, args)) return { ok: true };
+    }
+    return { ok: false, error: 'Δεν βρέθηκε terminal — εκτελέστε χειροκίνητα: rclone config' };
   });
 
   ipcMain.on('window-minimize', () => mainWindow?.minimize());

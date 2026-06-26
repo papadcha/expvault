@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld('api', {
   maximize: ()                  => ipcRenderer.send('window-maximize'),
   close:    ()                  => ipcRenderer.send('window-close'),
   platform: process.platform,
-  onBackupProgress: (cb)        => ipcRenderer.on('backup-progress', (_, status) => cb(status)),
+  onBackupProgress:    (cb) => ipcRenderer.on('backup-progress', (_, status) => cb(status)),
+  openRcloneTerminal: ()   => ipcRenderer.invoke('open-rclone-terminal'),
 });
