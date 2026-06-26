@@ -65,9 +65,10 @@ def list_remotes_detail() -> list:
     result = []
     for name in cfg.sections():
         result.append({
-            'name':   name,
-            'remote': name + ':',
-            'type':   cfg[name].get('type', '?'),
+            'name':     name,
+            'remote':   name + ':',
+            'type':     cfg[name].get('type', '?'),
+            'provider': cfg[name].get('provider', ''),
         })
     return result
 
