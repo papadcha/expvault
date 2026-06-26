@@ -3211,13 +3211,19 @@ async function loadBackupPage() {
       try {
         const backups = await py('list_backups', { folder: p });
         if (backups.length === 0) {
-          rows = `<tr><td colspan="3" style="padding:10px;color:var(--muted);text-align:center;">Δεν υπάρχουν αντίγραφα ακόμα</td></tr>`;
+          rows = `<tr><td colspan="4" style="padding:10px;color:var(--muted);text-align:center;">Δεν υπάρχουν αντίγραφα ακόμα</td></tr>`;
         } else {
           rows = backups.slice(0, 10).map(b =>
             `<tr>
               <td style="padding:6px 10px;">${b.ts}</td>
               <td style="padding:6px 10px;font-family:monospace;font-size:12px;color:var(--muted);">${b.name}</td>
               <td style="padding:6px 10px;text-align:right;color:var(--muted);">${b.size_kb} KB</td>
+              <td style="padding:6px 10px;text-align:center;">
+                <button onclick="bkRestore(this.dataset.path)" data-path="${b.path.replace(/"/g, '&quot;')}"
+                  style="padding:3px 10px;background:rgba(229,115,115,0.15);border:1px solid rgba(229,115,115,0.4);border-radius:4px;color:#e57373;font-size:11px;cursor:pointer;">
+                  Επαναφορά
+                </button>
+              </td>
             </tr>`
           ).join('');
         }
@@ -3232,6 +3238,7 @@ async function loadBackupPage() {
               <th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--navy2);">Ημερομηνία</th>
               <th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--navy2);">Αρχείο</th>
               <th style="padding:8px 10px;text-align:right;font-weight:600;color:var(--navy2);">Μέγεθος</th>
+              <th style="padding:8px 10px;text-align:center;font-weight:600;color:var(--navy2);width:100px;"></th>
             </tr></thead>
             <tbody>${rows}</tbody>
           </table>
@@ -3357,6 +3364,25 @@ async function bkNow() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '▶ Backup Τώρα'; }
   }
+}
+
+async function bkRestore(path) {
+  showConfirm(
+    `Επαναφορά από αντίγραφο;\n\n${path}\n\nΤα τρέχοντα δεδομένα θα αντικατασταθούν. Η εφαρμογή θα επανεκκινηθεί.`,
+    async () => {
+      try {
+        const r = await py('restore_backup', { path });
+        if (r.ok) {
+          alert('✅ Επαναφορά ολοκληρώθηκε — επανεκκίνηση εφαρμογής...');
+          setTimeout(() => window.location.reload(), 1500);
+        } else {
+          alert('⚠️ Σφάλμα επαναφοράς:\n' + (r.error || 'Άγνωστο σφάλμα'));
+        }
+      } catch (e) {
+        alert('⚠️ Σφάλμα: ' + e.message);
+      }
+    }
+  );
 }
 
 // Overlay κατά το κλείσιμο (αν backup τρέχει)

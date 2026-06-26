@@ -199,6 +199,32 @@ def list_backups(folder: str) -> list:
     return _list_local_backups(folder)
 
 
+def restore_backup(path: str) -> dict:
+    import tempfile
+    try:
+        if _is_rclone(path):
+            with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
+                tmp_path = tmp.name
+            try:
+                r = subprocess.run(
+                    ['rclone', 'copyto', path, tmp_path],
+                    capture_output=True, text=True, timeout=120
+                )
+                if r.returncode != 0:
+                    return {'ok': False, 'error': r.stderr.strip() or r.stdout.strip()}
+                shutil.copy2(tmp_path, str(DB_PATH))
+            finally:
+                try:
+                    os.unlink(tmp_path)
+                except Exception:
+                    pass
+        else:
+            shutil.copy2(path, str(DB_PATH))
+        return {'ok': True}
+    except Exception as e:
+        return {'ok': False, 'error': str(e)}
+
+
 def run_all_backups() -> dict:
     cfg      = _load()
     paths    = [p for p in cfg.get('paths', []) if p]
