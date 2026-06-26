@@ -132,15 +132,15 @@ def _shape_pattern(value):
     return r'(\S+(?:\s+\S+){' + str(n - 1) + r'})'
 
 
-def build_header_pattern(line, value_range, context_chars=25):
+def build_header_pattern(line, value_range, context_chars=25, next_line=None):
     """
     line        : γραμμή που περιέχει την τιμή
     value_range : (start, end) offsets της επιλεγμένης τιμής
+    next_line   : η αμέσως επόμενη γραμμή (για anchor όταν η τιμή είναι μόνη της)
     Επιστρέφει regex (str) με 1 capture group.
 
     Αν υπάρχει αρκετό κείμενο αριστερά → αριστερός anchor.
-    Αν η τιμή είναι στην αρχή της γραμμής → '^...$' ώστε να μην
-    ταιριάζει με άλλες γραμμές που τυχαία περιέχουν παρόμοιο pattern.
+    Αν η τιμή είναι στην αρχή της γραμμής → '^...$' ή multiline αν next_line διαθέσιμο.
     """
     start, end = value_range
     value = line[start:end]
@@ -156,9 +156,14 @@ def build_header_pattern(line, value_range, context_chars=25):
         # Η τιμή ακολουθείται από άλλο κείμενο στην ίδια γραμμή
         right_anchor = line[end:end + context_chars]
         return _shape_pattern(value) + re.escape(right_anchor)
-    else:
-        # Η τιμή καταλαμβάνει ολόκληρη τη γραμμή → anchored line match
-        return r'^' + _shape_pattern(value) + r'\s*$'
+
+    # Η τιμή είναι μόνη στη γραμμή — αν υπάρχει επόμενη γραμμή χρησιμοποίησέ τη ως anchor
+    if next_line and next_line.strip():
+        next_anchor = re.escape(next_line.strip()[:context_chars])
+        return _shape_pattern(value) + r'\n' + next_anchor
+
+    # Fallback: anchored line match (γενικό — μπορεί να ταιριάξει λάθος γραμμή)
+    return r'^' + _shape_pattern(value) + r'\s*$'
 
 
 def save_template(name, item_pattern, parstatiko_pattern=None,
@@ -217,6 +222,12 @@ def _apply_header_pattern(pattern, raw_text):
     if not pattern:
         return ''
     try:
+        if '\\n' in pattern:
+            # Multiline pattern — ψάχνω στο ολόκληρο κείμενο
+            m = re.search(pattern, raw_text)
+            if m:
+                return m.group(1).strip()
+            return ''
         compiled = re.compile(pattern)
     except re.error:
         return ''
