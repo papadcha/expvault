@@ -118,6 +118,13 @@
         · app.commandLine.appendSwitch('lang', 'el') στο main.js
         · Όλα τα <input type="date"> εμφανίζουν πλέον dd/mm/yyyy
         · Δοκιμασμένο live: "26/06/2026" στη σελίδα Εκτύπωση/Εξαγωγή ✅
+✅  Fix πάγωμα alert()/confirm() — non-blocking toast/modal — 26/06
+        · Αιτία: alert() στο Electron/Wayland ανοίγει blocking native dialog
+        · Λύση: window.alert override → toast κάτω-δεξιά (3-5s auto-dismiss)
+          Καλύπτει αυτόματα όλα τα 42 alert() calls χωρίς αλλαγή σε κάθε ένα
+        · 3 confirm() calls → showConfirm() με το υπάρχον custom modal
+          (merge παραστατικού, tplDelete, bkDeleteRemote)
+        · Δοκιμασμένο live: Πρότυπα PDF χωρίς πάγωμα, toast εμφανίζεται ✅
 
 
 ΓΝΩΣΤΟΙ ΠΕΡΙΟΡΙΣΜΟΙ (δεν αξίζει η δουλειά — αποφασίστηκε να μείνουν ως έχουν)
