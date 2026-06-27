@@ -4,7 +4,7 @@
 
 ## Download
 
-**[⬇ ExpVault Setup 1.0.2.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault%20Setup%201.0.2.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.0.2](https://github.com/papadcha/expvault/releases/tag/v1.0.2)
+**[⬇ ExpVault Setup 1.0.3.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault%20Setup%201.0.3.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.0.3](https://github.com/papadcha/expvault/releases/tag/v1.0.3)
 
 > Δεν απαιτείται Python. Αν εμφανιστεί Windows SmartScreen, πάτα **Περισσότερες πληροφορίες → Εκτέλεση παρόλα αυτά**.
 
