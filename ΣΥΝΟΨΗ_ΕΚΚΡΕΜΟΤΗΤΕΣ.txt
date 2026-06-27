@@ -187,6 +187,9 @@
 ──────────────────────────────────────
 #18  Νέος σχεδιασμός σελίδων export (Word/Excel) — εκκρεμεί αποστολή αρχείων reference από χρήστη
 #19  Έλεγχος Windows installer (ExpVault Setup .exe) — 26/06
+#20  Άδεια χρήσης (LICENSE) — 27/06
+        · Απόφαση: private/proprietary ή open source (MIT/GPL);
+        · Προσθήκη LICENSE αρχείου στο repo
         · Εγκατάσταση σε clean Windows (χωρίς Python)
         · Εκκίνηση εφαρμογής, σύνδεση Python bridge (bridge.exe)
         · Έλεγχος exports PDF/Excel/Word
