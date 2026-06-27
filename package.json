@@ -24,7 +24,9 @@
       {
         "from": "dist/bridge",
         "to": "bridge",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "assets/fonts",
@@ -46,10 +48,18 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "papadcha",
+      "repo": "expvault"
     }
   },
   "devDependencies": {
     "electron": "^42.5.0",
     "electron-builder": "^26.15.0"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }
