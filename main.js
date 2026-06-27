@@ -12,7 +12,7 @@ let bridgeReady = false;
 let queuedMessages = [];
 
 function getPythonPath() {
-  const backendDir = getBackendPath();
+  const backendDir = path.join(__dirname, 'backend');
   const venvPython = path.join(backendDir, 'venv',
     os.platform() === 'win32' ? 'Scripts/python.exe' : 'bin/python3'
   );
@@ -20,22 +20,47 @@ function getPythonPath() {
   return os.platform() === 'win32' ? 'python' : 'python3';
 }
 
-function getBackendPath() {
-  const devPath = path.join(__dirname, 'backend');
-  if (fs.existsSync(path.join(devPath, 'bridge.py'))) return devPath;
-  return path.join(process.resourcesPath, 'backend');
+function getBridgeExe() {
+  // Σε packaged mode υπάρχει bridge.exe compiled με PyInstaller
+  const exeName = os.platform() === 'win32' ? 'bridge.exe' : 'bridge';
+  const exePath = path.join(process.resourcesPath, 'bridge', exeName);
+  if (fs.existsSync(exePath)) return exePath;
+  return null;
 }
 
 function startBridge() {
-  const python = getPythonPath();
-  const backendDir = getBackendPath();
-  const bridgeScript = path.join(backendDir, 'bridge.py');
-  console.log(`[Bridge] Starting: ${python} ${bridgeScript}`);
+  const bridgeExe = getBridgeExe();
+  const userDataDir = app.getPath('userData');
+  fs.mkdirSync(userDataDir, { recursive: true });
 
-  pythonProcess = spawn(python, [bridgeScript], {
-    cwd: backendDir,
+  const bridgeEnv = {
+    ...process.env,
+    PYTHONUNBUFFERED: '1',
+    EXPVAULT_DATA_DIR: userDataDir,
+  };
+
+  let cmd, args, cwd;
+  if (bridgeExe) {
+    // Production: PyInstaller compiled exe
+    cmd = bridgeExe;
+    args = [];
+    cwd = path.dirname(bridgeExe);
+    console.log(`[Bridge] Starting packaged: ${bridgeExe}`);
+  } else {
+    // Development: run bridge.py with Python
+    const backendDir = path.join(__dirname, 'backend');
+    cmd = getPythonPath();
+    args = [path.join(backendDir, 'bridge.py')];
+    cwd = backendDir;
+    // Σε dev mode χρησιμοποιούμε τον backend φάκελο για τα δεδομένα
+    bridgeEnv.EXPVAULT_DATA_DIR = backendDir;
+    console.log(`[Bridge] Starting dev: ${cmd} ${args[0]}`);
+  }
+
+  pythonProcess = spawn(cmd, args, {
+    cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    env: bridgeEnv,
   });
 
   let buffer = '';

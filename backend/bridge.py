@@ -7,8 +7,14 @@ import json
 import os
 import traceback
 
-# Ορισμός path βάσης δεδομένων δίπλα στο bridge.py
-DB_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'expvault.db')
+# Σε packaged mode, EXPVAULT_DATA_DIR δείχνει στο %APPDATA%/ExpVault
+# Σε dev mode, χρησιμοποιούμε τον φάκελο δίπλα στο bridge.py
+_data_dir = os.environ.get(
+    'EXPVAULT_DATA_DIR',
+    os.path.dirname(os.path.abspath(sys.executable if getattr(sys, 'frozen', False) else __file__))
+)
+os.makedirs(_data_dir, exist_ok=True)
+DB_PATH = os.path.join(_data_dir, 'expvault.db')
 
 import database
 database.DB_NAME = DB_PATH

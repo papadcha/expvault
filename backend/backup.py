@@ -2,8 +2,13 @@ import os, shutil, json, re, subprocess
 from datetime import datetime
 from pathlib import Path
 
-CONFIG_PATH = Path(__file__).parent / 'backup_config.json'
-DB_PATH     = Path(__file__).parent / 'expvault.db'
+import sys as _sys
+_data_dir = os.environ.get(
+    'EXPVAULT_DATA_DIR',
+    str(Path(_sys.executable if getattr(_sys, 'frozen', False) else __file__).parent)
+)
+CONFIG_PATH = Path(_data_dir) / 'backup_config.json'
+DB_PATH     = Path(_data_dir) / 'expvault.db'
 TIMESTAMP_FMT = '%Y%m%d_%H%M%S'
 PREFIX = 'expvault_backup_'
 EXT    = '.db'

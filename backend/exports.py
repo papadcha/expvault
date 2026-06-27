@@ -4,7 +4,7 @@
   Σελίδα 1: Αγορές / Επιστροφές
   Σελίδα 2: Καταναλώσεις
 """
-import io, os, glob, re
+import io, os, sys, glob, re
 from datetime import datetime
 from collections import OrderedDict
 
@@ -16,6 +16,11 @@ def find_font(names):
         os.path.expanduser('~/.local/share/fonts'),
         os.path.expanduser('~/.cargo'),
     ]
+    if sys.platform == 'win32':
+        search_dirs.extend([
+            r'C:\Windows\Fonts',
+            os.path.expanduser(r'~\AppData\Local\Microsoft\Windows\Fonts'),
+        ])
     for name in names:
         for d in search_dirs:
             matches = glob.glob(f'{d}/**/{name}', recursive=True)
@@ -25,14 +30,14 @@ def find_font(names):
     return None
 
 FONT_SETS = {
-    'iosevka':    ['Iosevka-Regular.ttc', 'JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf'],
-    'jetbrains':  ['JetBrainsMono-Regular.ttf', 'Iosevka-Regular.ttc', 'LiberationMono-Regular.ttf'],
-    'liberation': ['LiberationMono-Regular.ttf', 'FreeMono.ttf'],
+    'iosevka':    ['Iosevka-Regular.ttc', 'JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf', 'cour.ttf'],
+    'jetbrains':  ['JetBrainsMono-Regular.ttf', 'Iosevka-Regular.ttc', 'LiberationMono-Regular.ttf', 'cour.ttf'],
+    'liberation': ['LiberationMono-Regular.ttf', 'FreeMono.ttf', 'cour.ttf'],
 }
 FONT_SETS_BOLD = {
-    'iosevka':    ['Iosevka-Bold.ttc', 'JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf'],
-    'jetbrains':  ['JetBrainsMono-Bold.ttf', 'Iosevka-Bold.ttc', 'LiberationMono-Bold.ttf'],
-    'liberation': ['LiberationMono-Bold.ttf', 'FreeMonoBold.ttf'],
+    'iosevka':    ['Iosevka-Bold.ttc', 'JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf', 'courbd.ttf'],
+    'jetbrains':  ['JetBrainsMono-Bold.ttf', 'Iosevka-Bold.ttc', 'LiberationMono-Bold.ttf', 'courbd.ttf'],
+    'liberation': ['LiberationMono-Bold.ttf', 'FreeMonoBold.ttf', 'courbd.ttf'],
 }
 
 FONT_REGULAR = find_font(FONT_SETS['iosevka'])

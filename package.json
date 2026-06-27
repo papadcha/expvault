@@ -15,13 +15,16 @@
     "files": [
       "main.js",
       "preload.js",
-      "backend/**/*",
-      "node_modules/**/*"
+      "index.html",
+      "assets/**/*",
+      "node_modules/**/*",
+      "!node_modules/.cache"
     ],
     "extraResources": [
       {
-        "from": "backend",
-        "to": "backend"
+        "from": "dist/bridge",
+        "to": "bridge",
+        "filter": ["**/*"]
       }
     ],
     "win": {
@@ -38,11 +41,7 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerLanguages": [
-        "el_GR",
-        "en_US"
-      ]
+      "allowToChangeInstallationDirectory": true
     }
   },
   "devDependencies": {

@@ -186,6 +186,13 @@
 ΕΚΚΡΕΜΟΤΗΤΕΣ — ΕΚΚΡΕΜΕΙ
 ──────────────────────────────────────
 #18  Νέος σχεδιασμός σελίδων export (Word/Excel) — εκκρεμεί αποστολή αρχείων reference από χρήστη
+#19  Έλεγχος Windows installer (ExpVault Setup .exe) — 26/06
+        · Εγκατάσταση σε clean Windows (χωρίς Python)
+        · Εκκίνηση εφαρμογής, σύνδεση Python bridge (bridge.exe)
+        · Έλεγχος exports PDF/Excel/Word
+        · Fonts (Courier New fallback για ελληνικά στα PDFs)
+        · Backup/Restore με τοπικό φάκελο
+        · Δεδομένα αποθηκεύονται στο %APPDATA%\ExpVault\ (όχι στον φάκελο εγκατάστασης)
 
 
 ═══════════════════════════════════════════════════════════════
