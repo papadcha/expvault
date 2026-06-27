@@ -187,6 +187,7 @@
         · Build με PyInstaller + electron-builder
         · Release v1.0.1 στο GitHub με bundled fonts (Iosevka + JetBrains Mono)
         · Release v1.0.2 στο GitHub — Εξαγωγή / Εισαγωγή Προτύπων Παραστατικών
+          https://github.com/papadcha/expvault/releases/tag/v1.0.2
 
 ΕΚΚΡΕΜΟΤΗΤΕΣ — ΕΚΚΡΕΜΕΙ
 ──────────────────────────────────────
