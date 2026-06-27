@@ -33,10 +33,15 @@ function startBridge() {
   const userDataDir = app.getPath('userData');
   fs.mkdirSync(userDataDir, { recursive: true });
 
+  const fontsDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', 'fonts')
+    : path.join(__dirname, 'assets', 'fonts');
+
   const bridgeEnv = {
     ...process.env,
     PYTHONUNBUFFERED: '1',
     EXPVAULT_DATA_DIR: userDataDir,
+    EXPVAULT_FONTS_DIR: fontsDir,
   };
 
   let cmd, args, cwd;

@@ -9,7 +9,12 @@ from datetime import datetime
 from collections import OrderedDict
 
 def find_font(names):
-    search_dirs = [
+    search_dirs = []
+    # Bundled fonts πρώτα (EXPVAULT_FONTS_DIR από main.js)
+    bundled = os.environ.get('EXPVAULT_FONTS_DIR')
+    if bundled and os.path.isdir(bundled):
+        search_dirs.append(bundled)
+    search_dirs += [
         '/usr/share/fonts', '/usr/share/fonts/TTF',
         '/usr/local/share/fonts',
         os.path.expanduser('~/.fonts'),

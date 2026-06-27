@@ -25,6 +25,10 @@
         "from": "dist/bridge",
         "to": "bridge",
         "filter": ["**/*"]
+      },
+      {
+        "from": "assets/fonts",
+        "to": "assets/fonts"
       }
     ],
     "win": {
