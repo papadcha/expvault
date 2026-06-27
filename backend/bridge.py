@@ -255,6 +255,16 @@ def handle(cmd, payload):
         )
         return {'ok': True, 'id': tid}
 
+    if cmd == 'export_pdf_templates':
+        import pdf_templates
+        count = pdf_templates.export_to_file(payload['path'])
+        return {'ok': True, 'count': count}
+
+    if cmd == 'import_pdf_templates':
+        import pdf_templates
+        result = pdf_templates.import_from_file(payload['path'])
+        return {'ok': True, **result}
+
     if cmd == 'build_and_preview_pdf_template':
         import pdf_templates
         patterns = {}

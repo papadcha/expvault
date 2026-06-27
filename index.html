@@ -987,7 +987,13 @@ body.electron .main    { padding-top: 60px; }
 
     <!-- Αποθηκευμένα πρότυπα -->
     <div class="card">
-      <div class="card-title">Αποθηκευμένα Πρότυπα</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div class="card-title" style="margin-bottom:0;">Αποθηκευμένα Πρότυπα</div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="tplExport()">📤 Εξαγωγή</button>
+          <button class="btn btn-outline btn-sm" onclick="tplImport()">📥 Εισαγωγή</button>
+        </div>
+      </div>
       <div id="tpl-list-body">
         <div class="empty-state"><div class="icon">🧩</div><p>Δεν υπάρχουν πρότυπα ακόμα</p></div>
       </div>
@@ -3171,6 +3177,32 @@ async function tplDelete(id, name) {
       await loadTplList();
     } catch(e) { alert('Σφάλμα: ' + e.message); }
   });
+}
+
+async function tplExport() {
+  if (!window.api) { alert('Χρησιμοποιήστε την εφαρμογή μέσω Electron'); return; }
+  try {
+    const path = await window.api.saveJson({ defaultName: 'protupa_parstatikon.json' });
+    if (!path) return;
+    const res = await py('export_pdf_templates', { path });
+    window._showToast(`✅ Εξαγωγή ${res.count} προτύπ${res.count === 1 ? 'ου' : 'ων'} ολοκληρώθηκε`, 'success');
+  } catch(e) { alert('Σφάλμα εξαγωγής: ' + e.message); }
+}
+
+async function tplImport() {
+  if (!window.api) { alert('Χρησιμοποιήστε την εφαρμογή μέσω Electron'); return; }
+  try {
+    const path = await window.api.openJson();
+    if (!path) return;
+    const res = await py('import_pdf_templates', { path });
+    const n = res.imported;
+    let msg = `✅ Εισαγωγή ${n} προτύπ${n === 1 ? 'ου' : 'ων'} ολοκληρώθηκε`;
+    if (res.skipped && res.skipped.length) {
+      msg += ` — παραλείφθηκ${res.skipped.length === 1 ? 'ε' : 'αν'} ${res.skipped.length} (ήδη υπάρχ${res.skipped.length === 1 ? 'ει' : 'ουν'}): ${res.skipped.join(', ')}`;
+    }
+    window._showToast(msg, n > 0 ? 'success' : 'info');
+    await loadTplList();
+  } catch(e) { alert('Σφάλμα εισαγωγής: ' + e.message); }
 }
 
 // ── BACKUP ───────────────────────────────────────────────────────────────────

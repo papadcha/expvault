@@ -121,6 +121,23 @@ function setupIPC() {
     return canceled ? null : filePath;
   });
 
+  ipcMain.handle('open-json-dialog', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      filters: [{ name: 'JSON', extensions: ['json'] }],
+      properties: ['openFile']
+    });
+    return canceled ? null : filePaths[0];
+  });
+
+  ipcMain.handle('save-json-dialog', async (event, { defaultName }) => {
+    const downloadsPath = app.getPath('downloads');
+    const { canceled, filePath } = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: require('path').join(downloadsPath, defaultName),
+      filters: [{ name: 'JSON', extensions: ['json'] }]
+    });
+    return canceled ? null : filePath;
+  });
+
   ipcMain.handle('open-dir-dialog', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
       properties: ['openDirectory', 'createDirectory']

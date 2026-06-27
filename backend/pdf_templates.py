@@ -196,6 +196,53 @@ def delete_template(template_id):
         conn.execute('DELETE FROM pdf_templates WHERE id=?', (template_id,))
 
 
+EXPORT_FIELDS = [
+    'name', 'item_pattern', 'parstatiko_pattern', 'imerominia_pattern',
+    'adeia_pattern', 'ekdousa_archi_pattern', 'promitheftis_pattern', 'tipos_keyword',
+]
+
+
+def export_to_file(path):
+    import json
+    ensure_table()
+    with get_db() as conn:
+        rows = [dict(r) for r in conn.execute('SELECT * FROM pdf_templates ORDER BY id').fetchall()]
+    data = [{f: r.get(f) for f in EXPORT_FIELDS} for r in rows]
+    with open(path, 'w', encoding='utf-8') as fh:
+        json.dump({'version': 1, 'templates': data}, fh, ensure_ascii=False, indent=2)
+    return len(data)
+
+
+def import_from_file(path):
+    import json
+    with open(path, encoding='utf-8') as fh:
+        payload = json.load(fh)
+    templates = payload.get('templates', [])
+    ensure_table()
+    imported = 0
+    skipped = []
+    with get_db() as conn:
+        existing_names = {r[0] for r in conn.execute('SELECT name FROM pdf_templates').fetchall()}
+        for t in templates:
+            name = t.get('name')
+            if name in existing_names:
+                skipped.append(name)
+                continue
+            conn.execute(
+                '''INSERT INTO pdf_templates
+                   (name, item_pattern, parstatiko_pattern, imerominia_pattern,
+                    adeia_pattern, ekdousa_archi_pattern, promitheftis_pattern, tipos_keyword)
+                   VALUES (?,?,?,?,?,?,?,?)''',
+                (name, t.get('item_pattern'), t.get('parstatiko_pattern'),
+                 t.get('imerominia_pattern'), t.get('adeia_pattern'),
+                 t.get('ekdousa_archi_pattern'), t.get('promitheftis_pattern'),
+                 t.get('tipos_keyword'))
+            )
+            existing_names.add(name)
+            imported += 1
+    return {'imported': imported, 'skipped': skipped}
+
+
 def _apply_item_pattern(pattern, raw_text):
     grammes = []
     try:
