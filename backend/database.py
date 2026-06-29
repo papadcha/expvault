@@ -11,13 +11,14 @@ def _clean_parst(s):
 
 NOMIKES_KATIGORIES = [
     'Πυρίτιδα & Δυναμιτίδα', 'ANFO', 'Slurries', 'Γαλακτώματα',
-    'Ζελατινοδυναμιτίδα', 'Καψύλια κοινά + NONEL', 'Καψύλλια ηλεκτρικά',
+    'Ζελατινοδυναμιτίδα', 'Καψύλλια κοινά', 'Καψύλλια NONEL', 'Καψύλλια ηλεκτρικά',
     'Θρυαλλίδα κοινή', 'Θρυαλλίδα ακαριαία', 'Λοιπά εκρηκτικά',
 ]
 
 def classify_nomiki_katigoria(onoma):
     """Νόμιμη κατηγορία εκρηκτικού βάσει περιγραφής (βλ. κατηγοριες_εκρηκτικων.txt).
-    Ο έλεγχος ΗΛΕΚΤΡ προηγείται του ΠΥΡΟΚΡ/NONEL γιατί 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ' περιέχει και τις δύο λέξεις."""
+    ΗΛΕΚΤΡ ελέγχεται πρώτο γιατί 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ' περιέχει και ΠΥΡΟΚΡ.
+    NONEL/ΝΟΝΕΛ ελέγχεται πριν ΚΟΙΝΟΙ/ΠΥΡΟΚΡ για σωστή κατάταξη NONEL."""
     if not onoma:
         return None
     o = onoma.upper()
@@ -35,8 +36,10 @@ def classify_nomiki_katigoria(onoma):
         return 'Πυρίτιδα & Δυναμιτίδα'
     if 'ΗΛΕΚΤΡ' in o:
         return 'Καψύλλια ηλεκτρικά'
-    if 'NONEL' in o or 'ΝΟΝΕΛ' in o or 'ΚΟΙΝΟΙ' in o or 'ΠΥΡΟΚΡ' in o:
-        return 'Καψύλια κοινά + NONEL'
+    if 'NONEL' in o or 'ΝΟΝΕΛ' in o:
+        return 'Καψύλλια NONEL'
+    if 'ΚΟΙΝΟΙ' in o or 'ΠΥΡΟΚΡ' in o:
+        return 'Καψύλλια κοινά'
     if 'ΑΚΑΡ' in o:
         return 'Θρυαλλίδα ακαριαία'
     if 'ΒΡΑΔΥΚ' in o:
@@ -122,6 +125,15 @@ def init_db():
                 for r in conn.execute("SELECT id, onoma FROM ylika").fetchall():
                     conn.execute("UPDATE ylika SET nomiki_katigoria=? WHERE id=?",
                                  (classify_nomiki_katigoria(r[1]), r[0]))
+        except Exception:
+            pass
+        # Migration: διαχωρισμός 'Καψύλια κοινά + NONEL' → 'Καψύλλια NONEL' / 'Καψύλλια κοινά'
+        try:
+            for r in conn.execute(
+                "SELECT id, onoma FROM ylika WHERE nomiki_katigoria='Καψύλια κοινά + NONEL'"
+            ).fetchall():
+                conn.execute("UPDATE ylika SET nomiki_katigoria=? WHERE id=?",
+                             (classify_nomiki_katigoria(r[1]), r[0]))
         except Exception:
             pass
         # Migration: ημερομηνίες άδειας
