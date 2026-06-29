@@ -780,8 +780,9 @@ body.electron .main    { padding-top: 60px; }
             <option value="ANFO">
             <option value="Slurries">
             <option value="Γαλακτώματα">
-            <option value="Ζελατινοδυναμιτίδα">
-            <option value="Καψύλια κοινά + NONEL">
+            <option value="Ζελατοδυναμίτιδα">
+            <option value="Καψύλλια κοινά">
+            <option value="Καψύλλια NONEL">
             <option value="Καψύλλια ηλεκτρικά">
             <option value="Θρυαλλίδα κοινή">
             <option value="Θρυαλλίδα ακαριαία">
@@ -854,7 +855,7 @@ body.electron .main    { padding-top: 60px; }
           <div style="font-weight:600;font-size:13px;margin-bottom:8px;">Εγκεκριμένες Ποσότητες</div>
           <table style="width:100%;font-size:12px;">
             <thead><tr>
-              <th style="text-align:left;">Υλικό</th>
+              <th style="text-align:left;">Κατηγορία</th>
               <th style="text-align:right;">Εγκεκρ.</th>
               <th style="text-align:right;">Χρησιμ.</th>
               <th style="text-align:right;">Υπόλοιπο</th>
@@ -863,7 +864,22 @@ body.electron .main    { padding-top: 60px; }
             <tbody id="adeia-ylika-body"></tbody>
           </table>
           <div style="display:flex;gap:8px;margin-top:8px;align-items:flex-end;">
-            <div style="flex:2;"><label style="font-size:11px;">Υλικό</label><select id="adeia-yliko-new" style="width:100%;"><option value="">— Επιλογή —</option></select></div>
+            <div style="flex:2;"><label style="font-size:11px;">Κατηγορία</label>
+              <select id="adeia-katigoria-new" style="width:100%;">
+                <option value="">— Επιλογή —</option>
+                <option value="Πυρίτιδα & Δυναμιτίδα">Πυρίτιδα &amp; Δυναμιτίδα</option>
+                <option value="ANFO">ANFO</option>
+                <option value="Slurries">Slurries</option>
+                <option value="Γαλακτώματα">Γαλακτώματα</option>
+                <option value="Ζελατοδυναμίτιδα">Ζελατοδυναμίτιδα</option>
+                <option value="Καψύλλια κοινά">Καψύλλια κοινά</option>
+                <option value="Καψύλλια NONEL">Καψύλλια NONEL</option>
+                <option value="Καψύλλια ηλεκτρικά">Καψύλλια ηλεκτρικά</option>
+                <option value="Θρυαλλίδα κοινή">Θρυαλλίδα κοινή</option>
+                <option value="Θρυαλλίδα ακαριαία">Θρυαλλίδα ακαριαία</option>
+                <option value="Λοιπά εκρηκτικά">Λοιπά εκρηκτικά</option>
+              </select>
+            </div>
             <div style="flex:1;"><label style="font-size:11px;">Εγκεκρ. Ποσότητα</label><input type="number" id="adeia-posotita-new" step="0.001" min="0.001" style="width:100%;"></div>
             <button class="btn btn-sm btn-accent" onclick="addAdeiaYliko()">+ Προσθήκη</button>
           </div>
@@ -1524,7 +1540,10 @@ async function checkAdeiaYpoloipo() {
   const yliko_id = parseInt(document.getElementById('kin-yliko').value);
   const tipos    = document.getElementById('kin-tipos').value;
   if (!adeia_id || !yliko_id || tipos !== 'ΕΙΣΑΓΩΓΗ') { hint.style.display='none'; return; }
-  const r = await py('get_adeia_yliko_remaining', { adeia_id, yliko_id });
+  const yliko = allYlika.find(y => y.id === yliko_id);
+  const nomiki_katigoria = yliko?.nomiki_katigoria;
+  if (!nomiki_katigoria) { hint.style.display='none'; return; }
+  const r = await py('get_adeia_katigoria_remaining', { adeia_id, nomiki_katigoria });
   if (!r || r.egekrimeni_posotita === undefined) { hint.style.display='none'; return; }
   const yp = r.ypoloipo;
   const ok = yp > 0;
@@ -1532,7 +1551,7 @@ async function checkAdeiaYpoloipo() {
   hint.style.background = ok ? '#c6f6d5' : '#fed7d7';
   hint.style.border = ok ? '1px solid #68d391' : '1px solid #fc8181';
   hint.style.color  = ok ? '#276749' : '#742a2a';
-  hint.innerHTML = `📋 Υπόλοιπο άδειας: <strong>${yp.toFixed(3)} ${r.monada_metrisis}</strong> (εγκεκρ. ${r.egekrimeni_posotita.toFixed(3)}, χρησιμ. ${r.xrisimopoiimeni.toFixed(3)})`;
+  hint.innerHTML = `📋 Υπόλοιπο άδειας (${nomiki_katigoria}): <strong>${yp.toFixed(3)} ${r.monada_metrisis}</strong> (εγκεκρ. ${r.egekrimeni_posotita.toFixed(3)}, χρησιμ. ${r.xrisimopoiimeni.toFixed(3)})`;
 }
 
 async function saveKinisi() {
@@ -1808,7 +1827,7 @@ async function loadAdeiaYlika(adeia_id) {
     const yp = r.egekrimeni_posotita - r.xrisimopoiimeni;
     const ypCls = yp < 0 ? 'color:#c53030;font-weight:600' : yp === 0 ? 'color:#276749' : '';
     return `<tr>
-      <td>${r.onoma}${r.diatomi_mm?` (${r.diatomi_mm}mm)`:''}</td>
+      <td>${r.nomiki_katigoria}</td>
       <td class="text-right mono">${r.egekrimeni_posotita.toFixed(3)} ${r.monada_metrisis}</td>
       <td class="text-right mono">${r.xrisimopoiimeni.toFixed(3)}</td>
       <td class="text-right mono" style="${ypCls}">${yp.toFixed(3)}</td>
@@ -1818,14 +1837,14 @@ async function loadAdeiaYlika(adeia_id) {
 }
 
 async function addAdeiaYliko() {
-  const adeia_id = parseInt(document.getElementById('adeia-edit-id').value);
-  const yliko_id = parseInt(document.getElementById('adeia-yliko-new').value);
-  const posotita = parseFloat(document.getElementById('adeia-posotita-new').value);
-  if (!adeia_id || !yliko_id || isNaN(posotita) || posotita <= 0) {
-    alert('Επιλέξτε υλικό και εισάγετε έγκυρη ποσότητα.'); return;
+  const adeia_id        = parseInt(document.getElementById('adeia-edit-id').value);
+  const nomiki_katigoria = document.getElementById('adeia-katigoria-new').value;
+  const posotita        = parseFloat(document.getElementById('adeia-posotita-new').value);
+  if (!adeia_id || !nomiki_katigoria || isNaN(posotita) || posotita <= 0) {
+    alert('Επιλέξτε κατηγορία και εισάγετε έγκυρη ποσότητα.'); return;
   }
-  await py('set_adeia_yliko', { adeia_id, yliko_id, egekrimeni_posotita: posotita });
-  document.getElementById('adeia-yliko-new').value = '';
+  await py('set_adeia_katigoria', { adeia_id, nomiki_katigoria, egekrimeni_posotita: posotita });
+  document.getElementById('adeia-katigoria-new').value = '';
   document.getElementById('adeia-posotita-new').value = '';
   await loadAdeiaYlika(adeia_id);
 }

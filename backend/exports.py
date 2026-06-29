@@ -1451,23 +1451,10 @@ def export_lista_agores(kiniseis: list, apo_label: str, eos_label: str) -> bytes
 # ── ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ ─────────────────────────────────────────────────────
 # Σύνολα κατανάλωσης ανά νόμιμη κατηγορία εκρηκτικού, για μια περίοδο.
 
-MONADES_NOMIKON_KATIGORION = {
-    'Πυρίτιδα & Δυναμιτίδα':  'kg',
-    'ANFO':                    'kg',
-    'Slurries':                'kg',
-    'Γαλακτώματα':            'kg',
-    'Ζελατινοδυναμιτίδα':     'kg',
-    'Καψύλια κοινά + NONEL':  'τεμ',
-    'Καψύλλια ηλεκτρικά':     'τεμ',
-    'Θρυαλλίδα κοινή':        'm',
-    'Θρυαλλίδα ακαριαία':     'm',
-    'Λοιπά εκρηκτικά':         'kg',
-}
-
 def _deltio_sums(kiniseis):
     """Κατανάλωση ανά κατηγορία = ΑΓΟΡΑ − ΕΠΙΣΤΡΟΦΗ (όπως στον Υπολογιστή, Σενάριο 2),
     αφού η κατανάλωση δεν καταχωρείται πάντα ως ξεχωριστή κίνηση."""
-    from database import NOMIKES_KATIGORIES
+    from database import NOMIKES_KATIGORIES, MONADES_NOMIKON_KATIGORION
     agores     = OrderedDict((kat, 0.0) for kat in NOMIKES_KATIGORIES)
     epistrofes = OrderedDict((kat, 0.0) for kat in NOMIKES_KATIGORIES)
     for k in kiniseis:
