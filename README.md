@@ -2,6 +2,12 @@
 
 Εφαρμογή διαχείρισης βιβλίου αγοράς και κατανάλωσης εκρηκτικών υλών λατομείου. Παράγει νόμιμη εκτύπωση 2 σελίδων (αγορές/επιστροφές + καταναλώσεις) και υποστηρίζει αυτόματη εισαγωγή από PDF τιμολόγια Προμηθευτή/EpsilonNet.
 
+## Download
+
+**[⬇ ExpVault Setup 1.0.3.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault%20Setup%201.0.3.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.0.3](https://github.com/papadcha/expvault/releases/tag/v1.0.3)
+
+> Δεν απαιτείται Python. Αν εμφανιστεί Windows SmartScreen, πάτα **Περισσότερες πληροφορίες → Εκτέλεση παρόλα αυτά**.
+
 ---
 
 ## Αρχιτεκτονική
@@ -203,9 +209,8 @@ electron .
 
 ## Εκκρεμή (TODO)
 
-- [ ] Νέος σχεδιασμός σελίδων export Word/Excel (εκκρεμεί αποστολή reference αρχείων)
-- [ ] Parser δελτίου επιστροφής Επιχείρησης (ΔΑ Επιχείρησης)
-- [ ] Αποθήκευση προτίμησης font
+- [ ] Νέος σχεδιασμός σελίδων export Word/Excel — εκκρεμεί αποστολή reference αρχείων (#18)
+- [ ] Άδεια χρήσης — απόφαση private/proprietary ή open source + προσθήκη LICENSE (#20)
 
 ---
 
