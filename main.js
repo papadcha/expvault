@@ -1,8 +1,10 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
+const https = require('https');
 
 let mainWindow = null;
 let pythonProcess = null;
@@ -12,7 +14,7 @@ let bridgeReady = false;
 let queuedMessages = [];
 
 function getPythonPath() {
-  const backendDir = getBackendPath();
+  const backendDir = path.join(__dirname, 'backend');
   const venvPython = path.join(backendDir, 'venv',
     os.platform() === 'win32' ? 'Scripts/python.exe' : 'bin/python3'
   );
@@ -20,22 +22,52 @@ function getPythonPath() {
   return os.platform() === 'win32' ? 'python' : 'python3';
 }
 
-function getBackendPath() {
-  const devPath = path.join(__dirname, 'backend');
-  if (fs.existsSync(path.join(devPath, 'bridge.py'))) return devPath;
-  return path.join(process.resourcesPath, 'backend');
+function getBridgeExe() {
+  // Σε packaged mode υπάρχει bridge.exe compiled με PyInstaller
+  const exeName = os.platform() === 'win32' ? 'bridge.exe' : 'bridge';
+  const exePath = path.join(process.resourcesPath, 'bridge', exeName);
+  if (fs.existsSync(exePath)) return exePath;
+  return null;
 }
 
 function startBridge() {
-  const python = getPythonPath();
-  const backendDir = getBackendPath();
-  const bridgeScript = path.join(backendDir, 'bridge.py');
-  console.log(`[Bridge] Starting: ${python} ${bridgeScript}`);
+  const bridgeExe = getBridgeExe();
+  const userDataDir = app.getPath('userData');
+  fs.mkdirSync(userDataDir, { recursive: true });
 
-  pythonProcess = spawn(python, [bridgeScript], {
-    cwd: backendDir,
+  const fontsDir = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', 'fonts')
+    : path.join(__dirname, 'assets', 'fonts');
+
+  const bridgeEnv = {
+    ...process.env,
+    PYTHONUNBUFFERED: '1',
+    EXPVAULT_DATA_DIR: userDataDir,
+    EXPVAULT_FONTS_DIR: fontsDir,
+  };
+
+  let cmd, args, cwd;
+  if (bridgeExe) {
+    // Production: PyInstaller compiled exe
+    cmd = bridgeExe;
+    args = [];
+    cwd = path.dirname(bridgeExe);
+    console.log(`[Bridge] Starting packaged: ${bridgeExe}`);
+  } else {
+    // Development: run bridge.py with Python
+    const backendDir = path.join(__dirname, 'backend');
+    cmd = getPythonPath();
+    args = [path.join(backendDir, 'bridge.py')];
+    cwd = backendDir;
+    // Σε dev mode χρησιμοποιούμε τον backend φάκελο για τα δεδομένα
+    bridgeEnv.EXPVAULT_DATA_DIR = backendDir;
+    console.log(`[Bridge] Starting dev: ${cmd} ${args[0]}`);
+  }
+
+  pythonProcess = spawn(cmd, args, {
+    cwd,
     stdio: ['pipe', 'pipe', 'pipe'],
-    env: { ...process.env, PYTHONUNBUFFERED: '1' }
+    env: bridgeEnv,
   });
 
   let buffer = '';
@@ -146,15 +178,27 @@ function setupIPC() {
   });
 
   ipcMain.handle('open-rclone-terminal', async () => {
-    function trySpawn(cmd, args) {
+    function trySpawn(cmd, args, opts = {}) {
       return new Promise((resolve) => {
         try {
-          const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+          const child = spawn(cmd, args, { detached: true, stdio: 'ignore', ...opts });
           child.on('error', () => resolve(false));
           child.unref();
           setTimeout(() => resolve(true), 200);
         } catch { resolve(false); }
       });
+    }
+    if (os.platform() === 'win32') {
+      // Δοκιμή Windows Terminal πρώτα, μετά PowerShell, μετά cmd
+      const attempts = [
+        ['wt.exe', ['powershell', '-NoExit', '-Command', 'rclone config']],
+        ['powershell.exe', ['-NoExit', '-Command', 'rclone config']],
+        ['cmd.exe', ['/K', 'rclone config']],
+      ];
+      for (const [cmd, args] of attempts) {
+        if (await trySpawn(cmd, args, { shell: false })) return { ok: true };
+      }
+      return { ok: false, error: 'Δεν βρέθηκε terminal — εκτελέστε χειροκίνητα: rclone config' };
     }
     const attempts = [
       ['alacritty', ['-e', 'rclone', 'config']],
@@ -170,11 +214,77 @@ function setupIPC() {
     return { ok: false, error: 'Δεν βρέθηκε terminal — εκτελέστε χειροκίνητα: rclone config' };
   });
 
+  ipcMain.handle('open-external', (_, url) => shell.openExternal(url));
+  ipcMain.on('update-install', () => autoUpdater.quitAndInstall());
+
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
   ipcMain.on('window-maximize', () => {
     mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize();
   });
   ipcMain.on('window-close', () => mainWindow?.close());
+}
+
+function checkForUpdatesManually() {
+  const currentVersion = app.getVersion();
+  const req = https.get({
+    hostname: 'api.github.com',
+    path: '/repos/papadcha/expvault/releases/latest',
+    headers: { 'User-Agent': 'ExpVault-Updater' },
+    timeout: 10000,
+  }, (res) => {
+    let data = '';
+    res.on('data', chunk => data += chunk);
+    res.on('end', () => {
+      try {
+        const release = JSON.parse(data);
+        const latest = release.tag_name?.replace(/^v/, '');
+        if (!latest) return;
+        const [la, lb, lc] = latest.split('.').map(Number);
+        const [ca, cb, cc] = currentVersion.split('.').map(Number);
+        const isNewer = la > ca || (la === ca && lb > cb) || (la === ca && lb === cb && lc > cc);
+        if (isNewer) {
+          mainWindow?.webContents.send('update-status', {
+            type: 'notify-only',
+            version: latest,
+            url: release.html_url,
+          });
+        }
+      } catch (e) {
+        console.error('[Updater] Parse error:', e.message);
+      }
+    });
+  });
+  req.on('error', err => console.error('[Updater] Network error:', err.message));
+  req.on('timeout', () => req.destroy());
+}
+
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    mainWindow?.webContents.send('update-status', { type: 'available', version: info.version });
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    mainWindow?.webContents.send('update-status', { type: 'progress', percent: Math.round(progress.percent) });
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    mainWindow?.webContents.send('update-status', { type: 'downloaded', version: info.version });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[Updater] electron-updater error:', err.message);
+    checkForUpdatesManually();
+  });
+
+  try {
+    autoUpdater.checkForUpdates();
+  } catch (e) {
+    console.error('[Updater] checkForUpdates failed:', e.message);
+    checkForUpdatesManually();
+  }
 }
 
 function createWindow() {
@@ -194,7 +304,10 @@ function createWindow() {
   });
 
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
-  mainWindow.once('ready-to-show', () => mainWindow.show());
+  mainWindow.once('ready-to-show', () => {
+    mainWindow.show();
+    if (app.isPackaged) setTimeout(setupAutoUpdater, 3000);
+  });
 
   let _closeInProgress = false;
   mainWindow.on('close', async (e) => {

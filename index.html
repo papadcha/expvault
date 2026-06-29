@@ -1078,6 +1078,21 @@ body.electron .main    { padding-top: 60px; }
 
 </main>
 
+<!-- ── UPDATE MODAL ── -->
+<div class="modal-overlay" id="update-modal">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title" id="update-modal-title">🔄 Διαθέσιμη νέα έκδοση</div>
+    <div id="update-modal-body" style="color:var(--text);line-height:1.6;"></div>
+    <div style="margin-top:14px;background:var(--bg);border-radius:6px;overflow:hidden;display:none;" id="update-progress-wrap">
+      <div id="update-progress-bar" style="height:6px;background:var(--accent);width:0%;transition:width .3s;"></div>
+    </div>
+    <div class="modal-actions" id="update-modal-actions">
+      <button class="btn btn-outline" onclick="document.getElementById('update-modal').classList.remove('open')">Αργότερα</button>
+      <button class="btn btn-primary" id="update-action-btn"></button>
+    </div>
+  </div>
+</div>
+
 <!-- ── CONFIRM MODAL ── -->
 <div class="modal-overlay" id="confirm-modal">
   <div class="modal" style="max-width:400px;">
@@ -3327,6 +3342,12 @@ async function bkRefreshRemotes() {
       onedrive: 'OneDrive', s3: 'Amazon S3', b2: 'Backblaze B2',
       sftp: 'SFTP', ftp: 'FTP', webdav: 'WebDAV',
     };
+    const providerLabels = {
+      Mega: 'Mega', Wasabi: 'Wasabi', Minio: 'MinIO',
+      Cloudflare: 'Cloudflare R2', DigitalOcean: 'DigitalOcean Spaces',
+      Backblaze: 'Backblaze B2', Alibaba: 'Alibaba OSS',
+    };
+    const getLabel = r => (r.provider && providerLabels[r.provider]) || typeLabels[r.type] || r.type;
     el.innerHTML = `
       <table style="width:100%;border-collapse:collapse;">
         <thead><tr style="background:rgba(0,0,0,0.2);">
@@ -3337,7 +3358,7 @@ async function bkRefreshRemotes() {
         <tbody>${remotes.map(r => `
           <tr style="border-top:1px solid rgba(255,255,255,0.05);">
             <td style="padding:8px 12px;font-family:monospace;font-size:13px;">${r.remote}</td>
-            <td style="padding:8px 12px;color:var(--muted);font-size:12px;">${typeLabels[r.type] || r.type}</td>
+            <td style="padding:8px 12px;color:var(--muted);font-size:12px;">${getLabel(r)}</td>
             <td style="padding:8px 12px;text-align:right;">
               <button onclick="bkDeleteRemote('${r.name}')"
                 style="padding:3px 10px;background:none;border:1px solid rgba(229,115,115,0.4);border-radius:4px;color:#e57373;font-size:11px;cursor:pointer;">Διαγραφή</button>
@@ -3446,6 +3467,49 @@ if (window.api) {
   document.getElementById('titlebar').style.display = 'flex';
   document.getElementById('sidebar-exit').style.display = 'block';
   document.body.classList.add('electron');
+}
+
+// ── AUTO-UPDATE ──────────────────────────────────────────────────────────────
+if (window.api?.onUpdateStatus) {
+  window.api.onUpdateStatus(info => {
+    const modal   = document.getElementById('update-modal');
+    const title   = document.getElementById('update-modal-title');
+    const body    = document.getElementById('update-modal-body');
+    const progWrap= document.getElementById('update-progress-wrap');
+    const progBar = document.getElementById('update-progress-bar');
+    const btn     = document.getElementById('update-action-btn');
+
+    if (info.type === 'available') {
+      title.textContent = `🔄 Διαθέσιμη νέα έκδοση v${info.version}`;
+      body.textContent  = 'Γίνεται λήψη της νέας έκδοσης στο παρασκήνιο…';
+      progWrap.style.display = 'block';
+      btn.textContent   = 'Λήψη σε εξέλιξη…';
+      btn.disabled      = true;
+      modal.classList.add('open');
+
+    } else if (info.type === 'progress') {
+      progBar.style.width = info.percent + '%';
+      body.textContent    = `Λήψη: ${info.percent}%`;
+
+    } else if (info.type === 'downloaded') {
+      title.textContent   = `✅ Έτοιμη η v${info.version}`;
+      body.textContent    = 'Η λήψη ολοκληρώθηκε. Κλείστε και επανεκκινήστε για να εγκατασταθεί η νέα έκδοση.';
+      progWrap.style.display = 'none';
+      btn.textContent     = 'Εγκατάσταση & Επανεκκίνηση';
+      btn.disabled        = false;
+      btn.onclick         = () => window.api.installUpdate();
+      modal.classList.add('open');
+
+    } else if (info.type === 'notify-only') {
+      title.textContent   = `🔄 Διαθέσιμη νέα έκδοση v${info.version}`;
+      body.textContent    = 'Υπάρχει νέα έκδοση της εφαρμογής. Κατεβάστε την από το GitHub.';
+      progWrap.style.display = 'none';
+      btn.textContent     = 'Λήψη';
+      btn.disabled        = false;
+      btn.onclick         = () => window.api.openExternal(info.url);
+      modal.classList.add('open');
+    }
+  });
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────

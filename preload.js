@@ -13,4 +13,7 @@ contextBridge.exposeInMainWorld('api', {
   platform: process.platform,
   onBackupProgress:    (cb) => ipcRenderer.on('backup-progress', (_, status) => cb(status)),
   openRcloneTerminal: ()   => ipcRenderer.invoke('open-rclone-terminal'),
+  onUpdateStatus:     (cb) => ipcRenderer.on('update-status', (_, info) => cb(info)),
+  openExternal:       (url) => ipcRenderer.invoke('open-external', url),
+  installUpdate:      ()   => ipcRenderer.send('update-install'),
 });

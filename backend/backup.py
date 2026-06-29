@@ -2,8 +2,13 @@ import os, shutil, json, re, subprocess
 from datetime import datetime
 from pathlib import Path
 
-CONFIG_PATH = Path(__file__).parent / 'backup_config.json'
-DB_PATH     = Path(__file__).parent / 'expvault.db'
+import sys as _sys
+_data_dir = os.environ.get(
+    'EXPVAULT_DATA_DIR',
+    str(Path(_sys.executable if getattr(_sys, 'frozen', False) else __file__).parent)
+)
+CONFIG_PATH = Path(_data_dir) / 'backup_config.json'
+DB_PATH     = Path(_data_dir) / 'expvault.db'
 TIMESTAMP_FMT = '%Y%m%d_%H%M%S'
 PREFIX = 'expvault_backup_'
 EXT    = '.db'
@@ -49,18 +54,26 @@ def list_rclone_remotes() -> list:
 
 
 def list_remotes_detail() -> list:
-    import configparser
-    conf_path = Path.home() / '.config' / 'rclone' / 'rclone.conf'
-    if not conf_path.exists():
+    import configparser, sys
+    candidates = [
+        Path.home() / '.config' / 'rclone' / 'rclone.conf',
+    ]
+    if sys.platform == 'win32':
+        appdata = os.environ.get('APPDATA', '')
+        if appdata:
+            candidates.insert(0, Path(appdata) / 'rclone' / 'rclone.conf')
+    conf_path = next((p for p in candidates if p.exists()), None)
+    if conf_path is None:
         return []
     cfg = configparser.ConfigParser()
     cfg.read(str(conf_path))
     result = []
     for name in cfg.sections():
         result.append({
-            'name':   name,
-            'remote': name + ':',
-            'type':   cfg[name].get('type', '?'),
+            'name':     name,
+            'remote':   name + ':',
+            'type':     cfg[name].get('type', '?'),
+            'provider': cfg[name].get('provider', ''),
         })
     return result
 
