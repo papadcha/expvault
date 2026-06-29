@@ -15,6 +15,20 @@ NOMIKES_KATIGORIES = [
     'Θρυαλλίδα κοινή', 'Θρυαλλίδα ακαριαία', 'Λοιπά εκρηκτικά',
 ]
 
+MONADES_NOMIKON_KATIGORION = {
+    'Πυρίτιδα & Δυναμιτίδα': 'kg',
+    'ANFO':                   'kg',
+    'Slurries':               'kg',
+    'Γαλακτώματα':           'kg',
+    'Ζελατοδυναμίτιδα':       'kg',
+    'Καψύλλια κοινά':        'τεμ',
+    'Καψύλλια NONEL':        'τεμ',
+    'Καψύλλια ηλεκτρικά':    'τεμ',
+    'Θρυαλλίδα κοινή':       'm',
+    'Θρυαλλίδα ακαριαία':    'm',
+    'Λοιπά εκρηκτικά':        'kg',
+}
+
 def classify_nomiki_katigoria(onoma):
     """Νόμιμη κατηγορία εκρηκτικού βάσει περιγραφής (βλ. κατηγοριες_εκρηκτικων.txt).
     ΗΛΕΚΤΡ ελέγχεται πρώτο γιατί 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ' περιέχει και ΠΥΡΟΚΡ."""
@@ -145,6 +159,13 @@ def init_db():
                 conn.execute("ALTER TABLE adeies ADD COLUMN imerominia_lixis TEXT")
         except Exception:
             pass
+        # Migration: adeia_ylika — yliko_id → nomiki_katigoria (πίνακας ήταν κενός)
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(adeia_ylika)").fetchall()]
+            if cols and 'yliko_id' in cols:
+                conn.execute("DROP TABLE adeia_ylika")
+        except Exception:
+            pass
         conn.executescript('''
             CREATE TABLE IF NOT EXISTS ylika (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -206,9 +227,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS adeia_ylika (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 adeia_id INTEGER NOT NULL REFERENCES adeies(id) ON DELETE CASCADE,
-                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
+                nomiki_katigoria TEXT NOT NULL,
                 egekrimeni_posotita REAL NOT NULL,
-                UNIQUE(adeia_id, yliko_id)
+                UNIQUE(adeia_id, nomiki_katigoria)
             );
 
             INSERT OR IGNORE INTO auxon_counter(id, next_val) VALUES (1, 1);
@@ -298,55 +319,67 @@ def update_adeia(id, arithmos, perigrafi, syntomografia_ekdousas=None, imeromini
         )
 
 def get_adeia_ylika(adeia_id):
-    """Εγκεκριμένες ποσότητες ανά υλικό για μία άδεια, με χρησιμοποιημένη & υπόλοιπο.
-    Χρησιμοποιημένη = ΕΙΣΑΓΩΓΗ − ΕΠΙΣΤΡΟΦΗ (οι επιστροφές ελευθερώνουν ποσότητα)."""
+    """Εγκεκριμένες ποσότητες ανά νόμιμη κατηγορία για μία άδεια, με χρησιμοποιημένη & υπόλοιπο.
+    Χρησιμοποιημένη = ΕΙΣΑΓΩΓΗ − ΕΠΙΣΤΡΟΦΗ αθροιστικά για όλα τα υλικά της κατηγορίας."""
     with get_db() as conn:
         rows = conn.execute("""
-            SELECT ay.id, ay.adeia_id, ay.yliko_id, ay.egekrimeni_posotita,
-                   y.onoma, y.diatomi_mm, y.monada_metrisis,
-                   COALESCE(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
-                                     WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
-                                     ELSE 0 END), 0.0) as xrisimopoiimeni
+            SELECT ay.id, ay.adeia_id, ay.nomiki_katigoria, ay.egekrimeni_posotita,
+                   COALESCE(ks.xrisimopoiimeni, 0.0) as xrisimopoiimeni
             FROM adeia_ylika ay
-            JOIN ylika y ON ay.yliko_id = y.id
-            LEFT JOIN kiniseis k ON k.adeia_id = ay.adeia_id
-                AND k.yliko_id = ay.yliko_id
-                AND k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+            LEFT JOIN (
+                SELECT k.adeia_id, y.nomiki_katigoria,
+                       SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                ELSE 0 END) as xrisimopoiimeni
+                FROM kiniseis k
+                JOIN ylika y ON k.yliko_id = y.id
+                WHERE k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+                GROUP BY k.adeia_id, y.nomiki_katigoria
+            ) ks ON ks.adeia_id = ay.adeia_id AND ks.nomiki_katigoria = ay.nomiki_katigoria
             WHERE ay.adeia_id = ?
-            GROUP BY ay.id
-            ORDER BY y.onoma
+            ORDER BY ay.nomiki_katigoria
         """, (adeia_id,)).fetchall()
-        return [dict(r) for r in rows]
+        result = []
+        for r in rows:
+            d = dict(r)
+            d['monada_metrisis'] = MONADES_NOMIKON_KATIGORION.get(d['nomiki_katigoria'], '')
+            result.append(d)
+        return result
 
-def get_adeia_yliko_remaining(adeia_id, yliko_id):
-    """Υπόλοιπο εγκεκριμένης ποσότητας για συγκεκριμένη άδεια + υλικό."""
+def get_adeia_katigoria_remaining(adeia_id, nomiki_katigoria):
+    """Υπόλοιπο εγκεκριμένης ποσότητας για συγκεκριμένη άδεια + κατηγορία."""
     with get_db() as conn:
         row = conn.execute("""
-            SELECT ay.egekrimeni_posotita, y.monada_metrisis,
-                   COALESCE(SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
-                                     WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
-                                     ELSE 0 END), 0.0) as xrisimopoiimeni
+            SELECT ay.egekrimeni_posotita,
+                   COALESCE(ks.xrisimopoiimeni, 0.0) as xrisimopoiimeni
             FROM adeia_ylika ay
-            JOIN ylika y ON ay.yliko_id = y.id
-            LEFT JOIN kiniseis k ON k.adeia_id = ay.adeia_id
-                AND k.yliko_id = ay.yliko_id
-                AND k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
-            WHERE ay.adeia_id = ? AND ay.yliko_id = ?
-            GROUP BY ay.id
-        """, (adeia_id, yliko_id)).fetchone()
+            LEFT JOIN (
+                SELECT k.adeia_id, y.nomiki_katigoria,
+                       SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                ELSE 0 END) as xrisimopoiimeni
+                FROM kiniseis k
+                JOIN ylika y ON k.yliko_id = y.id
+                WHERE k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+                GROUP BY k.adeia_id, y.nomiki_katigoria
+            ) ks ON ks.adeia_id = ay.adeia_id AND ks.nomiki_katigoria = ay.nomiki_katigoria
+            WHERE ay.adeia_id = ? AND ay.nomiki_katigoria = ?
+        """, (adeia_id, nomiki_katigoria)).fetchone()
         if not row:
             return None
         r = dict(row)
+        r['nomiki_katigoria'] = nomiki_katigoria
+        r['monada_metrisis']  = MONADES_NOMIKON_KATIGORION.get(nomiki_katigoria, '')
         r['ypoloipo'] = r['egekrimeni_posotita'] - r['xrisimopoiimeni']
         return r
 
-def set_adeia_yliko(adeia_id, yliko_id, egekrimeni_posotita):
+def set_adeia_katigoria(adeia_id, nomiki_katigoria, egekrimeni_posotita):
     with get_db() as conn:
         conn.execute("""
-            INSERT INTO adeia_ylika(adeia_id, yliko_id, egekrimeni_posotita)
+            INSERT INTO adeia_ylika(adeia_id, nomiki_katigoria, egekrimeni_posotita)
             VALUES(?,?,?)
-            ON CONFLICT(adeia_id, yliko_id) DO UPDATE SET egekrimeni_posotita=excluded.egekrimeni_posotita
-        """, (adeia_id, yliko_id, egekrimeni_posotita))
+            ON CONFLICT(adeia_id, nomiki_katigoria) DO UPDATE SET egekrimeni_posotita=excluded.egekrimeni_posotita
+        """, (adeia_id, nomiki_katigoria, egekrimeni_posotita))
 
 def delete_adeia_yliko(id):
     with get_db() as conn:
