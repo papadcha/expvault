@@ -11,14 +11,13 @@ def _clean_parst(s):
 
 NOMIKES_KATIGORIES = [
     'Πυρίτιδα & Δυναμιτίδα', 'ANFO', 'Slurries', 'Γαλακτώματα',
-    'Ζελατινοδυναμιτίδα', 'Καψύλλια κοινά', 'Καψύλλια NONEL', 'Καψύλλια ηλεκτρικά',
+    'Ζελατοδυναμίτιδα', 'Καψύλλια κοινά', 'Καψύλλια NONEL', 'Καψύλλια ηλεκτρικά',
     'Θρυαλλίδα κοινή', 'Θρυαλλίδα ακαριαία', 'Λοιπά εκρηκτικά',
 ]
 
 def classify_nomiki_katigoria(onoma):
     """Νόμιμη κατηγορία εκρηκτικού βάσει περιγραφής (βλ. κατηγοριες_εκρηκτικων.txt).
-    ΗΛΕΚΤΡ ελέγχεται πρώτο γιατί 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ' περιέχει και ΠΥΡΟΚΡ.
-    NONEL/ΝΟΝΕΛ ελέγχεται πριν ΚΟΙΝΟΙ/ΠΥΡΟΚΡ για σωστή κατάταξη NONEL."""
+    ΗΛΕΚΤΡ ελέγχεται πρώτο γιατί 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ' περιέχει και ΠΥΡΟΚΡ."""
     if not onoma:
         return None
     o = onoma.upper()
@@ -29,14 +28,14 @@ def classify_nomiki_katigoria(onoma):
     if 'EM-EX' in o or 'EMEX' in o or 'ΓΑΛΑΚΤΩΜ' in o:
         return 'Γαλακτώματα'
     if 'POLADYN' in o or 'ΖΕΛΑΤ' in o:
-        return 'Ζελατινοδυναμιτίδα'
+        return 'Ζελατοδυναμίτιδα'
     if 'AN-FO' in o or 'ANFO' in o or 'ΠΕΤΡΑΜΜΩΝ' in o:
         return 'ANFO'
     if 'ΠΥΡΙΤ' in o or 'ΔΥΝΑΜΙΤ' in o:
         return 'Πυρίτιδα & Δυναμιτίδα'
     if 'ΗΛΕΚΤΡ' in o:
         return 'Καψύλλια ηλεκτρικά'
-    if 'NONEL' in o or 'ΝΟΝΕΛ' in o:
+    if 'NONEL' in o:
         return 'Καψύλλια NONEL'
     if 'ΚΟΙΝΟΙ' in o or 'ΠΥΡΟΚΡ' in o:
         return 'Καψύλλια κοινά'
@@ -127,10 +126,11 @@ def init_db():
                                  (classify_nomiki_katigoria(r[1]), r[0]))
         except Exception:
             pass
-        # Migration: διαχωρισμός 'Καψύλια κοινά + NONEL' → 'Καψύλλια NONEL' / 'Καψύλλια κοινά'
+        # Migration: διαχωρισμός καψυλλίων + μετονομασία Ζελατινοδυναμιτίδα → Ζελατοδυναμίτιδα
         try:
             for r in conn.execute(
-                "SELECT id, onoma FROM ylika WHERE nomiki_katigoria='Καψύλια κοινά + NONEL'"
+                """SELECT id, onoma FROM ylika WHERE nomiki_katigoria IN
+                   ('Καψύλια κοινά + NONEL', 'Ζελατινοδυναμιτίδα')"""
             ).fetchall():
                 conn.execute("UPDATE ylika SET nomiki_katigoria=? WHERE id=?",
                              (classify_nomiki_katigoria(r[1]), r[0]))
