@@ -190,6 +190,9 @@
           https://github.com/papadcha/expvault/releases/tag/v1.0.2
         · Release v1.0.3 στο GitHub — Αυτόματος έλεγχος & εγκατάσταση ενημερώσεων
           https://github.com/papadcha/expvault/releases/tag/v1.0.3
+        · Release v1.0.4 στο GitHub — Άδεια ανά νόμιμη κατηγορία, εξαγωγή/εισαγωγή προτύπων PDF,
+          διόρθωση crash σε νέες εγκαταστάσεις, escaping μη έμπιστου κειμένου στο UI
+          https://github.com/papadcha/expvault/releases/tag/v1.0.4
 
 ΕΚΚΡΕΜΟΤΗΤΕΣ — ΕΚΚΡΕΜΕΙ
 ──────────────────────────────────────
