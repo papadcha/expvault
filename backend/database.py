@@ -77,6 +77,97 @@ def get_db():
 
 def init_db():
     with get_db() as conn:
+        # Pre-flight migration: adeia_ylika παλιό σχήμα (yliko_id) → διαγράφεται και
+        # ξαναδημιουργείται παρακάτω με nomiki_katigoria. Πρέπει να τρέξει πριν το CREATE TABLE.
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(adeia_ylika)").fetchall()]
+            if cols and 'yliko_id' in cols:
+                conn.execute("DROP TABLE adeia_ylika")
+        except Exception:
+            pass
+
+        # Βασικό σχήμα (πλήρες, με όλες τις στήλες που έχουν προστεθεί μέχρι σήμερα).
+        # Πρέπει να τρέξει ΠΡΙΝ τα υπόλοιπα migrations, ώστε PRAGMA table_info να βρίσκει πάντα
+        # τους πίνακες σε νέες εγκαταστάσεις (αλλιώς τα ALTER TABLE παρακάτω αποτυγχάνουν σιωπηλά).
+        conn.executescript('''
+            CREATE TABLE IF NOT EXISTS ylika (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                onoma TEXT NOT NULL,
+                diatomi_mm INTEGER,
+                monada_metrisis TEXT NOT NULL,
+                paratirishis TEXT,
+                kategoria TEXT,
+                export_group TEXT,
+                nomiki_katigoria TEXT,
+                UNIQUE(onoma, diatomi_mm)
+            );
+
+            CREATE TABLE IF NOT EXISTS promitheftes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                onoma TEXT NOT NULL UNIQUE,
+                syntomografia TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS adeies (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                arithmos_adeias TEXT NOT NULL UNIQUE,
+                perigrafi TEXT,
+                syntomografia_ekdousas TEXT,
+                imerominia_ekdosis TEXT,
+                imerominia_lixis TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS kiniseis (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                auxon_arithmos INTEGER NOT NULL,
+                imerominia TEXT NOT NULL,
+                tipos TEXT NOT NULL CHECK(tipos IN ('ΕΙΣΑΓΩΓΗ','ΚΑΤΑΝΑΛΩΣΗ','ΕΠΙΣΤΡΟΦΗ','ΕΞΑΓΩΓΗ')),
+                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
+                posotita REAL NOT NULL CHECK(posotita > 0),
+                arithmos_parstatikos TEXT,
+                adeia_id INTEGER REFERENCES adeies(id),
+                promitheftis_id INTEGER REFERENCES promitheftes(id),
+                paratirishis TEXT,
+                ypografi TEXT,
+                created_at TEXT DEFAULT (datetime('now')),
+                agora_ref TEXT
+            );
+
+            CREATE TABLE IF NOT EXISTS auxon_counter (
+                id INTEGER PRIMARY KEY CHECK(id=1),
+                next_val INTEGER NOT NULL DEFAULT 1
+            );
+
+            CREATE TABLE IF NOT EXISTS ypologismos (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                parstatiko_agoras TEXT NOT NULL,
+                imerominia_agoras TEXT NOT NULL,
+                senario INTEGER NOT NULL CHECK(senario IN (1,2)),
+                created_at TEXT DEFAULT (datetime('now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS ypologismos_grammes (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ypologismos_id INTEGER NOT NULL REFERENCES ypologismos(id) ON DELETE CASCADE,
+                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
+                posotita_agoras REAL NOT NULL DEFAULT 0,
+                posotita_katanalosis REAL NOT NULL DEFAULT 0,
+                posotita_epistrofis REAL NOT NULL DEFAULT 0
+            );
+
+            CREATE TABLE IF NOT EXISTS adeia_ylika (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                adeia_id INTEGER NOT NULL REFERENCES adeies(id) ON DELETE CASCADE,
+                nomiki_katigoria TEXT NOT NULL,
+                egekrimeni_posotita REAL NOT NULL,
+                UNIQUE(adeia_id, nomiki_katigoria)
+            );
+
+            INSERT OR IGNORE INTO auxon_counter(id, next_val) VALUES (1, 1);
+        ''')
+
+        # ── Migrations για παλιότερες εγκαταστάσεις (πίνακες προϋπάρχουν χωρίς κάποια στήλη) ──
+
         # Migration: agora_ref για επιστροφές
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(kiniseis)").fetchall()]
@@ -114,10 +205,17 @@ def init_db():
                     conn.execute("UPDATE kiniseis SET agora_ref=? WHERE id=?", (agora[0], kat[0]))
         except Exception:
             pass
+        # Migration: kategoria στα ylika
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(ylika)").fetchall()]
+            if cols and 'kategoria' not in cols:
+                conn.execute("ALTER TABLE ylika ADD COLUMN kategoria TEXT")
+        except Exception:
+            pass
         # Migration: export_group στα ylika
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(ylika)").fetchall()]
-            if 'export_group' not in cols:
+            if cols and 'export_group' not in cols:
                 conn.execute("ALTER TABLE ylika ADD COLUMN export_group TEXT")
                 # Αυτόματη συμπλήρωση από kategoria + όνομα
                 conn.execute("""UPDATE ylika SET export_group=CASE
@@ -133,7 +231,7 @@ def init_db():
         # Migration: nomiki_katigoria στα ylika (νόμιμη κατηγορία για Δελτίο Δραστηριότητας)
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(ylika)").fetchall()]
-            if 'nomiki_katigoria' not in cols:
+            if cols and 'nomiki_katigoria' not in cols:
                 conn.execute("ALTER TABLE ylika ADD COLUMN nomiki_katigoria TEXT")
                 for r in conn.execute("SELECT id, onoma FROM ylika").fetchall():
                     conn.execute("UPDATE ylika SET nomiki_katigoria=? WHERE id=?",
@@ -150,90 +248,24 @@ def init_db():
                              (classify_nomiki_katigoria(r[1]), r[0]))
         except Exception:
             pass
-        # Migration: ημερομηνίες άδειας
+        # Migration: syntomografia στους promitheftes
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(promitheftes)").fetchall()]
+            if cols and 'syntomografia' not in cols:
+                conn.execute("ALTER TABLE promitheftes ADD COLUMN syntomografia TEXT")
+        except Exception:
+            pass
+        # Migration: εκδούσα αρχή + ημερομηνίες άδειας
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(adeies)").fetchall()]
-            if 'imerominia_ekdosis' not in cols:
+            if cols and 'syntomografia_ekdousas' not in cols:
+                conn.execute("ALTER TABLE adeies ADD COLUMN syntomografia_ekdousas TEXT")
+            if cols and 'imerominia_ekdosis' not in cols:
                 conn.execute("ALTER TABLE adeies ADD COLUMN imerominia_ekdosis TEXT")
-            if 'imerominia_lixis' not in cols:
+            if cols and 'imerominia_lixis' not in cols:
                 conn.execute("ALTER TABLE adeies ADD COLUMN imerominia_lixis TEXT")
         except Exception:
             pass
-        # Migration: adeia_ylika — yliko_id → nomiki_katigoria (πίνακας ήταν κενός)
-        try:
-            cols = [r[1] for r in conn.execute("PRAGMA table_info(adeia_ylika)").fetchall()]
-            if cols and 'yliko_id' in cols:
-                conn.execute("DROP TABLE adeia_ylika")
-        except Exception:
-            pass
-        conn.executescript('''
-            CREATE TABLE IF NOT EXISTS ylika (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                onoma TEXT NOT NULL,
-                diatomi_mm INTEGER,
-                monada_metrisis TEXT NOT NULL,
-                paratirishis TEXT,
-                UNIQUE(onoma, diatomi_mm)
-            );
-
-            CREATE TABLE IF NOT EXISTS promitheftes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                onoma TEXT NOT NULL UNIQUE
-            );
-
-            CREATE TABLE IF NOT EXISTS adeies (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                arithmos_adeias TEXT NOT NULL UNIQUE,
-                perigrafi TEXT
-            );
-
-            CREATE TABLE IF NOT EXISTS kiniseis (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                auxon_arithmos INTEGER NOT NULL,
-                imerominia TEXT NOT NULL,
-                tipos TEXT NOT NULL CHECK(tipos IN ('ΕΙΣΑΓΩΓΗ','ΚΑΤΑΝΑΛΩΣΗ','ΕΠΙΣΤΡΟΦΗ','ΕΞΑΓΩΓΗ')),
-                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
-                posotita REAL NOT NULL CHECK(posotita > 0),
-                arithmos_parstatikos TEXT,
-                adeia_id INTEGER REFERENCES adeies(id),
-                promitheftis_id INTEGER REFERENCES promitheftes(id),
-                paratirishis TEXT,
-                ypografi TEXT,
-                created_at TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS auxon_counter (
-                id INTEGER PRIMARY KEY CHECK(id=1),
-                next_val INTEGER NOT NULL DEFAULT 1
-            );
-
-            CREATE TABLE IF NOT EXISTS ypologismos (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                parstatiko_agoras TEXT NOT NULL,
-                imerominia_agoras TEXT NOT NULL,
-                senario INTEGER NOT NULL CHECK(senario IN (1,2)),
-                created_at TEXT DEFAULT (datetime('now'))
-            );
-
-            CREATE TABLE IF NOT EXISTS ypologismos_grammes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                ypologismos_id INTEGER NOT NULL REFERENCES ypologismos(id) ON DELETE CASCADE,
-                yliko_id INTEGER NOT NULL REFERENCES ylika(id),
-                posotita_agoras REAL NOT NULL DEFAULT 0,
-                posotita_katanalosis REAL NOT NULL DEFAULT 0,
-                posotita_epistrofis REAL NOT NULL DEFAULT 0
-            );
-
-            CREATE TABLE IF NOT EXISTS adeia_ylika (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                adeia_id INTEGER NOT NULL REFERENCES adeies(id) ON DELETE CASCADE,
-                nomiki_katigoria TEXT NOT NULL,
-                egekrimeni_posotita REAL NOT NULL,
-                UNIQUE(adeia_id, nomiki_katigoria)
-            );
-
-            INSERT OR IGNORE INTO auxon_counter(id, next_val) VALUES (1, 1);
-        ''')
 
 def next_auxon():
     with get_db() as conn:
