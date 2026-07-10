@@ -237,10 +237,12 @@ function checkForUpdatesManually() {
     res.on('end', () => {
       try {
         const release = JSON.parse(data);
-        const latest = release.tag_name?.replace(/^v/, '');
+        // Αγνοούμε pre-release/build suffix (π.χ. "1.0.4-beta.1" → "1.0.4")
+        const latest = release.tag_name?.replace(/^v/, '').split(/[-+]/)[0];
         if (!latest) return;
-        const [la, lb, lc] = latest.split('.').map(Number);
-        const [ca, cb, cc] = currentVersion.split('.').map(Number);
+        const parseVer = (v) => (v || '').split('.').map(n => parseInt(n, 10) || 0);
+        const [la, lb, lc] = parseVer(latest);
+        const [ca, cb, cc] = parseVer(currentVersion);
         const isNewer = la > ca || (la === ca && lb > cb) || (la === ca && lb === cb && lc > cc);
         if (isNewer) {
           mainWindow?.webContents.send('update-status', {

@@ -1253,6 +1253,19 @@ function onPageLoad(page) {
   if (page === 'backup')        loadBackupPage();
 }
 
+// ── HTML ESCAPING ────────────────────────────────────────────────────────────
+// Χρήση σε κείμενο που προέρχεται από εξωτερικές πηγές (π.χ. αναγνώριση PDF)
+// πριν την εισαγωγή του σε innerHTML, ώστε να μην ερμηνεύεται ως markup.
+function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── API HELPERS ──────────────────────────────────────────────────────────────
 // Αντί για fetch() → api.call() μέσω IPC
 async function py(cmd, payload = {}) {
@@ -1293,8 +1306,8 @@ async function loadDashboard() {
       ? '<span class="badge badge-neg">⚠️ ΑΔΙΚΑΙΟΛΟΓΗΤΟ</span>'
       : '<span class="badge badge-ok">✅ ΟΚ</span>';
     return `<tr>
-      <td><strong>${r.onoma}</strong>${r.diatomi_mm?` <small>(${r.diatomi_mm}mm)</small>`:''}</td>
-      <td>${r.monada_metrisis}</td>
+      <td><strong>${escapeHtml(r.onoma)}</strong>${r.diatomi_mm?` <small>(${escapeHtml(r.diatomi_mm)}mm)</small>`:''}</td>
+      <td>${escapeHtml(r.monada_metrisis)}</td>
       <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
       <td class="text-right mono">${r.synolo_katanalosis.toFixed(3)}</td>
       <td class="text-right mono">${r.synolo_epistrofon.toFixed(3)}</td>
@@ -1309,9 +1322,9 @@ async function loadDashboard() {
     <td class="mono">${k.auxon_arithmos}</td>
     <td>${fmtDate(k.imerominia)}</td>
     <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'badge-kat':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣΑΓΩΓΗ':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'🔥 ΚΑΤΑΝΑΛΩΣΗ':k.tipos==='ΕΠΙΣΤΡΟΦΗ'?'🔄 ΕΠΙΣΤΡΟΦΗ':'📤 ΕΞΑΓΩΓΗ'}</span></td>
-    <td>${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
-    <td class="text-right mono">${k.posotita.toFixed(3)} ${k.monada_metrisis}</td>
-    <td class="mono">${k.arithmos_parstatikos||'—'}</td>
+    <td>${escapeHtml(k.yliko_onoma)}${k.diatomi_mm?` (${escapeHtml(k.diatomi_mm)}mm)`:''}</td>
+    <td class="text-right mono">${k.posotita.toFixed(3)} ${escapeHtml(k.monada_metrisis)}</td>
+    <td class="mono">${escapeHtml(k.arithmos_parstatikos)||'—'}</td>
   </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν κινήσεις</td></tr>';
 }
 
@@ -1326,8 +1339,8 @@ async function loadApothemates() {
       ? '<span class="badge badge-neg">⚠️ ΑΔΙΚΑΙΟΛΟΓΗΤΟ</span>'
       : '<span class="badge badge-ok">✅ ΟΚ</span>';
     return `<tr>
-      <td><strong>${r.onoma}</strong>${r.diatomi_mm?` <small>(${r.diatomi_mm}mm)</small>`:''}</td>
-      <td>${r.monada_metrisis}</td>
+      <td><strong>${escapeHtml(r.onoma)}</strong>${r.diatomi_mm?` <small>(${escapeHtml(r.diatomi_mm)}mm)</small>`:''}</td>
+      <td>${escapeHtml(r.monada_metrisis)}</td>
       <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
       <td class="text-right mono">${r.synolo_katanalosis.toFixed(3)}</td>
       <td class="text-right mono">${r.synolo_epistrofon.toFixed(3)}</td>
@@ -1355,7 +1368,7 @@ async function fillAgoraDatalist() {
   const parst = [...new Set(
     kiniseis.filter(k => k.arithmos_parstatikos).map(k => k.arithmos_parstatikos)
   )].sort();
-  const opts = parst.map(p => `<option value="${p}">`).join('');
+  const opts = parst.map(p => `<option value="${escapeHtml(p)}">`).join('');
   ['kin-agora-datalist', 'ek-agora-datalist'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.innerHTML = opts;
@@ -1373,7 +1386,7 @@ function toggleAgoraRefRow(prefix) {
   }
 }
 
-function ylikoLabel(y) { return y.onoma + (y.diatomi_mm ? ` (${y.diatomi_mm}mm)` : '') + ` — ${y.monada_metrisis}`; }
+function ylikoLabel(y) { return escapeHtml(y.onoma) + (y.diatomi_mm ? ` (${escapeHtml(y.diatomi_mm)}mm)` : '') + ` — ${escapeHtml(y.monada_metrisis)}`; }
 
 function fillYlikoSelects() {
   const opts = allYlika.map(y => `<option value="${y.id}">${ylikoLabel(y)}</option>`).join('');
@@ -1386,12 +1399,12 @@ function fillYlikoSelects() {
   });
 }
 function fillPromSelects() {
-  const opts = '<option value="">— Κανένας —</option>' + allProm.map(p=>`<option value="${p.id}">${p.onoma}</option>`).join('');
+  const opts = '<option value="">— Κανένας —</option>' + allProm.map(p=>`<option value="${p.id}">${escapeHtml(p.onoma)}</option>`).join('');
   const el = document.getElementById('kin-prom');
   if (el) { const v=el.value; el.innerHTML=opts; if(v) el.value=v; }
 }
 function fillAdeiesSelects() {
-  const opts = '<option value="">— Καμία —</option>' + allAdeies.map(a=>`<option value="${a.id}">${a.arithmos_adeias}</option>`).join('');
+  const opts = '<option value="">— Καμία —</option>' + allAdeies.map(a=>`<option value="${a.id}">${escapeHtml(a.arithmos_adeias)}</option>`).join('');
   const el = document.getElementById('kin-adeia');
   if (el) { const v=el.value; el.innerHTML=opts; if(v) el.value=v; }
 }
@@ -1432,14 +1445,14 @@ function renderKiniseis(limit) {
     <td class="mono">${k.auxon_arithmos}</td>
     <td>${fmtDate(k.imerominia)}</td>
     <td><span class="badge ${k.tipos==='ΕΙΣΑΓΩΓΗ'?'badge-in':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'badge-kat':'badge-out'}">${k.tipos==='ΕΙΣΑΓΩΓΗ'?'📥 ΕΙΣ':k.tipos==='ΚΑΤΑΝΑΛΩΣΗ'?'🔥 ΚΑΤ':k.tipos==='ΕΠΙΣΤΡΟΦΗ'?'🔄 ΕΠΙ':'📤 ΕΞΑ'}</span></td>
-    <td>${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
-    <td class="mono">${k.arithmos_parstatikos||'—'}</td>
-    <td class="text-right mono">${k.posotita.toFixed(3)} ${k.monada_metrisis}</td>
-    <td class="mono">${k.arithmos_adeias||'—'}</td>
-    <td>${k.promitheftis_onoma||'—'}</td>
-    <td>${k.ypografi||'—'}</td>
+    <td>${escapeHtml(k.yliko_onoma)}${k.diatomi_mm?` (${escapeHtml(k.diatomi_mm)}mm)`:''}</td>
+    <td class="mono">${escapeHtml(k.arithmos_parstatikos)||'—'}</td>
+    <td class="text-right mono">${k.posotita.toFixed(3)} ${escapeHtml(k.monada_metrisis)}</td>
+    <td class="mono">${escapeHtml(k.arithmos_adeias)||'—'}</td>
+    <td>${escapeHtml(k.promitheftis_onoma)||'—'}</td>
+    <td>${escapeHtml(k.ypografi)||'—'}</td>
     <td class="text-center">
-      <button class="btn btn-outline btn-sm" onclick='editKinisi(${JSON.stringify(k)})'>✏️</button>
+      <button class="btn btn-outline btn-sm" onclick='editKinisi(${escapeHtml(JSON.stringify(k))})'>✏️</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDelete('kinisi',${k.id})">🗑</button>
     </td>
   </tr>`).join('') + (hasMore ? `<tr><td colspan="10" style="text-align:center;padding:10px;">
@@ -1476,13 +1489,13 @@ async function editKinisi(k) {
   if (ekProm.options.length <= 1) {
     const proms = await py('get_promitheftes');
     ekProm.innerHTML = '<option value="">— Κανένας —</option>' +
-      proms.map(p => `<option value="${p.id}">${p.onoma}</option>`).join('');
+      proms.map(p => `<option value="${p.id}">${escapeHtml(p.onoma)}</option>`).join('');
   }
   const ekAdeia = document.getElementById('ek-adeia');
   if (ekAdeia.options.length <= 1) {
     const adeies = await py('get_adeies');
     ekAdeia.innerHTML = '<option value="">— Καμία —</option>' +
-      adeies.map(a => `<option value="${a.id}">${a.arithmos_adeias}</option>`).join('');
+      adeies.map(a => `<option value="${a.id}">${escapeHtml(a.arithmos_adeias)}</option>`).join('');
   }
 
   document.getElementById('ek-imerominia').value = k.imerominia;
@@ -1551,7 +1564,7 @@ async function checkAdeiaYpoloipo() {
   hint.style.background = ok ? '#c6f6d5' : '#fed7d7';
   hint.style.border = ok ? '1px solid #68d391' : '1px solid #fc8181';
   hint.style.color  = ok ? '#276749' : '#742a2a';
-  hint.innerHTML = `📋 Υπόλοιπο άδειας (${nomiki_katigoria}): <strong>${yp.toFixed(3)} ${r.monada_metrisis}</strong> (εγκεκρ. ${r.egekrimeni_posotita.toFixed(3)}, χρησιμ. ${r.xrisimopoiimeni.toFixed(3)})`;
+  hint.innerHTML = `📋 Υπόλοιπο άδειας (${nomiki_katigoria}): <strong>${yp.toFixed(3)} ${escapeHtml(r.monada_metrisis)}</strong> (εγκεκρ. ${r.egekrimeni_posotita.toFixed(3)}, χρησιμ. ${r.xrisimopoiimeni.toFixed(3)})`;
 }
 
 async function saveKinisi() {
@@ -1597,7 +1610,7 @@ async function checkEkkremotita(yliko_id, imerominia, parstatiko='') {
     const lines = r.ekkremes.map(e => {
       const tipo_label = e.tipo === 'ΚΑΤΑΝΑΛΩΣΗ' ? '🔥 Κατανάλωση' : '🔄 Επιστροφή';
       const fmt = e.posotita.toFixed(3).replace('.',',');
-      return `<div>• ${tipo_label} <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
+      return `<div>• ${tipo_label} <strong>${escapeHtml(e.yliko_onoma)}</strong>: ${fmt} ${escapeHtml(e.monada)}</div>`;
     }).join('');
 
     banner.innerHTML = `
@@ -1689,12 +1702,12 @@ function clearFilters() {
 async function loadYlika() {
   allYlika = await py('get_ylika');
   const body = document.getElementById('yl-body');
-  body.innerHTML = allYlika.map(y => `<tr style="cursor:pointer" onclick='fillYlikoForm(${JSON.stringify(y)})'>
-    <td><strong>${y.onoma}</strong></td>
-    <td>${y.diatomi_mm||'—'}</td>
-    <td>${y.monada_metrisis}</td>
-    <td>${y.nomiki_katigoria||'—'}</td>
-    <td>${y.paratirishis||'—'}</td>
+  body.innerHTML = allYlika.map(y => `<tr style="cursor:pointer" onclick='fillYlikoForm(${escapeHtml(JSON.stringify(y))})'>
+    <td><strong>${escapeHtml(y.onoma)}</strong></td>
+    <td>${escapeHtml(y.diatomi_mm)||'—'}</td>
+    <td>${escapeHtml(y.monada_metrisis)}</td>
+    <td>${escapeHtml(y.nomiki_katigoria)||'—'}</td>
+    <td>${escapeHtml(y.paratirishis)||'—'}</td>
   </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';
 }
 
@@ -1747,8 +1760,8 @@ function clearYlikoForm() {
 async function loadProm() {
   allProm = await py('get_promitheftes');
   const body = document.getElementById('prom-body');
-  body.innerHTML = allProm.map(p=>`<tr style="cursor:pointer" onclick='fillPromForm(${JSON.stringify(p)})'>
-    <td>${p.onoma}</td>
+  body.innerHTML = allProm.map(p=>`<tr style="cursor:pointer" onclick='fillPromForm(${escapeHtml(JSON.stringify(p))})'>
+    <td>${escapeHtml(p.onoma)}</td>
   </tr>`).join('') || '<tr><td style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
 }
 
@@ -1794,11 +1807,11 @@ async function loadAdeies() {
   const ylikoSel = document.getElementById('adeia-yliko-new');
   if (ylikoSel) {
     ylikoSel.innerHTML = '<option value="">— Επιλογή —</option>' +
-      allYlika.map(y => `<option value="${y.id}">${y.onoma}${y.diatomi_mm?` (${y.diatomi_mm}mm)`:''} — ${y.monada_metrisis}</option>`).join('');
+      allYlika.map(y => `<option value="${y.id}">${escapeHtml(y.onoma)}${y.diatomi_mm?` (${escapeHtml(y.diatomi_mm)}mm)`:''} — ${escapeHtml(y.monada_metrisis)}</option>`).join('');
   }
   const body=document.getElementById('adeia-body');
-  body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" onclick='fillAdeiaForm(${JSON.stringify(a)})'>
-    <td><strong>${a.arithmos_adeias}</strong></td><td>${a.perigrafi||'—'}</td><td>${a.syntomografia_ekdousas||'—'}</td>
+  body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" onclick='fillAdeiaForm(${escapeHtml(JSON.stringify(a))})'>
+    <td><strong>${escapeHtml(a.arithmos_adeias)}</strong></td><td>${escapeHtml(a.perigrafi)||'—'}</td><td>${escapeHtml(a.syntomografia_ekdousas)||'—'}</td>
     <td style="white-space:nowrap">${a.imerominia_lixis ? fmtDate(a.imerominia_lixis) : '—'}</td>
   </tr>`).join('')||'<tr><td colspan="4" style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
 }
@@ -1827,8 +1840,8 @@ async function loadAdeiaYlika(adeia_id) {
     const yp = r.egekrimeni_posotita - r.xrisimopoiimeni;
     const ypCls = yp < 0 ? 'color:#c53030;font-weight:600' : yp === 0 ? 'color:#276749' : '';
     return `<tr>
-      <td>${r.nomiki_katigoria}</td>
-      <td class="text-right mono">${r.egekrimeni_posotita.toFixed(3)} ${r.monada_metrisis}</td>
+      <td>${escapeHtml(r.nomiki_katigoria)}</td>
+      <td class="text-right mono">${r.egekrimeni_posotita.toFixed(3)} ${escapeHtml(r.monada_metrisis)}</td>
       <td class="text-right mono">${r.xrisimopoiimeni.toFixed(3)}</td>
       <td class="text-right mono" style="${ypCls}">${yp.toFixed(3)}</td>
       <td><button class="btn btn-danger btn-sm" style="padding:2px 6px;" onclick="removeAdeiaYliko(${r.id},${r.adeia_id})">✖</button></td>
@@ -1927,8 +1940,8 @@ async function parsePdf() {
       container.innerHTML = '<div class="card-title" style="margin-top:16px;margin-bottom:10px;">Αναγνωρισμένα Υλικά</div>' +
         s.grammes.map((g,i)=>`
           <div class="form-row cols-3" style="margin-bottom:8px;">
-            <div><label>Υλικό ${i+1}</label><input type="text" id="pdf-g-onoma-${i}" value="${g.onoma}"></div>
-            <div><label>Ποσότητα</label><input type="number" id="pdf-g-pos-${i}" value="${g.posotita}" step="0.001"></div>
+            <div><label>Υλικό ${i+1}</label><input type="text" id="pdf-g-onoma-${i}" value="${escapeHtml(g.onoma)}"></div>
+            <div><label>Ποσότητα</label><input type="number" id="pdf-g-pos-${i}" value="${escapeHtml(g.posotita)}" step="0.001"></div>
             <div><label>Μονάδα</label>
               <select id="pdf-g-mon-${i}">
                 <option ${g.monada==='Κιλ'?'selected':''}>Κιλ</option>
@@ -2010,7 +2023,7 @@ async function submitPdfEntries() {
   }
   const alertEl = document.getElementById('pdf-alert');
   alertEl.innerHTML = '';
-  if (errors.length) alertEl.innerHTML += `<div class="alert alert-error">Σφάλματα: ${errors.join(', ')}</div>`;
+  if (errors.length) alertEl.innerHTML += `<div class="alert alert-error">Σφάλματα: ${escapeHtml(errors.join(', '))}</div>`;
   if (saved) {
     alertEl.innerHTML += `<div class="alert alert-success">✅ Καταχωρήθηκαν ${saved} γραμμές!</div>`;
 
@@ -2022,9 +2035,9 @@ async function submitPdfEntries() {
       alertEl.innerHTML += `
         <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
           <strong>⚠️ Βήμα 2: Συσχέτισε με τιμολόγιο αγοράς</strong>
-          <div style="margin:8px 0;font-size:13px;">Ποιο τιμολόγιο αγοράς αφορά η επιστροφή <strong>${parstatiko}</strong>;</div>
+          <div style="margin:8px 0;font-size:13px;">Ποιο τιμολόγιο αγοράς αφορά η επιστροφή <strong>${escapeHtml(parstatiko)}</strong>;</div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:8px;">
-            <input type="text" id="ekk-parst-input" value="${lastParst}"
+            <input type="text" id="ekk-parst-input" value="${escapeHtml(lastParst)}"
               style="flex:1;padding:6px 10px;border:1px solid #ffc107;border-radius:4px;font-size:13px;"
               placeholder="π.χ. ΔΙΧΝ - 19586">
             <button class="btn btn-sm btn-accent" onclick="checkEkkremotitaByParst()">🔍 Έλεγχος</button>
@@ -2034,10 +2047,10 @@ async function submitPdfEntries() {
       // ── ΕΙΣΑΓΩΓΗ: ρώτα αν υπάρχει επιστροφή ──
       alertEl.innerHTML += `
         <div class="alert" style="background:#e8f4fd;border:1px solid #90cdf4;color:#2b6cb0;margin-top:8px;" id="ekk-eisagogi-prompt">
-          <strong>📋 Βήμα 2: Έχεις επιστροφή για το <em>${parstatiko}</em>;</strong>
+          <strong>📋 Βήμα 2: Έχεις επιστροφή για το <em>${escapeHtml(parstatiko)}</em>;</strong>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="btn btn-sm btn-outline" onclick="showEkkEisagogiWait('${parstatiko}')">🔄 ΝΑΙ — Θα περάσω πιστωτικό</button>
-            <button class="btn btn-sm btn-success" onclick="doAutoKataxorisiEisagogi('${parstatiko}')">✅ ΟΧΙ — Καταχώρηση Κατανάλωσης</button>
+            <button class="btn btn-sm btn-outline" onclick="showEkkEisagogiWait(${escapeHtml(JSON.stringify(parstatiko))})">🔄 ΝΑΙ — Θα περάσω πιστωτικό</button>
+            <button class="btn btn-sm btn-success" onclick="doAutoKataxorisiEisagogi(${escapeHtml(JSON.stringify(parstatiko))})">✅ ΟΧΙ — Καταχώρηση Κατανάλωσης</button>
           </div>
         </div>`;
     }
@@ -2048,7 +2061,7 @@ function showEkkEisagogiWait(parstatiko) {
   const alertEl = document.getElementById('pdf-alert');
   alertEl.innerHTML += `
     <div class="alert" style="background:#e8f4fd;border:1px solid #90cdf4;color:#2b6cb0;margin-top:8px;">
-      ℹ️ Πέρασε το πιστωτικό τιμολόγιο — μετά η εφαρμογή θα σε καθοδηγήσει για την κατανάλωση του <strong>${parstatiko}</strong>.
+      ℹ️ Πέρασε το πιστωτικό τιμολόγιο — μετά η εφαρμογή θα σε καθοδηγήσει για την κατανάλωση του <strong>${escapeHtml(parstatiko)}</strong>.
     </div>`;
   document.getElementById('ekk-eisagogi-prompt')?.remove();
 }
@@ -2061,7 +2074,7 @@ async function doAutoKataxorisiEisagogi(parstatiko) {
 
   if (!eisagogi.length) {
     const alertEl = document.getElementById('pdf-alert');
-    alertEl.innerHTML += `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Δεν βρέθηκαν γραμμές αγοράς για <strong>${parstatiko}</strong>.</div>`;
+    alertEl.innerHTML += `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Δεν βρέθηκαν γραμμές αγοράς για <strong>${escapeHtml(parstatiko)}</strong>.</div>`;
     document.getElementById('ekk-eisagogi-prompt')?.remove();
     return;
   }
@@ -2083,12 +2096,12 @@ async function doAutoKataxorisiEisagogi(parstatiko) {
 
   const lines = window._ekkData.map(e => {
     const fmt = e.posotita.toFixed(3).replace('.',',');
-    return `<div>• 🔥 <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
+    return `<div>• 🔥 <strong>${escapeHtml(e.yliko_onoma)}</strong>: ${fmt} ${escapeHtml(e.monada)}</div>`;
   }).join('');
   const alertEl = document.getElementById('pdf-alert');
   alertEl.innerHTML += `
     <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
-      <strong>🔥 Καταναλώσεις για <em>${parstatiko}</em>:</strong>
+      <strong>🔥 Καταναλώσεις για <em>${escapeHtml(parstatiko)}</em>:</strong>
       <div style="margin:8px 0;font-size:12px;">${lines}</div>
       <button class="btn btn-sm btn-accent" onclick="autoKataxorisiAll()">✅ Καταχώρηση Κατανάλωσης</button>
     </div>`;
@@ -2127,9 +2140,9 @@ async function doExport(fmt) {
       yliko_label: 'Όλα', period_label: `${ap||'—'} έως ${eo||'—'}`,
       out_path: savePath, font: font, nonel_mode: nonel_mode
     });
-    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${savePath}</div>`;
+    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${escapeHtml(savePath)}</div>`;
   } catch(e) {
-    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${e.message}</div>`;
+    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${escapeHtml(e.message)}</div>`;
   } finally {
     btn.textContent = origText;
     btn.disabled = false;
@@ -2153,9 +2166,9 @@ async function exportListaAgores() {
       apo_label: ap || '—', eos_label: eo || '—',
       out_path: savePath
     });
-    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${savePath}</div>`;
+    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${escapeHtml(savePath)}</div>`;
   } catch(e) {
-    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${e.message}</div>`;
+    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${escapeHtml(e.message)}</div>`;
   } finally {
     btn.textContent = origText;
     btn.disabled = false;
@@ -2180,9 +2193,9 @@ async function exportDeltioDrastiriotitas(fmt) {
       apo_label: ap || '—', eos_label: eo || '—',
       out_path: savePath
     });
-    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${savePath}</div>`;
+    msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${escapeHtml(savePath)}</div>`;
   } catch(e) {
-    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${e.message}</div>`;
+    msgEl.innerHTML = `<div class="alert alert-error">❌ Σφάλμα: ${escapeHtml(e.message)}</div>`;
   } finally {
     btn.textContent = origText;
     btn.disabled = false;
@@ -2198,7 +2211,7 @@ function showDiploModal(parstatiko, existing) {
   document.getElementById('diplo-msg').textContent =
     `Το παραστατικό "${parstatiko}" έχει ήδη καταχωρηθεί:`;
   document.getElementById('diplo-list').innerHTML = existing.map(e =>
-    `<div>• ${e.yliko_onoma}: ${e.posotita.toFixed(3)} ${e.monada_metrisis} (${e.imerominia})</div>`
+    `<div>• ${escapeHtml(e.yliko_onoma)}: ${e.posotita.toFixed(3)} ${escapeHtml(e.monada_metrisis)} (${escapeHtml(e.imerominia)})</div>`
   ).join('');
   document.getElementById('diplo-modal').classList.add('open');
 }
@@ -2237,7 +2250,7 @@ async function loadYpologismos() {
   const parstatika = [...new Set(kin.filter(k=>k.arithmos_parstatikos).map(k=>k.arithmos_parstatikos))];
   const sel = document.getElementById('yp-parstatiko');
   sel.innerHTML = '<option value="">— Επιλογή —</option>' +
-    parstatika.map(p => `<option value="${p}">${p}</option>`).join('');
+    parstatika.map(p => `<option value="${escapeHtml(p)}">${escapeHtml(p)}</option>`).join('');
 }
 
 async function loadYpologismosAgora() {
@@ -2280,14 +2293,14 @@ function renderYpTable() {
   }
   body.innerHTML = _ypAgora.map((y, i) => `
     <tr>
-      <td>${y.yliko_onoma}</td>
+      <td>${escapeHtml(y.yliko_onoma)}</td>
       <td class="text-right mono">${y.posotita.toFixed(3).replace('.',',')}</td>
       <td class="text-right">
         <input type="number" id="yp-input-${i}" step="0.001" min="0"
           style="width:100px;text-align:right;" placeholder="0">
       </td>
       <td class="text-right mono" id="yp-result-${i}" style="color:var(--accent);">—</td>
-      <td>${y.monada}</td>
+      <td>${escapeHtml(y.monada)}</td>
     </tr>`).join('');
 }
 
@@ -2337,11 +2350,11 @@ function showYpResults() {
   const rows = _ypResult.map(r => {
     const val = _ypSenario===1 ? r.posotita_epistrofis : r.posotita_katanalosis;
     return `<tr>
-      <td>${r.yliko_onoma}</td>
+      <td>${escapeHtml(r.yliko_onoma)}</td>
       <td class="text-right mono">${r.posotita_agoras.toFixed(3).replace('.',',')}</td>
       <td class="text-right mono">${(_ypSenario===1?r.posotita_katanalosis:r.posotita_epistrofis).toFixed(3).replace('.',',')}</td>
       <td class="text-right mono" style="color:var(--accent);font-weight:bold;">${val.toFixed(3).replace('.',',')}</td>
-      <td>${r.monada}</td>
+      <td>${escapeHtml(r.monada)}</td>
     </tr>`;
   }).join('');
 
@@ -2386,11 +2399,11 @@ async function compareYpWithVivlio() {
   } else if (r.differences && r.differences.length > 0) {
     const diffs = r.differences.map(d => `
       <tr>
-        <td>${d.yliko_onoma}</td>
+        <td>${escapeHtml(d.yliko_onoma)}</td>
         <td class="text-right mono">${d.katanalosi_ypologistis.toFixed(3).replace('.',',')}</td>
         <td class="text-right mono">${d.katanalosi_vivliou.toFixed(3).replace('.',',')}</td>
         <td class="text-right mono" style="color:var(--danger);">${d.diafora.toFixed(3).replace('.',',')}</td>
-        <td>${d.monada}</td>
+        <td>${escapeHtml(d.monada)}</td>
       </tr>`).join('');
     div.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;">
       ❌ Διαφορά με το Βιβλίο — ελέγξτε τα δεδομένα πριν καταχωρήσετε.
@@ -2463,7 +2476,7 @@ async function saveEpistrofiFromYpologismos() {
   }
 
   if (errors.length) {
-    msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;">Σφάλματα: ${errors.join(', ')}</div>`;
+    msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;">Σφάλματα: ${escapeHtml(errors.join(', '))}</div>`;
   } else {
     msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;">✅ Καταχωρήθηκαν ${saved} επιστροφές.${!epiParst ? ' Χωρίς παραστατικό — χρησιμοποίησε τη σελίδα Παραστατικά για να το συμπληρώσεις αργότερα.' : ''}</div>`;
     document.getElementById('yp-epi-parst').value = '';
@@ -2480,7 +2493,7 @@ async function exportYpologismosPdf() {
     grammes: _ypResult, out_path: savePath
   });
   document.getElementById('export-msg') &&
-    (document.getElementById('export-msg').innerHTML = `<div class="alert alert-success">✅ ${savePath}</div>`);
+    (document.getElementById('export-msg').innerHTML = `<div class="alert alert-success">✅ ${escapeHtml(savePath)}</div>`);
 }
 
 // ── ΕΚΚΡΕΜΟΤΗΤΑ ΑΝΑ ΠΑΡΑΣΤΑΤΙΚΟ ────────────────────────────────────────────
@@ -2500,7 +2513,7 @@ async function checkEkkremotitaByParst() {
   if (!r.ekkremotita || !r.ekkremes?.length) {
     alertEl.innerHTML += `
       <div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">
-        ✅ Πλήρης επιστροφή — δεν απαιτείται κατανάλωση για <strong>"${parst}"</strong>.
+        ✅ Πλήρης επιστροφή — δεν απαιτείται κατανάλωση για <strong>"${escapeHtml(parst)}"</strong>.
       </div>`;
     return;
   }
@@ -2511,12 +2524,12 @@ async function checkEkkremotitaByParst() {
   window._ekkImerominia = r.ekkremes[0]?.imerominia || '';
   const lines = r.ekkremes.map(e => {
     const fmt = e.posotita.toFixed(3).replace('.',',');
-    return `<div>• 🔥 <strong>${e.yliko_onoma}</strong>: ${fmt} ${e.monada}</div>`;
+    return `<div>• 🔥 <strong>${escapeHtml(e.yliko_onoma)}</strong>: ${fmt} ${escapeHtml(e.monada)}</div>`;
   }).join('');
 
   alertEl.innerHTML += `
     <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
-      <strong>🔥 Καταναλώσεις για <em>${parst}</em>:</strong>
+      <strong>🔥 Καταναλώσεις για <em>${escapeHtml(parst)}</em>:</strong>
       <div style="margin:8px 0;font-size:12px;">${lines}</div>
       <div style="display:flex;gap:8px;margin-top:8px;">
         <button class="btn btn-sm btn-accent" onclick="autoKataxorisiAll()">✅ Καταχώρηση Κατανάλωσης</button>
@@ -2576,24 +2589,24 @@ async function loadParstatikaPage() {
   const [adeies, proms] = await Promise.all([py('get_adeies'), py('get_promitheftes')]);
   document.getElementById('rn-new-adeia').innerHTML =
     '<option value="">— Δεν αλλάζει —</option>' +
-    adeies.map(a => `<option value="${a.id}">${a.arithmos_adeias}${a.perigrafi?' — '+a.perigrafi:''}</option>`).join('');
+    adeies.map(a => `<option value="${a.id}">${escapeHtml(a.arithmos_adeias)}${a.perigrafi?' — '+escapeHtml(a.perigrafi):''}</option>`).join('');
   document.getElementById('rn-new-prom').innerHTML =
     '<option value="">— Δεν αλλάζει —</option>' +
-    proms.map(p => `<option value="${p.id}">${p.onoma}${p.syntomografia?' ('+p.syntomografia+')':''}</option>`).join('');
+    proms.map(p => `<option value="${p.id}">${escapeHtml(p.onoma)}${p.syntomografia?' ('+escapeHtml(p.syntomografia)+')':''}</option>`).join('');
 
   // Datalist αγορών για agora_ref
   const agoresParst = [...new Set(
     kiniseis.filter(k => k.tipos==='ΕΙΣΑΓΩΓΗ' && k.arithmos_parstatikos).map(k=>k.arithmos_parstatikos)
   )].sort();
   document.getElementById('rn-agora-datalist').innerHTML =
-    agoresParst.map(p => `<option value="${p}">`).join('');
+    agoresParst.map(p => `<option value="${escapeHtml(p)}">`).join('');
 
   // Dropdown αγορών — μόνο αγορές με εκκρεμείς επιστροφές χωρίς παραστατικό
   const pendingAgores = await py('get_agores_with_pending_epistrofes', {});
   const agoraSel = document.getElementById('pp-agora-sel');
   if (pendingAgores.length) {
     agoraSel.innerHTML = '<option value="">— Επιλογή —</option>' +
-      pendingAgores.map(k => `<option value="${k.arithmos_parstatikos}">${k.arithmos_parstatikos} (${fmtDate(k.imerominia)})</option>`).join('');
+      pendingAgores.map(k => `<option value="${escapeHtml(k.arithmos_parstatikos)}">${escapeHtml(k.arithmos_parstatikos)} (${fmtDate(k.imerominia)})</option>`).join('');
   } else {
     agoraSel.innerHTML = '<option value="">✅ Δεν υπάρχουν εκκρεμείς επιστροφές</option>';
   }
@@ -2604,7 +2617,7 @@ async function loadParstatikaPage() {
   )].sort();
 
   document.getElementById('rn-datalist').innerHTML =
-    allParst.map(p => `<option value="${p}">`).join('');
+    allParst.map(p => `<option value="${escapeHtml(p)}">`).join('');
 
   document.getElementById('pp-preview').innerHTML = '';
   document.getElementById('pp-msg').innerHTML = '';
@@ -2632,8 +2645,8 @@ async function loadEpistrofesWithoutParst() {
   const trs = rows.map(r => `<tr>
     <td class="mono">${r.auxon_arithmos}</td>
     <td>${fmtDate(r.imerominia)}</td>
-    <td>${r.yliko_onoma}${r.diatomi_mm ? ` (${r.diatomi_mm}mm)` : ''}</td>
-    <td class="text-right mono">${r.posotita.toFixed(3)} ${r.monada_metrisis}</td>
+    <td>${escapeHtml(r.yliko_onoma)}${r.diatomi_mm ? ` (${escapeHtml(r.diatomi_mm)}mm)` : ''}</td>
+    <td class="text-right mono">${r.posotita.toFixed(3)} ${escapeHtml(r.monada_metrisis)}</td>
   </tr>`).join('');
   preview.innerHTML = `
     <p style="font-size:12px;color:var(--muted);margin-bottom:6px;">Επιστροφές που θα ενημερωθούν (${rows.length}):</p>
@@ -2663,12 +2676,12 @@ async function assignEpistrofiParst() {
     if (r.updated === 0) {
       msg.innerHTML = '<div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">⚠️ Δεν βρέθηκαν επιστροφές χωρίς παραστατικό για αυτή την αγορά.</div>';
     } else {
-      msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Ενημερώθηκαν ${r.updated} επιστροφές με παραστατικό <strong>${newParst}</strong>.</div>`;
+      msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Ενημερώθηκαν ${r.updated} επιστροφές με παραστατικό <strong>${escapeHtml(newParst)}</strong>.</div>`;
       document.getElementById('pp-new-parst').value = '';
       document.getElementById('pp-new-date').value = '';
       await loadEpistrofesWithoutParst();
     }
-  } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`; }
+  } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${escapeHtml(e.message)}</div>`; }
 }
 
 async function loadRenamePreview() {
@@ -2714,9 +2727,9 @@ async function loadRenamePreview() {
   const firstAgora = agores[0] || linkedAgora[0] || related[0];
   const infoLines = [
     firstAgora?.imerominia ? `📅 ${fmtDate(firstAgora.imerominia)}` : '',
-    firstAgora?.arithmos_adeias ? `📋 Άδεια: ${firstAgora.arithmos_adeias}` : '',
-    firstAgora?.promitheftis_onoma ? `🏭 ${firstAgora.promitheftis_onoma}` : '',
-    linkedAgoraRef ? `🔗 Αγορά: ${linkedAgoraRef}` : '',
+    firstAgora?.arithmos_adeias ? `📋 Άδεια: ${escapeHtml(firstAgora.arithmos_adeias)}` : '',
+    firstAgora?.promitheftis_onoma ? `🏭 ${escapeHtml(firstAgora.promitheftis_onoma)}` : '',
+    linkedAgoraRef ? `🔗 Αγορά: ${escapeHtml(linkedAgoraRef)}` : '',
   ].filter(Boolean).join('&emsp;');
 
   // Προεπιλογή τρεχουσών τιμών στα dropdowns
@@ -2743,12 +2756,12 @@ async function loadRenamePreview() {
           ${tipoLbl[k.tipos]||k.tipos}${dimmed?' (συνδεδεμένη αγορά)':''}
         </span>
         ${k.arithmos_parstatikos && k.arithmos_parstatikos !== val
-          ? `<br><span style="font-size:10px;color:#718096;">Παρ: ${k.arithmos_parstatikos}</span>` : ''}
+          ? `<br><span style="font-size:10px;color:#718096;">Παρ: ${escapeHtml(k.arithmos_parstatikos)}</span>` : ''}
       </td>
       <td style="padding:5px 8px;font-size:12px;">${fmtDate(k.imerominia)}</td>
-      <td style="padding:5px 8px;font-size:12px;">${k.yliko_onoma}${k.diatomi_mm?` (${k.diatomi_mm}mm)`:''}</td>
+      <td style="padding:5px 8px;font-size:12px;">${escapeHtml(k.yliko_onoma)}${k.diatomi_mm?` (${escapeHtml(k.diatomi_mm)}mm)`:''}</td>
       <td style="padding:5px 8px;font-size:12px;text-align:right;font-family:monospace;">
-        ${k.posotita.toFixed(3)} ${k.monada_metrisis}
+        ${k.posotita.toFixed(3)} ${escapeHtml(k.monada_metrisis)}
       </td>
     </tr>`).join('');
 
@@ -2810,7 +2823,7 @@ async function applyRename() {
             document.getElementById('rn-search').value = newParst || oldParst;
             document.getElementById('rn-preview').innerHTML = '';
             await loadParstatikaPage();
-          } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`; }
+          } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${escapeHtml(e.message)}</div>`; }
         }
       );
       return;
@@ -2832,7 +2845,7 @@ async function applyRename() {
     document.getElementById('rn-search').value = newParst || oldParst;
     document.getElementById('rn-preview').innerHTML = '';
     await loadParstatikaPage();
-  } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`; }
+  } catch(e) { msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${escapeHtml(e.message)}</div>`; }
 }
 
 function promptDeleteParstatiko() {
@@ -2845,13 +2858,13 @@ function promptDeleteParstatiko() {
   const bothBtn    = document.getElementById('rn-del-both-btn');
 
   const linkedAgoraRef = window._rnLinkedAgoraRef || null;
-  let msg = `⚠️ Πρόκειται να διαγραφούν <strong>όλες οι κινήσεις</strong> με παραστατικό <strong>${val}</strong>.`;
+  let msg = `⚠️ Πρόκειται να διαγραφούν <strong>όλες οι κινήσεις</strong> με παραστατικό <strong>${escapeHtml(val)}</strong>.`;
   if (hasRelated) {
-    msg += `<br>Υπάρχουν ${window._rnLinkedCount} συσχετισμένες επιστροφές (agora_ref = ${val}).`;
+    msg += `<br>Υπάρχουν ${window._rnLinkedCount} συσχετισμένες επιστροφές (agora_ref = ${escapeHtml(val)}).`;
     msg += `<br><em>Αν διαγραφεί μόνο η αγορά, οι επιστροφές μένουν ορφανές και οι ποσότητες δεν θα υπολογίζονται σωστά.</em>`;
     bothBtn.style.display = '';
   } else if (linkedAgoraRef) {
-    msg += `<br>Αυτή η επιστροφή συνδέεται με την αγορά <strong>${linkedAgoraRef}</strong>.`;
+    msg += `<br>Αυτή η επιστροφή συνδέεται με την αγορά <strong>${escapeHtml(linkedAgoraRef)}</strong>.`;
     msg += `<br><em>Αν διαγραφεί μόνο η επιστροφή, η αγορά θα υπολογίζει πλήρη κατανάλωση (χωρίς επιστροφή).</em>`;
     bothBtn.style.display = 'none';
   } else {
@@ -2883,7 +2896,7 @@ async function confirmDeleteParstatiko(includeRelated) {
       return;
     }
 
-    msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Το παραστατικό <strong>${val}</strong> διαγράφηκε${includeRelated?' μαζί με τις συσχετισμένες επιστροφές':''} .</div>`;
+    msg.innerHTML = `<div class="alert" style="background:#c6f6d5;border:1px solid #68d391;color:#276749;margin-top:8px;">✅ Το παραστατικό <strong>${escapeHtml(val)}</strong> διαγράφηκε${includeRelated?' μαζί με τις συσχετισμένες επιστροφές':''} .</div>`;
     document.getElementById('rn-search').value = '';
     document.getElementById('rn-preview').innerHTML = '';
     document.getElementById('rn-new-parst').value = '';
@@ -2894,7 +2907,7 @@ async function confirmDeleteParstatiko(includeRelated) {
     document.getElementById('rn-agora-ref-row').style.display = 'none';
     await loadParstatikaPage();
   } catch(e) {
-    msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${e.message}</div>`;
+    msg.innerHTML = `<div class="alert" style="background:#fed7d7;border:1px solid #fc8181;color:#742a2a;margin-top:8px;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -2936,10 +2949,10 @@ function openParstEditModal(kiniseis, ylikoName, parstatiko) {
       <td style="padding:10px 12px;text-align:right;">
         <input type="number" id="pe-pos-${k.id}" value="${k.posotita}" step="0.001" min="0.001"
           style="border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:13px;width:100px;text-align:right;font-family:var(--mono);">
-        <span style="font-size:12px;color:var(--muted);margin-left:4px;">${k.monada_metrisis}</span>
+        <span style="font-size:12px;color:var(--muted);margin-left:4px;">${escapeHtml(k.monada_metrisis)}</span>
       </td>
       <td style="padding:10px 12px;">
-        <input type="text" id="pe-ypografi-${k.id}" value="${k.ypografi||''}"
+        <input type="text" id="pe-ypografi-${k.id}" value="${escapeHtml(k.ypografi)||''}"
           style="border:1px solid var(--border);border-radius:4px;padding:5px 7px;font-size:13px;width:120px;">
       </td>
     </tr>`).join('');
@@ -3048,7 +3061,7 @@ function tplCapture(field) {
     badge.innerHTML = `<span style="background:#e8f4ea;color:#1a7a4a;border:1px solid #c3e6cb;
       border-radius:4px;padding:2px 8px;display:inline-block;max-width:220px;
       overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;"
-      title="${preview.replace(/"/g,'&quot;')}">✓ "${preview}"</span>`;
+      title="${escapeHtml(preview)}">✓ "${escapeHtml(preview)}"</span>`;
   }
 
   // Έλεγχος: onoma/posotita/monada πρέπει στην ίδια γραμμή
@@ -3110,7 +3123,7 @@ function _tplRenderPreview(preview, errors) {
   const bodyEl  = document.getElementById('tpl-preview-body');
 
   alertEl.innerHTML = errors.length
-    ? errors.map(e => `<div class="alert alert-error">⚠ ${e}</div>`).join('')
+    ? errors.map(e => `<div class="alert alert-error">⚠ ${escapeHtml(e)}</div>`).join('')
     : '';
 
   if (!preview || Object.keys(preview).length === 0) {
@@ -3124,21 +3137,21 @@ function _tplRenderPreview(preview, errors) {
 
   const grammes = (preview.grammes || []);
   const grammeRows = grammes.map(g =>
-    `<tr><td>${g.onoma||'—'}</td>
-         <td class="mono text-right">${g.posotita||'—'}</td>
-         <td>${g.monada||'—'}</td></tr>`
+    `<tr><td>${escapeHtml(g.onoma)||'—'}</td>
+         <td class="mono text-right">${escapeHtml(g.posotita)||'—'}</td>
+         <td>${escapeHtml(g.monada)||'—'}</td></tr>`
   ).join('') || '<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:12px;">Δεν βρέθηκαν υλικά</td></tr>';
 
   bodyEl.innerHTML = `
     <div class="form-row cols-3" style="margin-bottom:14px;">
       <div><label>Τύπος</label><div style="margin-top:4px;">${tiposBadge}</div></div>
-      <div><label>Αρ. Παραστατικού</label><div class="mono" style="font-size:13px;margin-top:4px;">${preview.arithmos_parstatikos||'—'}</div></div>
-      <div><label>Ημερομηνία</label><div class="mono" style="font-size:13px;margin-top:4px;">${preview.imerominia||'—'}</div></div>
+      <div><label>Αρ. Παραστατικού</label><div class="mono" style="font-size:13px;margin-top:4px;">${escapeHtml(preview.arithmos_parstatikos)||'—'}</div></div>
+      <div><label>Ημερομηνία</label><div class="mono" style="font-size:13px;margin-top:4px;">${escapeHtml(preview.imerominia)||'—'}</div></div>
     </div>
     <div class="form-row cols-3" style="margin-bottom:16px;">
-      <div><label>Άδεια</label><div class="mono" style="font-size:13px;margin-top:4px;">${preview.adeia||'—'}</div></div>
-      <div><label>Εκδούσα Αρχή</label><div style="font-size:13px;margin-top:4px;">${preview.ekdousa_archi||'—'}</div></div>
-      <div><label>Προμηθευτής</label><div style="font-size:13px;margin-top:4px;">${preview.promitheftis||'—'}</div></div>
+      <div><label>Άδεια</label><div class="mono" style="font-size:13px;margin-top:4px;">${escapeHtml(preview.adeia)||'—'}</div></div>
+      <div><label>Εκδούσα Αρχή</label><div style="font-size:13px;margin-top:4px;">${escapeHtml(preview.ekdousa_archi)||'—'}</div></div>
+      <div><label>Προμηθευτής</label><div style="font-size:13px;margin-top:4px;">${escapeHtml(preview.promitheftis)||'—'}</div></div>
     </div>
     <div style="font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;
                 color:var(--navy2);margin-bottom:8px;">Υλικά (${grammes.length})</div>
@@ -3180,15 +3193,15 @@ async function loadTplList() {
         t.adeia_pattern        ? 'Άδεια'  : null,
         t.ekdousa_archi_pattern? 'Εκδ.Αρχή': null,
         t.promitheftis_pattern ? 'Προμ.'  : null,
-        t.tipos_keyword        ? `ΕΠΙΣΤ.: "${t.tipos_keyword}"` : null,
+        t.tipos_keyword        ? `ΕΠΙΣΤ.: "${escapeHtml(t.tipos_keyword)}"` : null,
       ].filter(Boolean).join(' · ');
       return `
         <tr>
-          <td style="font-weight:500;">${t.name}</td>
+          <td style="font-weight:500;">${escapeHtml(t.name)}</td>
           <td style="font-size:12px;color:var(--muted);">${fields || '—'}</td>
           <td class="mono" style="font-size:11px;color:var(--muted);">${(t.created_at||'').slice(0,16)}</td>
           <td style="text-align:right;">
-            <button class="btn btn-danger btn-sm" onclick="tplDelete(${t.id},'${t.name.replace(/'/g,"\\'").replace(/"/g,'&quot;')}')">🗑</button>
+            <button class="btn btn-danger btn-sm" onclick="tplDelete(${t.id},${escapeHtml(JSON.stringify(t.name))})">🗑</button>
           </td>
         </tr>`;
     }).join('');
@@ -3200,7 +3213,7 @@ async function loadTplList() {
     </table></div>`;
   } catch(e) {
     document.getElementById('tpl-list-body').innerHTML =
-      `<div class="alert alert-error">Σφάλμα φόρτωσης: ${e.message}</div>`;
+      `<div class="alert alert-error">Σφάλμα φόρτωσης: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -3255,8 +3268,8 @@ async function loadBackupPage() {
     const remotesEl = document.getElementById('bk-remotes');
     if (remotes.length > 0) {
       remotesEl.innerHTML = remotes.map(r =>
-        `<button onclick="bkSetRemote(this)" data-remote="${r}"
-          style="padding:3px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:var(--navy2);font-size:12px;cursor:pointer;">${r}</button>`
+        `<button onclick="bkSetRemote(this)" data-remote="${escapeHtml(r)}"
+          style="padding:3px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:var(--navy2);font-size:12px;cursor:pointer;">${escapeHtml(r)}</button>`
       ).join('');
     }
 
@@ -3264,7 +3277,7 @@ async function loadBackupPage() {
     if (cfg.last_backup) {
       const ok = cfg.last_status !== 'error';
       lastEl.style.display = 'block';
-      lastEl.innerHTML = (ok ? '✅' : '⚠️') + ` Τελευταίο backup: <strong>${cfg.last_backup}</strong>`;
+      lastEl.innerHTML = (ok ? '✅' : '⚠️') + ` Τελευταίο backup: <strong>${escapeHtml(cfg.last_backup)}</strong>`;
       lastEl.style.color = ok ? 'var(--text)' : '#e57373';
     } else {
       lastEl.style.display = 'none';
@@ -3284,11 +3297,11 @@ async function loadBackupPage() {
         } else {
           rows = backups.slice(0, 10).map(b =>
             `<tr>
-              <td style="padding:6px 10px;">${b.ts}</td>
-              <td style="padding:6px 10px;font-family:monospace;font-size:12px;color:var(--muted);">${b.name}</td>
+              <td style="padding:6px 10px;">${escapeHtml(b.ts)}</td>
+              <td style="padding:6px 10px;font-family:monospace;font-size:12px;color:var(--muted);">${escapeHtml(b.name)}</td>
               <td style="padding:6px 10px;text-align:right;color:var(--muted);">${b.size_kb} KB</td>
               <td style="padding:6px 10px;text-align:center;">
-                <button onclick="bkRestore(this.dataset.path)" data-path="${b.path.replace(/"/g, '&quot;')}"
+                <button onclick="bkRestore(this.dataset.path)" data-path="${escapeHtml(b.path)}"
                   style="padding:3px 10px;background:rgba(229,115,115,0.15);border:1px solid rgba(229,115,115,0.4);border-radius:4px;color:#e57373;font-size:11px;cursor:pointer;">
                   Επαναφορά
                 </button>
@@ -3301,7 +3314,7 @@ async function loadBackupPage() {
       }
       listsEl.innerHTML += `
         <div style="margin-bottom:20px;">
-          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${label} — ${p}</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px;">${label} — ${escapeHtml(p)}</div>
           <table style="width:100%;border-collapse:collapse;background:var(--card);border-radius:8px;overflow:hidden;font-size:13px;">
             <thead><tr style="background:rgba(0,0,0,0.2);">
               <th style="padding:8px 10px;text-align:left;font-weight:600;color:var(--navy2);">Ημερομηνία</th>
@@ -3346,8 +3359,8 @@ async function bkRefreshRemotes() {
     const chipsEl = document.getElementById('bk-remotes');
     if (chipsEl) {
       chipsEl.innerHTML = remotes.map(r =>
-        `<button onclick="bkSetRemote(this)" data-remote="${r.remote}"
-          style="padding:3px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:var(--navy2);font-size:12px;cursor:pointer;">${r.remote}</button>`
+        `<button onclick="bkSetRemote(this)" data-remote="${escapeHtml(r.remote)}"
+          style="padding:3px 10px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:4px;color:var(--navy2);font-size:12px;cursor:pointer;">${escapeHtml(r.remote)}</button>`
       ).join('');
     }
 
@@ -3375,17 +3388,17 @@ async function bkRefreshRemotes() {
         </tr></thead>
         <tbody>${remotes.map(r => `
           <tr style="border-top:1px solid rgba(255,255,255,0.05);">
-            <td style="padding:8px 12px;font-family:monospace;font-size:13px;">${r.remote}</td>
-            <td style="padding:8px 12px;color:var(--muted);font-size:12px;">${getLabel(r)}</td>
+            <td style="padding:8px 12px;font-family:monospace;font-size:13px;">${escapeHtml(r.remote)}</td>
+            <td style="padding:8px 12px;color:var(--muted);font-size:12px;">${escapeHtml(getLabel(r))}</td>
             <td style="padding:8px 12px;text-align:right;">
-              <button onclick="bkDeleteRemote('${r.name}')"
+              <button onclick="bkDeleteRemote(${escapeHtml(JSON.stringify(r.name))})"
                 style="padding:3px 10px;background:none;border:1px solid rgba(229,115,115,0.4);border-radius:4px;color:#e57373;font-size:11px;cursor:pointer;">Διαγραφή</button>
             </td>
           </tr>`).join('')}
         </tbody>
       </table>`;
   } catch(e) {
-    el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${e.message}</div>`;
+    el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
   }
 }
 
