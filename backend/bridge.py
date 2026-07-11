@@ -3,9 +3,22 @@ bridge.py — Python IPC bridge για ExpVault
 Διαβάζει JSON commands από stdin, εκτελεί, γράφει JSON response στο stdout.
 """
 import sys
+import io
 import json
 import os
 import traceback
+
+# UTF-8 για stdin/stdout/stderr — κρίσιμο στα Windows όπου το frozen exe
+# διαφορετικά διαβάζει/γράφει με το locale codepage του συστήματος
+# (π.χ. cp1252) αντί για UTF-8, αλλοιώνοντας κάθε ελληνικό κείμενο.
+if hasattr(sys.stdin, 'buffer'):
+    sys.stdin = io.TextIOWrapper(sys.stdin.buffer, encoding='utf-8', errors='replace')
+if hasattr(sys.stdout, 'buffer'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8',
+                                   errors='replace', line_buffering=True)
+if hasattr(sys.stderr, 'buffer'):
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8',
+                                   errors='replace', line_buffering=True)
 
 # Σε packaged mode, EXPVAULT_DATA_DIR δείχνει στο %APPDATA%/ExpVault
 # Σε dev mode, χρησιμοποιούμε τον φάκελο δίπλα στο bridge.py
@@ -441,14 +454,6 @@ def handle(cmd, payload):
 
 
 def main():
-    # Flush αμέσως — χωρίς buffering
-    sys.stdout.reconfigure(line_buffering=True)
-    sys.stderr.reconfigure(line_buffering=True)
-    # Χωρίς αυτό, στα Windows το stdin διαβάζεται με το locale codepage
-    # του συστήματος (π.χ. cp1252) αντί για UTF-8, και κάθε ελληνικό
-    # κείμενο που στέλνει το frontend μέσω του pipe καταλήγει αλλοιωμένο.
-    sys.stdin.reconfigure(encoding='utf-8')
-
     # Σήμα ότι το bridge είναι έτοιμο
     print(json.dumps({'ready': True}), flush=True)
 
