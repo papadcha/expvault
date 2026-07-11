@@ -444,6 +444,10 @@ def main():
     # Flush αμέσως — χωρίς buffering
     sys.stdout.reconfigure(line_buffering=True)
     sys.stderr.reconfigure(line_buffering=True)
+    # Χωρίς αυτό, στα Windows το stdin διαβάζεται με το locale codepage
+    # του συστήματος (π.χ. cp1252) αντί για UTF-8, και κάθε ελληνικό
+    # κείμενο που στέλνει το frontend μέσω του pipe καταλήγει αλλοιωμένο.
+    sys.stdin.reconfigure(encoding='utf-8')
 
     # Σήμα ότι το bridge είναι έτοιμο
     print(json.dumps({'ready': True}), flush=True)
