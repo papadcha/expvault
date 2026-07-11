@@ -8,3 +8,4 @@ backend/dist/
 backend/__pycache__/
 backend/backup_config.json
 .claude/skills/run-expvault/shots/
+github-token.json

@@ -5,6 +5,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const https = require('https');
+const { registerVersionIPC, checkVersionNotice } = require('./version-check');
 
 let mainWindow = null;
 let pythonProcess = null;
@@ -216,6 +217,7 @@ function setupIPC() {
 
   ipcMain.handle('open-external', (_, url) => shell.openExternal(url));
   ipcMain.on('update-install', () => autoUpdater.quitAndInstall());
+  registerVersionIPC();
 
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
   ipcMain.on('window-maximize', () => {
@@ -308,7 +310,10 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    if (app.isPackaged) setTimeout(setupAutoUpdater, 3000);
+    if (app.isPackaged) {
+      setTimeout(setupAutoUpdater, 3000);
+      setTimeout(() => checkVersionNotice(mainWindow), 4000);
+    }
   });
 
   let _closeInProgress = false;

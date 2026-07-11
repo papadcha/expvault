@@ -54,6 +54,9 @@ if ($LASTEXITCODE -ne 0) { Write-Error "npm install failed"; exit 1 }
 # -- 5. Electron Builder: NSIS installer -------------------------------------
 Write-Host ""
 Write-Host "[5/5] Building Windows installer..." -ForegroundColor Yellow
+if (-not (Test-Path "$root\github-token.json")) {
+    Write-Warning "github-token.json δεν βρέθηκε — η αναφορά προβλήματος έκδοσης (report-version-issue) θα είναι απενεργοποιημένη σε αυτό το build."
+}
 npm run dist:win
 if ($LASTEXITCODE -ne 0) { Write-Error "electron-builder failed"; exit 1 }
 

@@ -16,6 +16,9 @@
     "files": [
       "main.js",
       "preload.js",
+      "version-check.js",
+      "VERSIONS.md",
+      "github-token.json",
       "index.html",
       "assets/**/*",
       "node_modules/**/*",
