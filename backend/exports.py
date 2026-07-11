@@ -1471,6 +1471,7 @@ def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from io import BytesIO
+    from database import MONADES_NOMIKON_KATIGORION
 
     sums = _deltio_sums(kiniseis)
 
@@ -1545,6 +1546,7 @@ def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: 
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER
     from io import BytesIO
+    from database import MONADES_NOMIKON_KATIGORION
 
     fname, fbold = register_fonts()
     F  = fname if FONT_REGULAR else 'Helvetica'

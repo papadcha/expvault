@@ -43,7 +43,7 @@ a = Analysis(
         'docx.oxml',
         'sqlite3',
     ],
-    excludes=['tkinter', 'matplotlib', 'numpy', 'PIL', 'PyQt5', 'wx'],
+    excludes=['tkinter', 'matplotlib', 'numpy', 'PyQt5', 'wx'],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
