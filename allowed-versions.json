@@ -4,7 +4,7 @@
   "safeDowngradeFloor": "1.0.0",
   "notice": null,
   "versions": [
-    { "version": "1.0.5", "date": "2026-07-11", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.5/ExpVault.Setup.1.0.5.exe", "notes": "Fix αλλοίωσης ελληνικού κειμένου, fix εξαγωγών Excel/PDF, νέο ιστορικό εκδόσεων" },
+    { "version": "1.0.5", "date": "2026-07-11", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.5/ExpVault-Setup-1.0.5.exe", "notes": "Fix αλλοίωσης ελληνικού κειμένου, fix εξαγωγών Excel/PDF, νέο ιστορικό εκδόσεων" },
     { "version": "1.0.4", "date": "2026-07-10", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.4/ExpVault.Setup.1.0.4.exe", "notes": "Άδεια ανά νόμιμη κατηγορία, fix migrations νέων εγκαταστάσεων, escaping μη έμπιστου κειμένου" },
     { "version": "1.0.3", "date": "2026-06-27", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.3/ExpVault.Setup.1.0.3.exe", "notes": "Windows installer, έλεγχος έκδοσης στην εκκίνηση, fix rclone remotes/path" },
     { "version": "1.0.2", "date": "2026-06-27", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.2/ExpVault.Setup.1.0.2.exe", "notes": "Εξαγωγή/εισαγωγή προτύπων παραστατικών" },
