@@ -529,7 +529,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         ]
         l_data.append(cells)
 
-        if ri % 2 == 0 and not is_epi:
+        if ri % 2 == 0:
             l_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
 
     # Σταθερό ύψος γραμμών — ίδιο και στους 2 πίνακες για αντικρυστή εμφάνιση
