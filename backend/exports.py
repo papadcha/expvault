@@ -35,13 +35,13 @@ def find_font(names):
     return None
 
 FONT_SETS = {
-    'iosevka':    ['Iosevka-Regular.ttc', 'JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf', 'cour.ttf'],
-    'jetbrains':  ['JetBrainsMono-Regular.ttf', 'Iosevka-Regular.ttc', 'LiberationMono-Regular.ttf', 'cour.ttf'],
+    'iosevka':    ['Iosevka-Regular.ttf', 'JetBrainsMono-Regular.ttf', 'LiberationMono-Regular.ttf', 'cour.ttf'],
+    'jetbrains':  ['JetBrainsMono-Regular.ttf', 'Iosevka-Regular.ttf', 'LiberationMono-Regular.ttf', 'cour.ttf'],
     'liberation': ['LiberationMono-Regular.ttf', 'FreeMono.ttf', 'cour.ttf'],
 }
 FONT_SETS_BOLD = {
-    'iosevka':    ['Iosevka-Bold.ttc', 'JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf', 'courbd.ttf'],
-    'jetbrains':  ['JetBrainsMono-Bold.ttf', 'Iosevka-Bold.ttc', 'LiberationMono-Bold.ttf', 'courbd.ttf'],
+    'iosevka':    ['Iosevka-Bold.ttf', 'JetBrainsMono-Bold.ttf', 'LiberationMono-Bold.ttf', 'courbd.ttf'],
+    'jetbrains':  ['JetBrainsMono-Bold.ttf', 'Iosevka-Bold.ttf', 'LiberationMono-Bold.ttf', 'courbd.ttf'],
     'liberation': ['LiberationMono-Bold.ttf', 'FreeMonoBold.ttf', 'courbd.ttf'],
 }
 
