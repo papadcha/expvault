@@ -193,6 +193,45 @@ def nonel_group_key(ydata):
     m = re.search(r'([A-Z][A-Z0-9.]*)\s*\(', onoma)
     return (sub, m.group(1) if m else onoma)
 
+# ── Ομαδοποιημένο header (PDF + Excel, nonel_mode='detail') ──────────────────
+# Κοινή λογική: αντί για ένα flat "NONEL SNAPLINE, SL17 (6.0M) (Τεμ)" ανά στήλη,
+# 3 επίπεδα: NONEL -> SNAPLINE/UNIDET U500/LP -> SL17/SL42/.../μήκος. Ίδιο και
+# για POLADYN/ΘΡΥΑΛ./ΠΥΡΟΚΡ. (γονέας + leaves).
+GROUPED_PARENT_LEAVES = {
+    'POLADYN':     ('POLADYN', ('65X500', '38X380')),
+    'THRYALLIDES': ('ΘΡΥΑΛ.',  ('ΒΡΑΔΥ', 'ΑΚΑΡ')),
+    'KAPSYLIA':    ('ΠΥΡΟΚΡ.', ('ΚΟΙΝΟΙ', 'ΗΛΕΚΤΡ')),
+}
+GROUPED_SHORT_LABEL = {1: ('AN-FO',), 2: ('EM-EX', 'LC-30')}
+GROUPED_NONEL_SUB_ORDER = ['SNAPLINE', 'UNIDET', 'LP']
+GROUPED_SUB_LABEL = {'SNAPLINE': 'SNAPLINE', 'UNIDET': 'UNIDET U500', 'LP': 'LP'}
+
+def _nonel_code_length(onoma):
+    m = re.search(r'([A-Z][A-Z0-9.]*)\s*\(([^)]*)\)', onoma)
+    return (m.group(1) if m else onoma, m.group(2).strip() if m else '')
+
+def grouped_header_plan(ylika_order, all_y):
+    """Ξαναταξινομεί το ylika_order ώστε τα NONEL να μαζεύονται ανά (subgroup,
+    code, length) και επιστρέφει (ylika_order, n_fixed, n_nonel, nonel_meta)
+    όπου nonel_meta: yid -> (sub, code, length). Χρησιμοποιείται μόνο σε
+    nonel_mode='detail' — τα άλλα modes έχουν ήδη λίγες, σύντομες στήλες.
+    """
+    nonel_items, other_items = [], []
+    for entry in ylika_order:
+        yid, (on, mo) = entry
+        ydata = all_y.get(yid, {}) if isinstance(yid, int) else {}
+        if isinstance(yid, int) and _is_nonel(ydata):
+            sub = _nonel_sub(ydata)
+            code, length = _nonel_code_length(on)
+            nonel_items.append((entry, sub, code, length))
+        else:
+            other_items.append(entry)
+    nonel_items.sort(key=lambda it: (
+        GROUPED_NONEL_SUB_ORDER.index(it[1]) if it[1] in GROUPED_NONEL_SUB_ORDER else 99, it[2], it[3]))
+    nonel_meta = {entry[0]: (sub, code, length) for entry, sub, code, length in nonel_items}
+    new_order = other_items + [it[0] for it in nonel_items]
+    return new_order, len(other_items), len(nonel_items), nonel_meta
+
 def build_book_rows(kiniseis):
     agores     = OrderedDict()
     epistrofes = []
@@ -427,6 +466,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     # Χρώματα — ανοιχτό επαγγελματικό γκρι, ίδια και στις 2 σελίδες
     HDR_BG = colors.HexColor('#CDD5DB')  # Τίτλος - λίγο σκουρότερο
     SUB_BG = colors.HexColor('#E4E9ED')
+    GRP_BG = colors.HexColor('#DDE3E8')  # ενδιάμεσο tier (group NONEL/subtype) στο ομαδοποιημένο header
     HDR_FG = colors.HexColor('#1C252E')
     ALT_BG = colors.HexColor('#F4F6F8')
     GRID_C = colors.HexColor('#D1D8DE')
@@ -454,43 +494,157 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
         elif yid not in {4, 3, 5, 10, 9, 33}:
             virtual_order.append((yid, (on, mo)))
     ylika_order = virtual_order
+
+    # ── Ομαδοποιημένο header (μόνο σε nonel_mode='detail') ────────────────────
+    # Αντί για ένα flat "NONEL SNAPLINE, SL17 (6.0M) (Τεμ)" ανά στήλη (τυλίγεται
+    # σε ~7 γραμμές σε τόσο στενές στήλες), 3 επίπεδα: NONEL -> SNAPLINE/UNIDET
+    # U500/LP -> SL17/SL42/.../μήκος. Ίδιο μοτίβο και για POLADYN/ΘΡΥΑΛ./ΠΥΡΟΚΡ.
+    GROUPED_HEADER = (nonel_mode == 'detail')
+    n_fixed = n_nonel = 0
+    if GROUPED_HEADER:
+        ylika_order, n_fixed, n_nonel, nonel_meta = grouped_header_plan(ylika_order, _all_y)
+        PARENT_LEAVES = GROUPED_PARENT_LEAVES
+        SHORT_LABEL = {yid: '<br/>'.join(parts) for yid, parts in GROUPED_SHORT_LABEL.items()}
+
+        def build_group_header(LEAD, TAIL, lead_labels, tail_labels):
+            n = len(ylika_order)
+            row_group = [''] * (LEAD + n + TAIL)
+            row_sub   = [''] * (LEAD + n + TAIL)
+            row_leaf  = [''] * (LEAD + n + TAIL)
+            spans = []
+            for i, lbl in enumerate(lead_labels):
+                row_group[i] = p(lbl, HS)
+                spans.append(('SPAN', (i, 1), (i, 3)))
+            for i, lbl in enumerate(tail_labels):
+                col = LEAD + n + i
+                row_group[col] = p(lbl, HS)
+                spans.append(('SPAN', (col, 1), (col, 3)))
+
+            for c in range(n_fixed):
+                col = LEAD + c
+                yid = ylika_order[c][0]
+                if yid in PARENT_LEAVES:
+                    parent, (leaf1, leaf2) = PARENT_LEAVES[yid]
+                    row_group[col] = p(parent, HS)
+                    row_sub[col]   = p(f"{leaf1}<br/>{leaf2}", HS)
+                    spans.append(('SPAN', (col, 2), (col, 3)))
+                else:
+                    on, mo = ylika_order[c][1]
+                    row_group[col] = p(SHORT_LABEL.get(yid, on), HS)
+                    spans.append(('SPAN', (col, 1), (col, 3)))
+
+            if n_nonel:
+                nonel_start = LEAD + n_fixed
+                nonel_end   = LEAD + n_fixed + n_nonel - 1
+                row_group[nonel_start] = p('NONEL', HS)
+                spans.append(('SPAN', (nonel_start, 1), (nonel_end, 1)))
+
+                sub_labels = GROUPED_SUB_LABEL
+                run_start = nonel_start
+                cur_sub = nonel_meta[ylika_order[n_fixed][0]][0]
+                for c in range(nonel_start, nonel_end + 2):
+                    yid_c = ylika_order[c - LEAD][0] if c <= nonel_end else None
+                    sub = nonel_meta[yid_c][0] if yid_c is not None else None
+                    if sub != cur_sub:
+                        row_sub[run_start] = p(sub_labels.get(cur_sub, cur_sub), HS)
+                        if c - 1 > run_start:
+                            spans.append(('SPAN', (run_start, 2), (c - 1, 2)))
+                        run_start = c
+                        cur_sub = sub
+
+                code_counts = {}
+                for c in range(nonel_start, nonel_end + 1):
+                    sub, code, length = nonel_meta[ylika_order[c - LEAD][0]]
+                    code_counts[(sub, code)] = code_counts.get((sub, code), 0) + 1
+                for c in range(nonel_start, nonel_end + 1):
+                    sub, code, length = nonel_meta[ylika_order[c - LEAD][0]]
+                    if sub == 'UNIDET':
+                        row_leaf[c] = p(length, HS)  # ο γονέας λέει ήδη "UNIDET U500"
+                    elif code_counts[(sub, code)] > 1:
+                        row_leaf[c] = p(f"{code}<br/>{length}", HS)
+                    else:
+                        row_leaf[c] = p(code, HS)
+
+            return row_group, row_sub, row_leaf, spans
+
+        def grouped_style(spans):
+            return [
+                ('SPAN', (0, 0), (-1, 0)),
+                ('BACKGROUND', (0, 0), (-1, 0), HDR_BG),
+                ('BACKGROUND', (0, 1), (-1, 1), SUB_BG),
+                ('BACKGROUND', (0, 2), (-1, 2), GRP_BG),
+                ('BACKGROUND', (0, 3), (-1, 3), SUB_BG),
+                ('TEXTCOLOR', (0, 0), (-1, 0), HDR_FG),
+                ('TEXTCOLOR', (0, 1), (-1, 3), colors.black),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('GRID', (0, 0), (-1, -1), 0.3, GRID_C),
+                ('LINEBELOW', (0, 3), (-1, 3), 1.0, colors.HexColor('#9AAAB5')),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+                ('LEFTPADDING', (0, 0), (-1, -1), 3),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+            ] + spans
+
+        # Μη-ομοιόμορφο πλάτος: πλατύτερες οι στήλες με μεγάλους αριθμούς
+        # (Κιλ/Μετρ: AN-FO/EM-EX φτάνουν σε χιλιάδες), στενότερες οι NONEL
+        # (Τεμ, σχεδόν πάντα 1-3 ψηφία) — υπολογίζεται μία φορά, ίδιο και
+        # στις 2 σελίδες.
+        FIXED_W = {1: 1.3, 2: 1.3, 'POLADYN': 0.95, 'THRYALLIDES': 0.85, 'KAPSYLIA': 0.95}
+        _L_FIXED_BUDGET = [0.5, 1.7, 1.8, 1.6]
+        fixed_total = sum(FIXED_W.get(yid, 1.0) for yid, _ in ylika_order[:n_fixed])
+        remaining = page_w_cm - sum(_L_FIXED_BUDGET) - fixed_total
+        yw_nonel = max(0.65, remaining / n_nonel) if n_nonel else 0.8
+        material_widths = [FIXED_W.get(yid, 1.0) for yid, _ in ylika_order[:n_fixed]] + [yw_nonel] * n_nonel
+
     n = len(ylika_order)
-    yliko_hdrs = [p(f"{on}<br/>({mo})", HS) for _, (on, mo) in ylika_order]
+    if not GROUPED_HEADER:
+        yliko_hdrs = [p(f"{on}<br/>({mo})", HS) for _, (on, mo) in ylika_order]
 
     # ── Σελίδα 1: Αγορές / Επιστροφές ───────────────────────────────────────
     L_FIXED = [0.5, 1.7, 1.8, 1.6]
-    yw_l = max(0.8, (page_w_cm - sum(L_FIXED)) / n) if n else 1.5
-    L_WIDTHS = [L_FIXED[0]*cm, L_FIXED[1]*cm] + [yw_l*cm]*n + \
-               [L_FIXED[2]*cm, L_FIXED[3]*cm]
+    if GROUPED_HEADER:
+        L_WIDTHS = [L_FIXED[0]*cm, L_FIXED[1]*cm] + [w*cm for w in material_widths] + \
+                   [L_FIXED[2]*cm, L_FIXED[3]*cm]
+        row_group, row_sub, row_leaf, l_spans = build_group_header(
+            2, 2, ['Α/Α', 'Αρ.Άδ./<br/>Εκδ.Αρχή'], ['Ημερ.Αγ./<br/>Αρ.Δελτ.', 'Στοιχεία<br/>Προμηθευτή'])
+        l_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + \
+                  [''] * (len(L_WIDTHS)-1)
+        l_data  = [l_title, row_group, row_sub, row_leaf]
+        l_style = grouped_style(l_spans)
+        HDR_ROWS = 4
+    else:
+        yw_l = max(0.8, (page_w_cm - sum(L_FIXED)) / n) if n else 1.5
+        L_WIDTHS = [L_FIXED[0]*cm, L_FIXED[1]*cm] + [yw_l*cm]*n + \
+                   [L_FIXED[2]*cm, L_FIXED[3]*cm]
+        l_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + \
+                  [''] * (len(L_WIDTHS)-1)
+        l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./<br/>Εκδ.Αρχή',HS)] + yliko_hdrs + \
+                  [p('Ημερ.Αγ./<br/>Αρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
+        l_data  = [l_title, l_hdr]
+        l_style = [
+            ('SPAN',         (0,0), (-1,0)),
+            ('BACKGROUND',   (0,0), (-1,0), HDR_BG),
+            ('BACKGROUND',   (0,1), (-1,1), SUB_BG),
+            ('TEXTCOLOR',    (0,0), (-1,0), HDR_FG),        # μαύρο στο ανοιχτό
+            ('TEXTCOLOR',    (0,1), (-1,1), colors.black),  # λευκό στο σκούρο
+            ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
+            ('GRID',         (0,0), (-1,-1), 0.3, GRID_C),
+            ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
+            ('TOPPADDING',   (0,0), (-1,-1), 3),
+            ('BOTTOMPADDING',(0,0), (-1,-1), 3),
+            ('LEFTPADDING',  (0,0), (-1,-1), 3),
+            ('RIGHTPADDING', (0,0), (-1,-1), 4),
+        ]
+        HDR_ROWS = 2
 
-    l_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ', HS)] + \
-              [''] * (len(L_WIDTHS)-1)
-    l_hdr   = [p('Α/Α',HS), p('Αρ.Άδ./<br/>Εκδ.Αρχή',HS)] + yliko_hdrs + \
-              [p('Ημερ.Αγ./<br/>Αρ.Δελτ.',HS), p('Στοιχεία\nΠρομηθευτή',HS)]
-
-    l_data  = [l_title, l_hdr]
     n_ylika_cols = len(ylika_order)
     num_l_start = 2  # col index αρχή αριθμών αριστερά
     num_l_end   = 2 + n_ylika_cols - 1
+    l_style.append(('ALIGN', (num_l_start, HDR_ROWS), (num_l_end, -1), 'RIGHT'))
 
-    l_style = [
-        ('SPAN',         (0,0), (-1,0)),
-        ('BACKGROUND',   (0,0), (-1,0), HDR_BG),
-        ('BACKGROUND',   (0,1), (-1,1), SUB_BG),
-        ('TEXTCOLOR',    (0,0), (-1,0), HDR_FG),        # μαύρο στο ανοιχτό
-        ('TEXTCOLOR',    (0,1), (-1,1), colors.black),  # λευκό στο σκούρο
-        ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
-        ('ALIGN',        (num_l_start,2), (num_l_end,-1), 'RIGHT'),
-        ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
-        ('GRID',         (0,0), (-1,-1), 0.3, GRID_C),
-        ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
-        ('TOPPADDING',   (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING',(0,0), (-1,-1), 3),
-        ('LEFTPADDING',  (0,0), (-1,-1), 3),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
-    ]
-
-    for ri, row in enumerate(rows, 2):
+    for ri, row in enumerate(rows, HDR_ROWS):
         is_epi = row['type'] == 'epistrofi'
         txt_s  = ES if is_epi else CS
         num_s  = ER if is_epi else RS
@@ -534,43 +688,53 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
     # Σταθερό ύψος γραμμών — ίδιο και στους 2 πίνακες για αντικρυστή εμφάνιση
     ROW_H = 22  # points — αρκετό για 2 γραμμές κειμένου
-    HDR_H = 28  # header
-    n_data_rows = len(l_data) - 2  # εκτός header
-    row_heights = [HDR_H, HDR_H] + [ROW_H] * n_data_rows
+    if GROUPED_HEADER:
+        header_heights = [16, 12, 12, 20]
+    else:
+        header_heights = [28, 28]
+    n_data_rows = len(l_data) - HDR_ROWS
+    row_heights = header_heights + [ROW_H] * n_data_rows
 
-    left_t = Table(l_data, colWidths=L_WIDTHS, repeatRows=2, rowHeights=row_heights)
+    left_t = Table(l_data, colWidths=L_WIDTHS, repeatRows=HDR_ROWS, rowHeights=row_heights)
     left_t.setStyle(TableStyle(l_style))
 
     # ── Σελίδα 2: Καταναλώσεις ───────────────────────────────────────────────
     R_FIXED = [1.5, 1.5, 1.8]
-    yw_r = max(0.8, (page_w_cm - sum(R_FIXED)) / n) if n else 1.5
-    R_WIDTHS = [R_FIXED[0]*cm, R_FIXED[1]*cm] + [yw_r*cm]*n + [R_FIXED[2]*cm]
-
-    r_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ', HS)] + \
-              [''] * (len(R_WIDTHS)-1)
-    r_hdr   = [p('Ημερ.\nΕισαγ.\nΑποθ.',HS), p('Ημερ.\nΚατανάλ.',HS)] + \
-              yliko_hdrs + [p('Παρατηρήσεις',HS)]
-
-    r_data  = [r_title, r_hdr]
-    r_style = [
-        ('SPAN',         (0,0), (-1,0)),
-        ('BACKGROUND',   (0,0), (-1,0), HDR_BG),
-        ('BACKGROUND',   (0,1), (-1,1), SUB_BG),
-        ('TEXTCOLOR',    (0,0), (-1,0), HDR_FG),
-        ('TEXTCOLOR',    (0,1), (-1,1), colors.black),
-        ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
-        ('ALIGN',        (2,2), (1+n_ylika_cols,-1), 'RIGHT'),
-        ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
-        ('GRID',         (0,0), (-1,-1), 0.3, GRID_C),
-        ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
-        ('TOPPADDING',   (0,0), (-1,-1), 3),
-        ('BOTTOMPADDING',(0,0), (-1,-1), 3),
-        ('LEFTPADDING',  (0,0), (-1,-1), 3),
-        ('RIGHTPADDING', (0,0), (-1,-1), 4),
-    ]
+    if GROUPED_HEADER:
+        R_WIDTHS = [R_FIXED[0]*cm, R_FIXED[1]*cm] + [w*cm for w in material_widths] + [R_FIXED[2]*cm]
+        row_group2, row_sub2, row_leaf2, r_spans = build_group_header(
+            2, 1, ['Ημερ.<br/>Εισαγ.<br/>Αποθ.', 'Ημερ.<br/>Κατανάλ.'], ['Παρατηρήσεις'])
+        r_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ', HS)] + \
+                  [''] * (len(R_WIDTHS)-1)
+        r_data  = [r_title, row_group2, row_sub2, row_leaf2]
+        r_style = grouped_style(r_spans)
+    else:
+        yw_r = max(0.8, (page_w_cm - sum(R_FIXED)) / n) if n else 1.5
+        R_WIDTHS = [R_FIXED[0]*cm, R_FIXED[1]*cm] + [yw_r*cm]*n + [R_FIXED[2]*cm]
+        r_title = [p('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ', HS)] + \
+                  [''] * (len(R_WIDTHS)-1)
+        r_hdr   = [p('Ημερ.\nΕισαγ.\nΑποθ.',HS), p('Ημερ.\nΚατανάλ.',HS)] + \
+                  yliko_hdrs + [p('Παρατηρήσεις',HS)]
+        r_data  = [r_title, r_hdr]
+        r_style = [
+            ('SPAN',         (0,0), (-1,0)),
+            ('BACKGROUND',   (0,0), (-1,0), HDR_BG),
+            ('BACKGROUND',   (0,1), (-1,1), SUB_BG),
+            ('TEXTCOLOR',    (0,0), (-1,0), HDR_FG),
+            ('TEXTCOLOR',    (0,1), (-1,1), colors.black),
+            ('ALIGN',        (0,0), (-1,-1), 'CENTER'),
+            ('VALIGN',       (0,0), (-1,-1), 'MIDDLE'),
+            ('GRID',         (0,0), (-1,-1), 0.3, GRID_C),
+            ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
+            ('TOPPADDING',   (0,0), (-1,-1), 3),
+            ('BOTTOMPADDING',(0,0), (-1,-1), 3),
+            ('LEFTPADDING',  (0,0), (-1,-1), 3),
+            ('RIGHTPADDING', (0,0), (-1,-1), 4),
+        ]
+    r_style.append(('ALIGN', (2, HDR_ROWS), (1+n_ylika_cols, -1), 'RIGHT'))
 
     kat_used = set()
-    for ri, row in enumerate(rows, 2):
+    for ri, row in enumerate(rows, HDR_ROWS):
         is_epi = row['type'] == 'epistrofi'
         ap     = row.get('parstatiko', '')
         imer   = row['imerominia']
@@ -610,7 +774,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 
         r_data.append(cells)
 
-    right_t = Table(r_data, colWidths=R_WIDTHS, repeatRows=2, rowHeights=row_heights)
+    right_t = Table(r_data, colWidths=R_WIDTHS, repeatRows=HDR_ROWS, rowHeights=row_heights)
     right_t.setStyle(TableStyle(r_style))
 
     # ── Build ─────────────────────────────────────────────────────────────────
@@ -704,9 +868,15 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
 
     for mode, sheet_label in MODES:
         vo       = build_virtual_order(mode)
+        grouped  = (mode == 'detail')
+        n_fixed = n_nonel = 0
+        nonel_meta = {}
+        if grouped:
+            vo, n_fixed, n_nonel, nonel_meta = grouped_header_plan(vo, _all_y)
         dly_map  = build_nonel_delay_map(mode, vo)
         n        = len(vo)
         total_cols = max(2 + n + 2, 2 + n + 1)  # αγορές έχει +2, καταν. +1
+        HDR_ROWS = 4 if grouped else 2  # τελευταία γραμμή header (η γραμμή τίτλου είναι πάντα row 1)
 
         ws = wb.create_sheet(sheet_label)
 
@@ -716,8 +886,10 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
         red_font  = Font(color="C53030", bold=True, size=9)
         navy_fill = PatternFill("solid", fgColor="1A365D")
         lnav_fill = PatternFill("solid", fgColor="4A7FC1")
+        lnav_fill2= PatternFill("solid", fgColor="7FA5D6")
         grn_fill  = PatternFill("solid", fgColor="2D6A4F")
         lgrn_fill = PatternFill("solid", fgColor="52B788")
+        lgrn_fill2= PatternFill("solid", fgColor="8FD3AC")
         alt2_fill = PatternFill("solid", fgColor="D8F3DC")
 
         # Layout: Αγορές αριστερά | κενή στήλη | Καταναλώσεις δεξιά
@@ -742,35 +914,118 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
         ws.cell(row=1, column=R_START).font = Font(bold=True, color="FFFFFF", size=11)
         ws.cell(row=1, column=R_START).alignment = Alignment(horizontal='center')
 
-        # ── Headers row 2 ─────────────────────────────────────────────────────
-        hdrs_l   = ['Α/Α', 'Αρ.Άδ./Εκδ.Αρχή'] + \
-                   [f"{on}\n({mo})" for _, (on, mo) in vo] + \
-                   ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή']
-        widths_l = [5, 18] + [13]*n + [12, 18]
-
-        for ci, (h, w) in enumerate(zip(hdrs_l, widths_l), 1):
-            cell = ws.cell(row=2, column=ci, value=h)
-            cell.fill = lnav_fill; cell.font = hdr_font
-            cell.alignment = Alignment(horizontal='center', wrap_text=True)
+        def set_cell(row, col, value, fill, wrap=True):
+            cell = ws.cell(row=row, column=col, value=value)
+            cell.fill = fill; cell.font = hdr_font
+            cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=wrap)
             cell.border = border
-            ws.column_dimensions[get_column_letter(ci)].width = w
+            return cell
 
-        hdrs_r  = ['Ημερ.\nΕισαγ.\nΑποθ.', 'Ημερ.\nΚατανάλ.'] + \
-                  [f"{on}\n({mo})" for _, (on, mo) in vo] + ['Παρατηρήσεις']
-        widths_r = [14, 14] + [13]*n + [20]
+        def build_group_header_xl(start_col, lead_labels, tail_labels, fill_a, fill_b):
+            """3-επίπεδο header (γονέας/subtype/leaf) — μόνο για nonel_mode='detail'.
+            Ίδιο μοτίβο με το ομαδοποιημένο header του PDF export_pdf."""
+            col = start_col
+            for lbl in lead_labels:
+                set_cell(2, col, lbl, fill_a)
+                ws.merge_cells(start_row=2, start_column=col, end_row=4, end_column=col)
+                col += 1
+            for c in range(n_fixed):
+                yid, (on, mo) = vo[c]
+                if yid in GROUPED_PARENT_LEAVES:
+                    parent, (leaf1, leaf2) = GROUPED_PARENT_LEAVES[yid]
+                    set_cell(2, col, parent, fill_a)
+                    set_cell(3, col, f"{leaf1}\n{leaf2}", fill_b)
+                    ws.merge_cells(start_row=3, start_column=col, end_row=4, end_column=col)
+                else:
+                    label = '\n'.join(GROUPED_SHORT_LABEL.get(yid, (on,)))
+                    set_cell(2, col, label, fill_a)
+                    ws.merge_cells(start_row=2, start_column=col, end_row=4, end_column=col)
+                col += 1
+            if n_nonel:
+                nonel_col0 = col
+                set_cell(2, nonel_col0, 'NONEL', fill_a)
+                ws.merge_cells(start_row=2, start_column=nonel_col0, end_row=2, end_column=nonel_col0 + n_nonel - 1)
 
-        for ci, (h, w) in enumerate(zip(hdrs_r, widths_r), R_START):
-            cell = ws.cell(row=2, column=ci, value=h)
-            cell.fill = lgrn_fill; cell.font = hdr_font
-            cell.alignment = Alignment(horizontal='center', wrap_text=True)
-            cell.border = border
-            ws.column_dimensions[get_column_letter(ci)].width = w
+                run_start = nonel_col0
+                cur_sub = nonel_meta[vo[n_fixed][0]][0]
+                for i in range(n_fixed, n_fixed + n_nonel + 1):
+                    cur_col = nonel_col0 + (i - n_fixed)
+                    yid_i = vo[i][0] if i < n_fixed + n_nonel else None
+                    sub = nonel_meta[yid_i][0] if yid_i is not None else None
+                    if sub != cur_sub:
+                        set_cell(3, run_start, GROUPED_SUB_LABEL.get(cur_sub, cur_sub), fill_b)
+                        if cur_col - 1 > run_start:
+                            ws.merge_cells(start_row=3, start_column=run_start, end_row=3, end_column=cur_col - 1)
+                        run_start = cur_col
+                        cur_sub = sub
 
-        ws.row_dimensions[2].height = 32
+                code_counts = {}
+                for i in range(n_fixed, n_fixed + n_nonel):
+                    sub, code, length = nonel_meta[vo[i][0]]
+                    code_counts[(sub, code)] = code_counts.get((sub, code), 0) + 1
+                for i in range(n_fixed, n_fixed + n_nonel):
+                    sub, code, length = nonel_meta[vo[i][0]]
+                    col_i = nonel_col0 + (i - n_fixed)
+                    if sub == 'UNIDET':
+                        leaf_txt = length
+                    elif code_counts[(sub, code)] > 1:
+                        leaf_txt = f"{code}\n{length}"
+                    else:
+                        leaf_txt = code
+                    set_cell(4, col_i, leaf_txt, fill_b)
+                col = nonel_col0 + n_nonel
+            for lbl in tail_labels:
+                set_cell(2, col, lbl, fill_a)
+                ws.merge_cells(start_row=2, start_column=col, end_row=4, end_column=col)
+                col += 1
+
+        # ── Headers ───────────────────────────────────────────────────────────
+        if grouped:
+            build_group_header_xl(1, ['Α/Α', 'Αρ.Άδ./\nΕκδ.Αρχή'],
+                                   ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή'],
+                                   lnav_fill, lnav_fill2)
+            build_group_header_xl(R_START, ['Ημερ.\nΕισαγ.\nΑποθ.', 'Ημερ.\nΚατανάλ.'],
+                                   ['Παρατηρήσεις'], lgrn_fill, lgrn_fill2)
+
+            widths_l = [5, 14] + [12 if vo[c][0] in GROUPED_PARENT_LEAVES or vo[c][0] in GROUPED_SHORT_LABEL
+                                   else 8 for c in range(n)] + [12, 16]
+            for ci, w in enumerate(widths_l, 1):
+                ws.column_dimensions[get_column_letter(ci)].width = w
+            widths_r = [12, 12] + widths_l[2:2+n] + [20]
+            for ci, w in enumerate(widths_r, R_START):
+                ws.column_dimensions[get_column_letter(ci)].width = w
+
+            for r in (2, 3, 4):
+                ws.row_dimensions[r].height = 16
+        else:
+            hdrs_l   = ['Α/Α', 'Αρ.Άδ./Εκδ.Αρχή'] + \
+                       [f"{on}\n({mo})" for _, (on, mo) in vo] + \
+                       ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή']
+            widths_l = [5, 18] + [13]*n + [12, 18]
+
+            for ci, (h, w) in enumerate(zip(hdrs_l, widths_l), 1):
+                cell = ws.cell(row=2, column=ci, value=h)
+                cell.fill = lnav_fill; cell.font = hdr_font
+                cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                cell.border = border
+                ws.column_dimensions[get_column_letter(ci)].width = w
+
+            hdrs_r  = ['Ημερ.\nΕισαγ.\nΑποθ.', 'Ημερ.\nΚατανάλ.'] + \
+                      [f"{on}\n({mo})" for _, (on, mo) in vo] + ['Παρατηρήσεις']
+            widths_r = [14, 14] + [13]*n + [20]
+
+            for ci, (h, w) in enumerate(zip(hdrs_r, widths_r), R_START):
+                cell = ws.cell(row=2, column=ci, value=h)
+                cell.fill = lgrn_fill; cell.font = hdr_font
+                cell.alignment = Alignment(horizontal='center', wrap_text=True)
+                cell.border = border
+                ws.column_dimensions[get_column_letter(ci)].width = w
+
+            ws.row_dimensions[2].height = 32
 
         # ── Data rows (ίδιο ri και για τους δύο πίνακες) ─────────────────────
         kat_used = set()
-        for ri, row in enumerate(rows, 3):
+        for ri, row in enumerate(rows, HDR_ROWS + 1):
             is_epi = row['type'] == 'epistrofi'
             fill_l = red_fill if is_epi else (alt_fill if ri % 2 == 0 else None)
             font_l = red_font if is_epi else None
