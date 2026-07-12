@@ -13,6 +13,10 @@ TIMESTAMP_FMT = '%Y%m%d_%H%M%S'
 PREFIX = 'expvault_backup_'
 EXT    = '.db'
 
+# Bundled rclone (βλ. EXPVAULT_RCLONE_PATH από main.js) — fallback στο
+# rclone του system PATH αν δεν τρέχουμε packaged (ή σε Linux/Mac).
+RCLONE_BIN = os.environ.get('EXPVAULT_RCLONE_PATH') or 'rclone'
+
 
 def _load():
     if CONFIG_PATH.exists():
@@ -47,7 +51,7 @@ def save_config(paths: list, max_keep: int = 30):
 
 def list_rclone_remotes() -> list:
     try:
-        r = subprocess.run(['rclone', 'listremotes'], capture_output=True, text=True, timeout=10)
+        r = subprocess.run([RCLONE_BIN, 'listremotes'], capture_output=True, text=True, timeout=10)
         return [x.strip() for x in r.stdout.splitlines() if x.strip()]
     except Exception:
         return []
@@ -81,7 +85,7 @@ def list_remotes_detail() -> list:
 def delete_remote(name: str) -> dict:
     try:
         r = subprocess.run(
-            ['rclone', 'config', 'delete', name],
+            [RCLONE_BIN, 'config', 'delete', name],
             capture_output=True, text=True, timeout=10
         )
         if r.returncode != 0:
@@ -142,7 +146,7 @@ def _do_rclone_backup(remote: str, max_keep: int) -> dict:
     dest = f"{remote.rstrip('/')}/{PREFIX}{ts}{EXT}"
     try:
         r = subprocess.run(
-            ['rclone', 'copyto', str(DB_PATH), dest],
+            [RCLONE_BIN, 'copyto', str(DB_PATH), dest],
             capture_output=True, text=True, timeout=120
         )
         if r.returncode != 0:
@@ -157,14 +161,14 @@ def _do_rclone_backup(remote: str, max_keep: int) -> dict:
     # Prune oldest beyond max_keep
     try:
         ls = subprocess.run(
-            ['rclone', 'lsjson', remote, '--include', f'{PREFIX}*{EXT}'],
+            [RCLONE_BIN, 'lsjson', remote, '--include', f'{PREFIX}*{EXT}'],
             capture_output=True, text=True, timeout=60
         )
         if ls.returncode == 0:
             files = sorted(json.loads(ls.stdout or '[]'), key=lambda x: x['Name'])
             for old in files[:-max_keep]:
                 subprocess.run(
-                    ['rclone', 'deletefile', f"{remote.rstrip('/')}/{old['Name']}"],
+                    [RCLONE_BIN, 'deletefile', f"{remote.rstrip('/')}/{old['Name']}"],
                     capture_output=True, timeout=30
                 )
     except Exception:
@@ -176,7 +180,7 @@ def _do_rclone_backup(remote: str, max_keep: int) -> dict:
 def _list_rclone_backups(remote: str) -> list:
     try:
         r = subprocess.run(
-            ['rclone', 'lsjson', remote, '--include', f'{PREFIX}*{EXT}'],
+            [RCLONE_BIN, 'lsjson', remote, '--include', f'{PREFIX}*{EXT}'],
             capture_output=True, text=True, timeout=60
         )
         if r.returncode != 0:
@@ -220,7 +224,7 @@ def restore_backup(path: str) -> dict:
                 tmp_path = tmp.name
             try:
                 r = subprocess.run(
-                    ['rclone', 'copyto', path, tmp_path],
+                    [RCLONE_BIN, 'copyto', path, tmp_path],
                     capture_output=True, text=True, timeout=120
                 )
                 if r.returncode != 0:

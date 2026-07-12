@@ -31,6 +31,16 @@ function getBridgeExe() {
   return null;
 }
 
+function getBundledRclone() {
+  // Bundled μόνο για Windows (βλ. extraResources στο package.json) — σε
+  // Linux/Mac ή αν λείπει, γίνεται fallback στο rclone του system PATH.
+  if (os.platform() !== 'win32') return null;
+  const rclonePath = app.isPackaged
+    ? path.join(process.resourcesPath, 'assets', 'rclone', 'rclone.exe')
+    : path.join(__dirname, 'assets', 'rclone', 'rclone.exe');
+  return fs.existsSync(rclonePath) ? rclonePath : null;
+}
+
 function startBridge() {
   const bridgeExe = getBridgeExe();
   const userDataDir = app.getPath('userData');
@@ -39,12 +49,14 @@ function startBridge() {
   const fontsDir = app.isPackaged
     ? path.join(process.resourcesPath, 'assets', 'fonts')
     : path.join(__dirname, 'assets', 'fonts');
+  const rclonePath = getBundledRclone();
 
   const bridgeEnv = {
     ...process.env,
     PYTHONUNBUFFERED: '1',
     EXPVAULT_DATA_DIR: userDataDir,
     EXPVAULT_FONTS_DIR: fontsDir,
+    ...(rclonePath ? { EXPVAULT_RCLONE_PATH: rclonePath } : {}),
   };
 
   let cmd, args, cwd;
@@ -190,11 +202,12 @@ function setupIPC() {
       });
     }
     if (os.platform() === 'win32') {
+      const rcloneCmd = getBundledRclone() || 'rclone';
       // Δοκιμή Windows Terminal πρώτα, μετά PowerShell, μετά cmd
       const attempts = [
-        ['wt.exe', ['powershell', '-NoExit', '-Command', 'rclone config']],
-        ['powershell.exe', ['-NoExit', '-Command', 'rclone config']],
-        ['cmd.exe', ['/K', 'rclone config']],
+        ['wt.exe', ['powershell', '-NoExit', '-Command', `& "${rcloneCmd}" config`]],
+        ['powershell.exe', ['-NoExit', '-Command', `& "${rcloneCmd}" config`]],
+        ['cmd.exe', ['/K', `"${rcloneCmd}" config`]],
       ];
       for (const [cmd, args] of attempts) {
         if (await trySpawn(cmd, args, { shell: false })) return { ok: true };

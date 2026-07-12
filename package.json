@@ -23,6 +23,7 @@
       "js/**/*",
       "css/**/*",
       "assets/**/*",
+      "!assets/rclone/**/*",
       "node_modules/**/*",
       "!node_modules/.cache"
     ],
@@ -41,7 +42,13 @@
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "assets/icon.ico",
+      "extraResources": [
+        {
+          "from": "assets/rclone",
+          "to": "assets/rclone"
+        }
+      ]
     },
     "linux": {
       "target": "AppImage",
