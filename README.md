@@ -4,7 +4,7 @@
 
 ## Download
 
-**[⬇ ExpVault Setup 1.0.4.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault%20Setup%201.0.4.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.0.4](https://github.com/papadcha/expvault/releases/tag/v1.0.4)
+**[⬇ ExpVault-Setup-1.0.6.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault-Setup-1.0.6.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.0.6](https://github.com/papadcha/expvault/releases/tag/v1.0.6)
 
 > Δεν απαιτείται Python. Αν εμφανιστεί Windows SmartScreen, πάτα **Περισσότερες πληροφορίες → Εκτέλεση παρόλα αυτά**.
 
@@ -49,7 +49,8 @@ sudo apt install python3 python3-pip  # Ubuntu/Debian
 # Python βιβλιοθήκες
 pip install pypdf reportlab openpyxl python-docx --break-system-packages
 
-# rclone (προαιρετικό — για cloud backup)
+# rclone (προαιρετικό — για cloud backup· στα Windows είναι ήδη bundled,
+# βλ. παρακάτω, δεν χρειάζεται ξεχωριστή εγκατάσταση)
 sudo pacman -S rclone                # Arch
 sudo apt install rclone              # Ubuntu/Debian
 # Στη συνέχεια: rclone config (ή μέσα από την εφαρμογή → Backup → Νέο Remote)
@@ -70,6 +71,10 @@ npm install -g electron
 pip install pypdf reportlab openpyxl python-docx
 
 # Fonts: εγκατάσταση Liberation Fonts από https://github.com/liberationfonts/liberation-fonts
+
+# rclone: bundled στο assets/rclone/rclone.exe (packaged installer & dev mode
+# το εντοπίζουν αυτόματα μέσω EXPVAULT_RCLONE_PATH) — δεν χρειάζεται
+# ξεχωριστή εγκατάσταση στα Windows.
 ```
 
 ### macOS
