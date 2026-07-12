@@ -200,8 +200,9 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 #titlebar-btns button:hover { background: rgba(255,255,255,0.1); color: white; }
 #tb-close:hover { background: #c0392b !important; color: white !important; }
 
+body.electron { height: 100vh; overflow: hidden; }
 body.electron .sidebar { top: 36px; }
-body.electron .main    { padding-top: 60px; }
+body.electron .main    { margin-top: 36px; height: calc(100vh - 36px); min-height: 0; overflow-y: auto; }
 
 .text-right { text-align: right; }
 .text-center { text-align: center; }
