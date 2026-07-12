@@ -880,10 +880,11 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
 
         ws = wb.create_sheet(sheet_label)
 
-        hdr_font  = Font(bold=True, color="FFFFFF", size=9)
+        hdr_font  = Font(name='Iosevka', bold=True, color="FFFFFF", size=9)
+        data_font = Font(name='Iosevka', size=9)
         alt_fill  = PatternFill("solid", fgColor="EEF2F7")
         red_fill  = PatternFill("solid", fgColor="FFF0F0")
-        red_font  = Font(color="C53030", bold=True, size=9)
+        red_font  = Font(name='Iosevka', color="C53030", bold=True, size=9)
         navy_fill = PatternFill("solid", fgColor="1A365D")
         lnav_fill = PatternFill("solid", fgColor="4A7FC1")
         lnav_fill2= PatternFill("solid", fgColor="7FA5D6")
@@ -902,7 +903,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
         ws.merge_cells(f'A1:{get_column_letter(L_COLS)}1')
         ws['A1'] = "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ"
         ws['A1'].fill = navy_fill
-        ws['A1'].font = Font(bold=True, color="FFFFFF", size=11)
+        ws['A1'].font = Font(name='Iosevka', bold=True, color="FFFFFF", size=11)
         ws['A1'].alignment = Alignment(horizontal='center')
 
         rc1 = get_column_letter(R_START)
@@ -911,7 +912,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
         ws.cell(row=1, column=R_START).value = \
             "ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ"
         ws.cell(row=1, column=R_START).fill = grn_fill
-        ws.cell(row=1, column=R_START).font = Font(bold=True, color="FFFFFF", size=11)
+        ws.cell(row=1, column=R_START).font = Font(name='Iosevka', bold=True, color="FFFFFF", size=11)
         ws.cell(row=1, column=R_START).alignment = Alignment(horizontal='center')
 
         def set_cell(row, col, value, fill, wrap=True):
@@ -1037,7 +1038,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
                 cell = ws.cell(row=ri, column=ci, value=v)
                 cell.border = border
                 if fill_l: cell.fill = fill_l
-                if font_l: cell.font = font_l
+                cell.font = font_l or data_font
                 cell.alignment = Alignment(horizontal='center', wrap_text=True)
                 ci += 1
             for yid, _ in vo:
@@ -1045,7 +1046,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
                 cell = ws.cell(row=ri, column=ci, value=v)
                 cell.border = border
                 if fill_l: cell.fill = fill_l
-                if font_l: cell.font = font_l
+                cell.font = font_l or data_font
                 if is_text or not isinstance(v, (int, float)):
                     cell.alignment = Alignment(horizontal='center', wrap_text=True)
                 else:
@@ -1056,7 +1057,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
                 cell = ws.cell(row=ri, column=ci, value=v)
                 cell.border = border
                 if fill_l: cell.fill = fill_l
-                if font_l: cell.font = font_l
+                cell.font = font_l or data_font
                 cell.alignment = Alignment(horizontal='center', wrap_text=True)
                 ci += 1
 
@@ -1075,6 +1076,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
                     cell = ws.cell(row=ri, column=ci, value=v)
                     cell.border = border
                     if fill_r: cell.fill = fill_r
+                    cell.font = data_font
                     cell.alignment = Alignment(horizontal='center')
                     ci += 1
                 for yid, _ in vo:
@@ -1082,6 +1084,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
                     cell = ws.cell(row=ri, column=ci, value=v)
                     cell.border = border
                     if fill_r: cell.fill = fill_r
+                    cell.font = data_font
                     if is_text or not isinstance(v, (int, float)):
                         cell.alignment = Alignment(horizontal='center', wrap_text=True)
                     else:
@@ -1091,6 +1094,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
                 cell = ws.cell(row=ri, column=ci, value=kat.get('paratirishis', ''))
                 cell.border = border
                 if fill_r: cell.fill = fill_r
+                cell.font = data_font
                 cell.alignment = Alignment(horizontal='center')
 
     buf = io.BytesIO()
@@ -1212,7 +1216,7 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
                 br_r.append(OxmlElement('w:br'))
                 p_elem.append(br_r)
             run = para.add_run(line)
-            run.font.name = 'Arial'
+            run.font.name = 'Iosevka'
             run.font.size = Pt(size)
             run.font.bold = bold
             if rgb:
@@ -1278,7 +1282,7 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
         p.paragraph_format.space_after = Pt(3)
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         r = p.add_run(text)
-        r.font.name = 'Arial'
+        r.font.name = 'Iosevka'
         r.font.bold = True
         r.font.size = Pt(10)
 
