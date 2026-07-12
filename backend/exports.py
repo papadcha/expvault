@@ -1134,8 +1134,18 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
             return 'NONEL' in yid
         return _is_nonel(_all_y.get(yid, {}))
 
-    non_nonel  = [(yid, lbl) for yid, lbl in virtual_order if not is_nonel(yid)]
-    nonel_cols = [(yid, lbl) for yid, lbl in virtual_order if is_nonel(yid)]
+    # ── Ομαδοποιημένο header (μόνο σε nonel_mode='detail') — ίδιο μοτίβο με
+    # PDF/Excel: ένας ενιαίος πίνακας (όχι πλέον χωρισμένος σε "σταθερά υλικά"
+    # + ξεχωριστό "NONEL" με διπλότυπες στήλες αναφοράς).
+    columns = virtual_order
+    grouped = (nonel_mode == 'detail')
+    n_fixed = n_nonel = 0
+    nonel_meta = {}
+    if grouped:
+        columns, n_fixed, n_nonel, nonel_meta = grouped_header_plan(columns, _all_y)
+
+    non_nonel  = [(yid, lbl) for yid, lbl in columns if not is_nonel(yid)]
+    nonel_cols = [(yid, lbl) for yid, lbl in columns if is_nonel(yid)]
 
     nonel_delay_map = {}
     if nonel_mode == 'subgroup':
@@ -1242,6 +1252,8 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
         tblPr.append(lay)
 
     HDR_BG = 'CDD5DB'
+    SUB_BG = 'E4E9ED'
+    GRP_BG = 'DDE3E8'
     EPY_BG = 'FFF0F0'
     EPY_FG = 'C0392B'
     ALT_BG = 'F4F6F8'
@@ -1270,49 +1282,127 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
         r.font.bold = True
         r.font.size = Pt(10)
 
-    def build_page(columns, is_page1):
-        n_mat = len(columns)
-        if is_page1:
-            FIX = [0.8, 2.5, 3.0, 3.5]
-            mat_w = max(1.5, (PAGE_W - sum(FIX)) / max(n_mat, 1))
-            widths = [FIX[0], FIX[1]] + [mat_w] * n_mat + [FIX[2], FIX[3]]
-            hdrs   = ['Α/Α', 'Αρ.Άδ./\nΕκδ.Αρχή'] + \
-                     [f"{on}\n({mo})" for _, (on, mo) in columns] + \
-                     ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή']
+    def material_widths_for(cols):
+        """Πλάτη ανά υλικό — πλατύτερα τα Κιλ/Μετρ με μεγάλους αριθμούς
+        (AN-FO/EM-EX), στενότερα τα NONEL Τεμ (nonel_mode='detail')."""
+        if not grouped:
+            n = len(cols)
+            return [max(1.5, (PAGE_W - 8.8) / max(n, 1))] * n
+        FIXED_W = {1: 1.7, 2: 1.7, 'POLADYN': 1.4, 'THRYALLIDES': 1.2, 'KAPSYLIA': 1.4}
+        fixed_total = sum(FIXED_W.get(yid, 1.3) for yid, _ in cols[:n_fixed])
+        remaining = PAGE_W - 8.8 - fixed_total
+        yw_nonel = max(0.9, remaining / n_nonel) if n_nonel else 1.0
+        return [FIXED_W.get(yid, 1.3) for yid, _ in cols[:n_fixed]] + [yw_nonel] * n_nonel
+
+    def build_group_header(tbl, columns_subset, lead_labels, tail_labels):
+        """3 γραμμές header (γονέας/subtype/leaf) στις γραμμές 0,1,2 του
+        πίνακα — ίδιο μοτίβο με το ομαδοποιημένο header PDF/Excel."""
+        col = 0
+        for lbl in lead_labels:
+            m = tbl.cell(0, col).merge(tbl.cell(2, col))
+            _write(m, lbl, bold=True, size=7); _shd(m, HDR_BG); _vmid(m)
+            col += 1
+        for c in range(n_fixed):
+            yid, (on, mo) = columns_subset[c]
+            if yid in GROUPED_PARENT_LEAVES:
+                parent, (leaf1, leaf2) = GROUPED_PARENT_LEAVES[yid]
+                cp = tbl.cell(0, col)
+                _write(cp, parent, bold=True, size=7); _shd(cp, HDR_BG); _vmid(cp)
+                m = tbl.cell(1, col).merge(tbl.cell(2, col))
+                _write(m, f"{leaf1}\n{leaf2}", bold=True, size=7); _shd(m, SUB_BG); _vmid(m)
+            else:
+                label = '\n'.join(GROUPED_SHORT_LABEL.get(yid, (on,)))
+                m = tbl.cell(0, col).merge(tbl.cell(2, col))
+                _write(m, label, bold=True, size=7); _shd(m, HDR_BG); _vmid(m)
+            col += 1
+        if n_nonel:
+            nonel_col0 = col
+            m = tbl.cell(0, nonel_col0).merge(tbl.cell(0, nonel_col0 + n_nonel - 1))
+            _write(m, 'NONEL', bold=True, size=7); _shd(m, HDR_BG); _vmid(m)
+
+            run_start = nonel_col0
+            cur_sub = nonel_meta[columns_subset[n_fixed][0]][0]
+            for i in range(n_fixed, n_fixed + n_nonel + 1):
+                cur_col = nonel_col0 + (i - n_fixed)
+                yid_i = columns_subset[i][0] if i < n_fixed + n_nonel else None
+                sub = nonel_meta[yid_i][0] if yid_i is not None else None
+                if sub != cur_sub:
+                    if cur_col - 1 > run_start:
+                        m2 = tbl.cell(1, run_start).merge(tbl.cell(1, cur_col - 1))
+                    else:
+                        m2 = tbl.cell(1, run_start)
+                    _write(m2, GROUPED_SUB_LABEL.get(cur_sub, cur_sub), bold=True, size=7)
+                    _shd(m2, SUB_BG); _vmid(m2)
+                    run_start = cur_col
+                    cur_sub = sub
+
+            code_counts = {}
+            for i in range(n_fixed, n_fixed + n_nonel):
+                sub, code, length = nonel_meta[columns_subset[i][0]]
+                code_counts[(sub, code)] = code_counts.get((sub, code), 0) + 1
+            for i in range(n_fixed, n_fixed + n_nonel):
+                sub, code, length = nonel_meta[columns_subset[i][0]]
+                col_i = nonel_col0 + (i - n_fixed)
+                if sub == 'UNIDET':
+                    leaf_txt = length
+                elif code_counts[(sub, code)] > 1:
+                    leaf_txt = f"{code}\n{length}"
+                else:
+                    leaf_txt = code
+                cell = tbl.cell(2, col_i)
+                _write(cell, leaf_txt, bold=True, size=7); _shd(cell, GRP_BG); _vmid(cell)
+            col = nonel_col0 + n_nonel
+        for lbl in tail_labels:
+            m = tbl.cell(0, col).merge(tbl.cell(2, col))
+            _write(m, lbl, bold=True, size=7); _shd(m, HDR_BG); _vmid(m)
+            col += 1
+
+    def build_agores_page(columns_subset, is_full):
+        """is_full=True: πλήρης πίνακας (Α/Α, Αδεια, [υλικά], Ημερ.Αγ.,
+        Προμηθευτής). is_full=False: συμπαγής πίνακας μόνο με Α/Α +
+        Ημερ.Αγ. σαν άγκυρες (χρησιμοποιείται μόνο στα legacy nonel_mode
+        όταν σπάει σε 2 πίνακες)."""
+        n_mat = len(columns_subset)
+        mat_w = material_widths_for(columns_subset)
+        if is_full:
+            lead_labels = ['Α/Α', 'Αρ.Άδ./\nΕκδ.Αρχή']
+            tail_labels = ['Ημερ.Αγ./\nΑρ.Δελτ.', 'Στοιχεία\nΠρομηθευτή']
+            widths = [0.8, 2.5] + mat_w + [3.0, 3.5]
         else:
-            FIX = [0.8, 3.0]
-            mat_w = max(1.5, (PAGE_W - sum(FIX)) / max(n_mat, 1))
-            widths = FIX + [mat_w] * n_mat
-            hdrs   = ['Α/Α', 'Ημερ.Αγ./\nΑρ.Δελτ.'] + \
-                     [f"{on}\n({mo})" for _, (on, mo) in columns]
+            lead_labels = ['Α/Α', 'Ημερ.Αγ./\nΑρ.Δελτ.']
+            tail_labels = []
+            widths = [0.8, 3.0] + mat_w
 
         n_cols = len(widths)
-        n_fixed_pre = 2
-
-        tbl = doc.add_table(rows=1, cols=n_cols)
+        n_hdr_rows = 3 if grouped else 1
+        tbl = doc.add_table(rows=n_hdr_rows, cols=n_cols)
         tbl.style = 'Table Grid'
         _setup_grid(tbl, widths)
 
-        hdr_row = tbl.rows[0]
-        for i, cell in enumerate(hdr_row.cells):
-            _shd(cell, HDR_BG)
-            _write(cell, hdrs[i], bold=True, size=7)
-            _tcW(cell, widths[i])
-            _vmid(cell)
+        if grouped:
+            build_group_header(tbl, columns_subset, lead_labels, tail_labels)
+        else:
+            hdrs = lead_labels + [f"{on}\n({mo})" for _, (on, mo) in columns_subset] + tail_labels
+            for i, cell in enumerate(tbl.rows[0].cells):
+                _shd(cell, HDR_BG)
+                _write(cell, hdrs[i], bold=True, size=7)
+                _tcW(cell, widths[i])
+                _vmid(cell)
 
+        n_fixed_pre = len(lead_labels)
         for ri, row in enumerate(rows):
             is_epi = row['type'] == 'epistrofi'
             dr = tbl.add_row()
 
-            if is_page1:
+            if is_full:
                 adeia_ekd = row['adeia'] + (f"\n{row['ekdousa']}" if row.get('ekdousa') else '')
                 data = ([str(row['aa']) if row['aa'] else '', adeia_ekd] +
-                        [get_val(yid, row['ylika']) for yid, _ in columns] +
+                        [get_val(yid, row['ylika']) for yid, _ in columns_subset] +
                         [f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}", row['promitheftis']])
             else:
                 data = ([str(row['aa']) if row['aa'] else '',
                          f"{fmt_date(row['imerominia'])}\n{row['parstatiko']}"] +
-                        [get_val(yid, row['ylika']) for yid, _ in columns])
+                        [get_val(yid, row['ylika']) for yid, _ in columns_subset])
 
             fg = EPY_FG if is_epi else None
             bg = EPY_BG if is_epi else (ALT_BG if ri % 2 == 1 else None)
@@ -1326,13 +1416,90 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
                 _tcW(cell, widths[i])
                 _vmid(cell)
 
-    add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ')
-    build_page(non_nonel, is_page1=True)
+    def build_katanaloseis_page(columns_subset, is_full):
+        """Ίδια δομή με build_agores_page αλλά με δεδομένα κατανάλωσης
+        (kat_by_parst) — έλειπε εντελώς από το docx export."""
+        n_mat = len(columns_subset)
+        mat_w = material_widths_for(columns_subset)
+        if is_full:
+            lead_labels = ['Ημερ.\nΕισαγ.\nΑποθ.', 'Ημερ.\nΚατανάλ.']
+            tail_labels = ['Παρατηρήσεις']
+            widths = [1.6, 1.6] + mat_w + [3.5]
+        else:
+            lead_labels = ['Ημερ.\nΕισαγ.\nΑποθ.', 'Ημερ.\nΚατανάλ.']
+            tail_labels = []
+            widths = [1.6, 1.6] + mat_w
 
-    if nonel_cols:
+        n_cols = len(widths)
+        n_hdr_rows = 3 if grouped else 1
+        tbl = doc.add_table(rows=n_hdr_rows, cols=n_cols)
+        tbl.style = 'Table Grid'
+        _setup_grid(tbl, widths)
+
+        if grouped:
+            build_group_header(tbl, columns_subset, lead_labels, tail_labels)
+        else:
+            hdrs = lead_labels + [f"{on}\n({mo})" for _, (on, mo) in columns_subset] + tail_labels
+            for i, cell in enumerate(tbl.rows[0].cells):
+                _shd(cell, HDR_BG)
+                _write(cell, hdrs[i], bold=True, size=7)
+                _tcW(cell, widths[i])
+                _vmid(cell)
+
+        n_fixed_pre = len(lead_labels)
+        kat_used = set()
+        ri = 0
+        for row in rows:
+            is_epi = row['type'] == 'epistrofi'
+            ap   = row.get('parstatiko', '')
+            imer = row['imerominia']
+            if is_epi or ap in kat_used:
+                continue
+            kat = kat_by_parst.get(ap, kat_by_parst.get(imer, {}))
+            kat_used.add(ap)
+            kat_imer  = kat.get('imerominia', imer)
+            kat_ylika = kat.get('ylika', {})
+
+            dr = tbl.add_row()
+            if is_full:
+                data = ([fmt_date(kat_imer), fmt_date(kat_imer)] +
+                        [get_val(yid, kat_ylika) for yid, _ in columns_subset] +
+                        [kat.get('paratirishis', '')])
+            else:
+                data = ([fmt_date(kat_imer), fmt_date(kat_imer)] +
+                        [get_val(yid, kat_ylika) for yid, _ in columns_subset])
+
+            bg = ALT_BG if ri % 2 == 1 else None
+            for i, cell in enumerate(dr.cells):
+                is_mat = n_fixed_pre <= i < n_fixed_pre + n_mat
+                _write(cell, data[i], size=7, align='right' if is_mat else 'center')
+                if bg:
+                    _shd(cell, bg)
+                _tcW(cell, widths[i])
+                _vmid(cell)
+            ri += 1
+
+    if grouped:
+        add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ')
+        build_agores_page(columns, is_full=True)
         doc.add_page_break()
-        add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — NONEL')
-        build_page(nonel_cols, is_page1=False)
+        add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ')
+        build_katanaloseis_page(columns, is_full=True)
+    else:
+        add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΑΓΟΡΕΣ / ΕΠΙΣΤΡΟΦΕΣ')
+        build_agores_page(non_nonel, is_full=True)
+        if nonel_cols:
+            doc.add_page_break()
+            add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — NONEL')
+            build_agores_page(nonel_cols, is_full=False)
+
+        doc.add_page_break()
+        add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — ΚΑΤΑΝΑΛΩΣΕΙΣ')
+        build_katanaloseis_page(non_nonel, is_full=True)
+        if nonel_cols:
+            doc.add_page_break()
+            add_title('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ — NONEL (ΚΑΤΑΝΑΛΩΣΕΙΣ)')
+            build_katanaloseis_page(nonel_cols, is_full=False)
 
     buf = io.BytesIO()
     doc.save(buf)
