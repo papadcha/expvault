@@ -77,21 +77,23 @@ export async function showVersionHistory() {
 
   body.innerHTML = `
     ${noticeHtml}
-    <div style="max-height:45vh;overflow-y:auto;margin-bottom:14px;">${entriesHtml}</div>
-    <div style="border-top:1px solid var(--border);padding-top:12px;">
-      <div style="font-weight:600;font-size:13px;margin-bottom:6px;">🐞 Αναφορά Προβλήματος</div>
-      <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">
-        Πράσινο = ασφαλές downgrade (με κουμπί λήψης). Κόκκινο = δεν συνιστάται
-        επιστροφή τόσο παλιά. Αν εντοπίσατε από ποια έκδοση ξεκίνησε ένα
-        πρόβλημα, αναφέρετέ το εδώ.
-      </p>
-      <label style="font-size:11px;">Τελευταία έκδοση που δούλευε σωστά</label>
-      <select id="report-last-good-version" style="width:100%;margin-bottom:8px;">${reportOptions}</select>
-      <label style="font-size:11px;">Περιγραφή προβλήματος</label>
-      <textarea id="report-issue-description" rows="3" style="width:100%;margin-bottom:8px;"
-                placeholder="Τι παρατηρήσατε; Πότε συμβαίνει;"></textarea>
-      <button class="btn btn-outline btn-sm" id="report-issue-btn"
-              onclick="submitVersionIssueReport()">Αποστολή Αναφοράς</button>
+    <div style="display:grid;grid-template-columns:1.3fr 1fr;gap:20px;">
+      <div style="max-height:50vh;overflow-y:auto;">${entriesHtml}</div>
+      <div style="border-left:1px solid var(--border);padding-left:16px;">
+        <div style="font-weight:600;font-size:13px;margin-bottom:6px;">🐞 Αναφορά Προβλήματος</div>
+        <p style="font-size:11px;color:var(--muted);margin-bottom:8px;">
+          Πράσινο = ασφαλές downgrade (με κουμπί λήψης). Κόκκινο = δεν συνιστάται
+          επιστροφή τόσο παλιά. Αν εντοπίσατε από ποια έκδοση ξεκίνησε ένα
+          πρόβλημα, αναφέρετέ το εδώ.
+        </p>
+        <label style="font-size:11px;">Τελευταία έκδοση που δούλευε σωστά</label>
+        <select id="report-last-good-version" style="width:100%;margin-bottom:8px;">${reportOptions}</select>
+        <label style="font-size:11px;">Περιγραφή προβλήματος</label>
+        <textarea id="report-issue-description" rows="4" style="width:100%;margin-bottom:8px;"
+                  placeholder="Τι παρατηρήσατε; Πότε συμβαίνει;"></textarea>
+        <button class="btn btn-outline btn-sm" id="report-issue-btn"
+                onclick="submitVersionIssueReport()">Αποστολή Αναφοράς</button>
+      </div>
     </div>
   `;
 }
@@ -145,7 +147,7 @@ if (window.api?.getAppVersion) {
   window.api.getAppVersion().then(ver => {
     const el = document.getElementById('sidebar-version');
     if (el && ver) {
-      el.textContent = 'v' + ver;
+      el.textContent = 'ExpVault v' + ver;
       el.title = 'Δες τι άλλαξε';
       el.onclick = showVersionHistory;
     }

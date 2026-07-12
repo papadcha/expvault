@@ -293,7 +293,7 @@ function setupAutoUpdater() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1400, height: 900,
+    width: 1600, height: 900,
     minWidth: 1024, minHeight: 700,
     frame: false,
     titleBarStyle: 'hidden',
