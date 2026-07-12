@@ -20,6 +20,8 @@
       "VERSIONS.md",
       "github-token.json",
       "index.html",
+      "js/**/*",
+      "css/**/*",
       "assets/**/*",
       "node_modules/**/*",
       "!node_modules/.cache"
