@@ -465,6 +465,7 @@ def get_adeia_low_balance_alerts(adeia_id=None, threshold_multiplier=3.0):
                     'adeia_id': d['adeia_id'],
                     'arithmos_adeias': d['arithmos_adeias'],
                     'nomiki_katigoria': d['nomiki_katigoria'],
+                    'egekrimeni_posotita': d['egekrimeni_posotita'],
                     'ypoloipo': round(ypoloipo, 3),
                     'meso_oro_agoras': round(d['meso_oro_agoras'], 3),
                     'monada_metrisis': MONADES_NOMIKON_KATIGORION.get(d['nomiki_katigoria'], ''),

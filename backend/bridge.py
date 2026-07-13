@@ -443,6 +443,13 @@ def handle(cmd, payload):
     if cmd == 'run_backup':
         return backup.run_all_backups()
 
+    if cmd == 'check_startup_backups':
+        annual = backup.check_annual_backup()
+        level1 = database.get_adeia_low_balance_alerts(threshold_multiplier=3.0)
+        level2 = database.get_adeia_low_balance_alerts(threshold_multiplier=1.0)
+        adeia  = backup.check_adeia_backups(level1, level2)
+        return {'annual': annual, 'adeia_notify': adeia['notify']}
+
     if cmd == 'list_backups':
         return backup.list_backups(payload['folder'])
 

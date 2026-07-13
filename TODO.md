@@ -15,24 +15,27 @@
 - Νέα bridge command `check_adeia_thresholds` (χωρίς adeia_id — όλες οι άδειες, για το startup check).
 - Toast μέσω του υπάρχοντος `window._showToast`.
 
-## 2. Backup ανά άδεια (event-driven, όχι ημερολογιακό) + ετήσιο backup
+## 2. Backup ανά άδεια (event-driven, όχι ημερολογιακό) + ετήσιο backup — **ΈΓΙΝΕ**
 
 **Δύο backups ανά άδεια**, με trigger από **query πάνω στις κινήσεις της άδειας** (όχι από `imerominia_lixis`):
-- **Backup #1**: όταν το υπόλοιπο άδειας πέσει κάτω από 3× μέσο όρο αγορών (ίδιο κατώφλι με το alert της §1).
-- **Backup #2** (με toast ειδοποίησης): όταν το υπόλοιπο πλησιάζει το μηδέν (π.χ. <1× μέσο όρο αγορών).
-- Μοιράζεται τη λογική υπολογισμού remaining/average με το feature #1 — ίδιο query, διαφορετικά thresholds.
+- **Backup #1** (σιωπηλά): όταν το υπόλοιπο άδειας πέσει κάτω από 3× μέσο όρο αγορών (ίδιο κατώφλι με το alert της §1).
+- **Backup #2** (με toast ειδοποίησης): όταν το υπόλοιπο πέσει κάτω από 1× μέσο όρο αγορών.
+- Μοιράζεται τη λογική υπολογισμού remaining/average με το feature #1 (`get_adeia_low_balance_alerts`, ίδιο query, διαφορετικό `threshold_multiplier`).
 
-**Ετήσιο backup**: παραμένει **ημερολογιακό** — 1 φορά τον χρόνο από την τελευταία φορά, ελέγχεται στο εκκίνηση εφαρμογής (πέρασε >1 χρόνος από `last_backup`; τρέχει).
+**Ετήσιο backup**: ημερολογιακό — τρέχει αν πέρασαν ≥365 μέρες από το `last_annual_backup` (ή ποτέ δεν έτρεξε), ελέγχεται στην εκκίνηση.
+
+**Και τα δύο τρέχουν σιωπηλά αν δεν υπάρχουν configured backup paths** (`run_all_backups()` επιστρέφει `ok:false` χωρίς crash, το marker δεν "καταναλώνεται" — ξαναδοκιμάζει σε κάθε επόμενη εκκίνηση μέχρι να μπουν paths).
 
 **Υλοποίηση:**
-- Το backup ήδη υποστηρίζει manual (`js/backup.js` → `bkNow()` → `py('run_backup')`) και auto-on-close (`main.js:333`) — δεν υπάρχει interval/cron μηχανισμός, άρα οι νέοι έλεγχοι θα τρέχουν σαν startup checks, όχι background scheduler.
-- `backup_config.json` χρειάζεται νέα πεδία:
-  - `last_annual_backup` (ημερομηνία) για το ετήσιο.
-  - per-άδεια markers (π.χ. `{adeia_id: {backup1_done: bool, backup2_done: bool}}`) ώστε να μην ξανατρέχει backup #1/#2 επαναληπτικά μετά την πρώτη ενεργοποίηση για την ίδια άδεια/κατηγορία — πρέπει να καθοριστεί πότε γίνεται reset αυτών των markers (π.χ. σε νέα άδεια, σε ανανέωση εγκεκριμένης ποσότητας).
+- `backend/backup.py`: `check_annual_backup()`, `check_adeia_backups(alerts_level1, alerts_level2)`. Νέα πεδία στο `backup_config.json`: `last_annual_backup` (ημερομηνία), `adeia_backup_state` (`{"<adeia_id>:<nomiki_katigoria>": {backup1_done, backup2_done}}`).
+- Νέα bridge command `check_startup_backups` (`backend/bridge.py`) — συνδυάζει `check_annual_backup()` με `check_adeia_backups()` πάνω σε `database.get_adeia_low_balance_alerts()` με δύο thresholds (3.0 και 1.0).
+- `js/utils.js`'s `checkAdeiaBackupsOnStartup()`, καλείται από το `index.html` INIT section· toast μόνο για τα backup#2 (`notify`).
+- **Reset markers** (απάντηση στο ανοιχτό ερώτημα): **δεν** βασίζεται σε equality της εγκεκριμένης ποσότητας (δοκιμάστηκε πρώτα, βρέθηκε bug — δες παρακάτω) αλλά σε **recovery**: μόλις μια (adeia_id, nomiki_katigoria) βγει από το level1 (υπόλοιπο ξαναανέβει πάνω από 3× μέσο όρο, είτε από ΕΠΙΣΤΡΟΦΗ είτε από αύξηση έγκρισης), ο marker διαγράφεται αυτόματα από το `adeia_backup_state` — αν ξαναμπεί αργότερα σε alert για οποιονδήποτε λόγο, ξανατρέχει κανονικά. Αυτοθεραπεύεται επίσης όταν διαγράφεται μια άδεια (ο stale marker της απλά δεν εμφανίζεται πια στα current alerts, καθαρίζεται στο επόμενο check).
+- **Πολλαπλές νομικές κατηγορίες ανά άδεια** (απάντηση στο άλλο ανοιχτό ερώτημα): κάθε (adeia_id, nomiki_katigoria) παρακολουθείται ανεξάρτητα· επειδή το backup είναι πάντα ολόκληρη η βάση (ένα SQLite αρχείο, όχι per-κατηγορία), αρκεί ΜΙΑ κατηγορία να περάσει το κατώφλι για να τρέξει backup — αυτό υλοποιεί φυσικά το "το χειρότερο αποφασίζει".
 
-## Ανοιχτά σημεία πριν την υλοποίηση
-- Reset λογική για τα per-άδεια backup markers (πότε "ξαναφορτίζουν").
-- Αν μια άδεια έχει πολλές νομικές κατηγορίες με διαφορετικό υπόλοιπο, ποιο κατώφλι κρίνει το backup — το χειρότερο (πρώτο που πέφτει) ή όλες;
+Επαληθεύτηκε με Python integration test (idempotency, backup#1 vs backup#2, reset μετά από renewal, annual boundary στις 365 μέρες) και με το `run-expvault` driver πάνω στην πραγματική dev εφαρμογή (πραγματικό state transition σε πραγματικά configured backup paths, self-healing state μετά τη διαγραφή δοκιμαστικής άδειας).
+
+**Γνωστό pre-existing θέμα που εντοπίστηκε παρεμπιπτόντως (εκτός scope, δεν διορθώθηκε):** `backup.py`'s `_is_rclone(path)` κάνει `':' in path` — κάθε Windows local path (`C:\...`) περιέχει `:` και άρα ταξινομείται λανθασμένα ως rclone remote. Φαίνεται να "δουλεύει" τυχαία επειδή το rclone μπορεί να διευθυνσιοδοτήσει και τοπικά paths, αλλά περνάει από subprocess αντί για απλό `shutil.copy2`. Αν θες, μπαίνει σαν ξεχωριστό todo item.
 
 ## 3. Ευρήματα από static review (επιβεβαιωμένα — ολοκληρωμένα)
 

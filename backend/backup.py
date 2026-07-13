@@ -302,3 +302,77 @@ def run_all_backups() -> dict:
     _save(cfg)
 
     return {'ok': any_ok, 'results': results, 'last_backup': ts}
+
+
+# ── Startup-triggered backups: ετήσιο (ημερολογιακό) + ανά άδεια (event-driven) ──
+
+def check_annual_backup() -> dict:
+    """Τρέχει backup αν πέρασε >=365 μέρες από το τελευταίο ετήσιο (ή ποτέ δεν έτρεξε).
+    Ελέγχεται στην εκκίνηση της εφαρμογής — δεν υπάρχει scheduler/cron, οπότε αν η
+    εφαρμογή μείνει κλειστή πάνω από ένα χρόνο το backup απλώς καθυστερεί μέχρι το
+    επόμενο άνοιγμα."""
+    cfg  = _load()
+    last = cfg.get('last_annual_backup', '')
+    if last:
+        try:
+            if (datetime.now() - datetime.strptime(last, '%Y-%m-%d')).days < 365:
+                return {'ran': False}
+        except ValueError:
+            pass  # άκυρη/παλιά τιμή -> τρέχει σαν να μην είχε ξανατρέξει
+
+    result = run_all_backups()
+    if not result['ok']:
+        return {'ran': False, 'error': result.get('error')}
+
+    cfg = _load()
+    cfg['last_annual_backup'] = datetime.now().strftime('%Y-%m-%d')
+    _save(cfg)
+    return {'ran': True, 'result': result}
+
+
+def check_adeia_backups(alerts_level1: list, alerts_level2: list) -> dict:
+    """alerts_level1/alerts_level2: αποτέλεσμα του database.get_adeia_low_balance_alerts()
+    με threshold_multiplier=3.0 και =1.0 αντίστοιχα. Backup #1 (χωρίς toast) όταν μπει
+    στο level1, backup #2 (με toast — επιστρέφεται στο 'notify') όταν μπει στο level2.
+
+    Μία φορά ανά (adeia_id, nomiki_katigoria) όσο παραμένει σε alert: μόλις το υπόλοιπο
+    ξαναανέβει πάνω από level1 (3x μέσο όρο) — είτε από νέα ΕΠΙΣΤΡΟΦΗ είτε από αύξηση
+    εγκεκριμένης ποσότητας — ο marker καθαρίζεται μόνος του, οπότε αν ξαναμπεί αργότερα
+    σε alert (νέες αγορές, ή μείωση της έγκρισης) ξανατρέχει κανονικά."""
+    cfg   = _load()
+    state = dict(cfg.get('adeia_backup_state', {}))
+
+    current = {f"{a['adeia_id']}:{a['nomiki_katigoria']}": a for a in alerts_level1}
+    level2_keys = {f"{a['adeia_id']}:{a['nomiki_katigoria']}" for a in alerts_level2}
+
+    notify = []
+    changed = False
+
+    for key in list(state.keys()):
+        if key not in current:
+            del state[key]
+            changed = True
+
+    for key, a in current.items():
+        entry = state.get(key, {'backup1_done': False, 'backup2_done': False})
+        is_level2 = key in level2_keys
+        needs_run = (is_level2 and not entry.get('backup2_done')) or \
+                    (not is_level2 and not entry.get('backup1_done'))
+
+        if needs_run:
+            result = run_all_backups()
+            if result['ok']:
+                entry['backup1_done'] = True
+                if is_level2:
+                    entry['backup2_done'] = True
+                    notify.append(a)
+            changed = True
+
+        state[key] = entry
+
+    if changed:
+        cfg = _load()
+        cfg['adeia_backup_state'] = state
+        _save(cfg)
+
+    return {'notify': notify}

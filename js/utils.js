@@ -39,6 +39,21 @@ export async function checkAdeiaThresholdsOnStartup() {
   }
 }
 
+// Ετήσιο backup (ημερολογιακό) + backup ανά άδεια (event-driven, βάσει υπολοίπου) —
+// και τα δύο ελέγχονται στην εκκίνηση της εφαρμογής. Το backup #1 ανά άδεια τρέχει
+// σιωπηλά· μόνο το backup #2 (υπόλοιπο πολύ κοντά στο μηδέν) δείχνει toast.
+export async function checkAdeiaBackupsOnStartup() {
+  try {
+    const r = await py('check_startup_backups');
+    (r?.adeia_notify || []).forEach(a => window._showToast?.(
+      `🔒 Αυτόματο backup — Άδεια ${a.arithmos_adeias}, ${a.nomiki_katigoria}: υπόλοιπο ${a.ypoloipo} ${a.monada_metrisis} (πολύ κοντά σε εξάντληση)`,
+      'warn'
+    ));
+  } catch (e) {
+    console.error('[Adeia Backups] startup check failed:', e);
+  }
+}
+
 // ── DATE HELPERS ─────────────────────────────────────────────────────────────
 export function todayInput() { return new Date().toISOString().slice(0,10); }
 
