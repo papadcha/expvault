@@ -424,6 +424,53 @@ def get_adeia_katigoria_remaining(adeia_id, nomiki_katigoria):
         r['ypoloipo'] = r['egekrimeni_posotita'] - r['xrisimopoiimeni']
         return r
 
+def get_adeia_low_balance_alerts(adeia_id=None, threshold_multiplier=3.0):
+    """Άδειες/κατηγορίες με υπόλοιπο κάτω από threshold_multiplier × τον μέσο όρο
+    ποσότητας ανά αγορά (ΕΙΣΑΓΩΓΗ) της κατηγορίας. Κατηγορίες χωρίς ιστορικό
+    αγορών αγνοούνται (δεν υπάρχει μέσος όρος για να κριθεί κατώφλι).
+    Με adeia_id περιορίζεται σε μία άδεια (χρήση: αμέσως μετά από νέα καταχώρηση)."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT ay.adeia_id, a.arithmos_adeias, ay.nomiki_katigoria, ay.egekrimeni_posotita,
+                   COALESCE(used.xrisimopoiimeni, 0.0) AS xrisimopoiimeni,
+                   avg_purch.meso_oro AS meso_oro_agoras
+            FROM adeia_ylika ay
+            JOIN adeies a ON a.id = ay.adeia_id
+            LEFT JOIN (
+                SELECT k.adeia_id, y.nomiki_katigoria,
+                       SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                ELSE 0 END) as xrisimopoiimeni
+                FROM kiniseis k JOIN ylika y ON k.yliko_id = y.id
+                WHERE k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+                GROUP BY k.adeia_id, y.nomiki_katigoria
+            ) used ON used.adeia_id = ay.adeia_id AND used.nomiki_katigoria = ay.nomiki_katigoria
+            LEFT JOIN (
+                SELECT k.adeia_id, y.nomiki_katigoria, AVG(k.posotita) as meso_oro
+                FROM kiniseis k JOIN ylika y ON k.yliko_id = y.id
+                WHERE k.tipos='ΕΙΣΑΓΩΓΗ'
+                GROUP BY k.adeia_id, y.nomiki_katigoria
+            ) avg_purch ON avg_purch.adeia_id = ay.adeia_id AND avg_purch.nomiki_katigoria = ay.nomiki_katigoria
+            WHERE (:adeia_id IS NULL OR ay.adeia_id = :adeia_id)
+        """, {'adeia_id': adeia_id}).fetchall()
+
+        alerts = []
+        for row in rows:
+            d = dict(row)
+            if not d['meso_oro_agoras']:
+                continue
+            ypoloipo = d['egekrimeni_posotita'] - d['xrisimopoiimeni']
+            if ypoloipo < threshold_multiplier * d['meso_oro_agoras']:
+                alerts.append({
+                    'adeia_id': d['adeia_id'],
+                    'arithmos_adeias': d['arithmos_adeias'],
+                    'nomiki_katigoria': d['nomiki_katigoria'],
+                    'ypoloipo': round(ypoloipo, 3),
+                    'meso_oro_agoras': round(d['meso_oro_agoras'], 3),
+                    'monada_metrisis': MONADES_NOMIKON_KATIGORION.get(d['nomiki_katigoria'], ''),
+                })
+        return alerts
+
 def set_adeia_katigoria(adeia_id, nomiki_katigoria, egekrimeni_posotita):
     with get_db() as conn:
         conn.execute("""

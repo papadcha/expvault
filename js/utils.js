@@ -16,7 +16,27 @@ export function escapeHtml(str) {
 export async function py(cmd, payload = {}) {
   const r = await window.api.call(cmd, payload);
   if (!r.ok) throw new Error(r.error || 'Άγνωστο σφάλμα');
+  // Side-channel: κάποιες εντολές (π.χ. add_kinisi) επιστρέφουν επιπλέον
+  // adeia_alerts όταν η καταχώρηση άγγιξε άδεια με χαμηλό υπόλοιπο.
+  if (r.result && Array.isArray(r.result.adeia_alerts)) {
+    r.result.adeia_alerts.forEach(a => window._showToast?.(adeiaAlertMessage(a), 'warn'));
+  }
   return r.result;
+}
+
+// ── ΆΔΕΙΕΣ: ΧΑΜΗΛΟ ΥΠΟΛΟΙΠΟ ──────────────────────────────────────────────────
+export function adeiaAlertMessage(a) {
+  return `⚠️ Άδεια ${a.arithmos_adeias} — ${a.nomiki_katigoria}: υπόλοιπο ${a.ypoloipo} ${a.monada_metrisis} (κάτω από το κατώφλι προειδοποίησης)`;
+}
+
+// Έλεγχος όλων των αδειών κατά την εκκίνηση της εφαρμογής.
+export async function checkAdeiaThresholdsOnStartup() {
+  try {
+    const alerts = await py('check_adeia_thresholds');
+    (alerts || []).forEach(a => window._showToast?.(adeiaAlertMessage(a), 'warn'));
+  } catch (e) {
+    console.error('[Adeia Alerts] startup check failed:', e);
+  }
 }
 
 // ── DATE HELPERS ─────────────────────────────────────────────────────────────

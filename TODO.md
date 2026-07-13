@@ -1,20 +1,19 @@
 # TODO
 
-Ιδέες για μελλοντική υλοποίηση — ελεγμένες ως προς εφικτότητα πάνω στην τρέχουσα αρχιτεκτονική, όχι ακόμα υλοποιημένες.
+Ιδέες για μελλοντική υλοποίηση — ελεγμένες ως προς εφικτότητα πάνω στην τρέχουσα αρχιτεκτονική. Όσα σημειώνονται **ΈΓΙΝΕ** έχουν υλοποιηθεί.
 
-## 1. Alert χαμηλού υπολοίπου άδειας
+## 1. Alert χαμηλού υπολοίπου άδειας — **ΈΓΙΝΕ**
 
 Όταν το υπόλοιπο μιας άδειας (ανά νομική κατηγορία) πέσει κάτω από **3× τον μέσο όρο των αγορών** της, εμφάνιση toast στον χρήστη.
 
-**Trigger points:**
-- Κατά την καταχώρηση κίνησης (μετά το save μιας νέας εγγραφής στο `kiniseis`).
-- Σε κάθε επόμενη εκκίνηση της εφαρμογής (ίδιο μοτίβο με `checkVersionNotice`, `main.js:328`, `setTimeout` μετά το `ready-to-show`).
+**Trigger points (και τα δύο επαληθεύτηκαν στην πραγματική εφαρμογή):**
+- Κατά την καταχώρηση κίνησης: `backend/bridge.py`'s `add_kinisi` handler επιστρέφει side-channel `adeia_alerts` όταν η καταχώρηση αγγίζει άδεια κάτω από το κατώφλι· το `js/utils.js`'s `py()` το διαβάζει αυτόματα και δείχνει toast — δουλεύει από όλα τα σημεία που καλούν `add_kinisi` (kiniseis.js, pdf-import.js, ypologismos.js) χωρίς να χρειαστεί αλλαγή σε καθένα ξεχωριστά.
+- Στην εκκίνηση της εφαρμογής: `checkAdeiaThresholdsOnStartup()` (`js/utils.js`) καλείται από το INIT section του `index.html`, αμέσως μετά το `loadDashboard()` (renderer-side, όχι μέσω main.js/`ready-to-show` όπως το `checkVersionNotice` — απλούστερο, μιας κι έτσι κι αλλιώς περνάει από το python bridge μέσω `py()`).
 
 **Υλοποίηση:**
-- Το υπόλοιπο υπολογίζεται ήδη δυναμικά: `get_adeia_katigoria_remaining()` (`backend/database.py:381`) — `egekrimeni_posotita` μείον SUM κινήσεων ανά (`adeia_id`, `nomiki_katigoria`).
-- Χρειάζεται νέο query: μέσος όρος ποσότητας ανά κίνηση τύπου `ΕΙΣΑΓΩΓΗ`, group by `adeia_id`, `nomiki_katigoria` — δεν υπάρχει ήδη.
-- Νέα bridge command (π.χ. `check_adeia_thresholds`) που συνδυάζει τα δύο queries και επιστρέφει λίστα αδειών/κατηγοριών κάτω από το κατώφλι.
-- Toast μέσω του υπάρχοντος `window._showToast` (`index.html:1066`).
+- `backend/database.py`'s `get_adeia_low_balance_alerts(adeia_id=None, threshold_multiplier=3.0)`: συνδυάζει το υπόλοιπο (ίδια λογική με `get_adeia_katigoria_remaining`) με νέο query μέσου όρου ΕΙΣΑΓΩΓΗ ανά (`adeia_id`, `nomiki_katigoria`). Κατηγορίες χωρίς ιστορικό αγορών αγνοούνται (όχι false positives σε νέες άδειες).
+- Νέα bridge command `check_adeia_thresholds` (χωρίς adeia_id — όλες οι άδειες, για το startup check).
+- Toast μέσω του υπάρχοντος `window._showToast`.
 
 ## 2. Backup ανά άδεια (event-driven, όχι ημερολογιακό) + ετήσιο backup
 

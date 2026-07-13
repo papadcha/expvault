@@ -95,6 +95,9 @@ def handle(cmd, payload):
     if cmd == 'get_adeia_katigoria_remaining':
         return database.get_adeia_katigoria_remaining(payload['adeia_id'], payload['nomiki_katigoria']) or {}
 
+    if cmd == 'check_adeia_thresholds':
+        return database.get_adeia_low_balance_alerts()
+
     if cmd == 'set_adeia_katigoria':
         database.set_adeia_katigoria(payload['adeia_id'], payload['nomiki_katigoria'], float(payload['egekrimeni_posotita']))
         return {'ok': True}
@@ -124,7 +127,12 @@ def handle(cmd, payload):
             payload.get('paratirishis'), payload.get('ypografi'),
             agora_ref=payload.get('agora_ref')
         )
-        return {'ok': True}
+        result = {'ok': True}
+        if payload.get('adeia_id'):
+            alerts = database.get_adeia_low_balance_alerts(adeia_id=payload['adeia_id'])
+            if alerts:
+                result['adeia_alerts'] = alerts
+        return result
 
     if cmd == 'update_kinisi':
         database.update_kinisi(

@@ -1010,7 +1010,7 @@
 </div>
 
 <script type="module">
-import { escapeHtml, py, todayInput, _lock, fmtDate, showConfirm, closeConfirm } from './js/utils.js';
+import { escapeHtml, py, todayInput, _lock, fmtDate, showConfirm, closeConfirm, checkAdeiaThresholdsOnStartup } from './js/utils.js';
 import { tplReset, tplLoadPdf, tplCapture, tplPreview, tplSave, loadTplList, tplDelete, tplExport, tplImport } from './js/templates.js';
 import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore } from './js/backup.js';
 import { submitVersionIssueReport } from './js/version-notice.js';
@@ -1166,6 +1166,7 @@ if (window.api?.onUpdateStatus) {
 // ── INIT ─────────────────────────────────────────────────────────────────────
 document.getElementById('kin-imerominia').value = todayInput();
 loadDashboard();
+checkAdeiaThresholdsOnStartup();
 </script>
 </body>
 </html>
