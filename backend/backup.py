@@ -107,7 +107,14 @@ def delete_remote(name: str) -> dict:
 
 # ── Local backup ──────────────────────────────────────────────────────────────
 
-def _do_local_backup(folder: str, max_keep: int) -> dict:
+def _dest_name(ts: str, reason: str = None) -> str:
+    """Ονομασία αρχείου backup — προαιρετικό reason suffix (π.χ. 'annual',
+    'adeia1', 'adeia2') ώστε να ξεχωρίζει στη λίστα backups το γιατί τρέχει
+    κάθε backup (manual/auto-on-close δεν έχουν reason, ίδιο format με πριν)."""
+    return f'{PREFIX}{ts}_{reason}{EXT}' if reason else f'{PREFIX}{ts}{EXT}'
+
+
+def _do_local_backup(folder: str, max_keep: int, reason: str = None) -> dict:
     p = Path(folder)
     try:
         p.mkdir(parents=True, exist_ok=True)
@@ -115,7 +122,7 @@ def _do_local_backup(folder: str, max_keep: int) -> dict:
         return {'ok': False, 'error': str(e), 'folder': folder}
 
     ts   = datetime.now().strftime(TIMESTAMP_FMT)
-    dest = p / f'{PREFIX}{ts}{EXT}'
+    dest = p / _dest_name(ts, reason)
     try:
         shutil.copy2(DB_PATH, dest)
     except Exception as e:
@@ -151,9 +158,9 @@ def _list_local_backups(folder: str) -> list:
 
 # ── rclone backup ─────────────────────────────────────────────────────────────
 
-def _do_rclone_backup(remote: str, max_keep: int) -> dict:
+def _do_rclone_backup(remote: str, max_keep: int, reason: str = None) -> dict:
     ts   = datetime.now().strftime(TIMESTAMP_FMT)
-    dest = f"{remote.rstrip('/')}/{PREFIX}{ts}{EXT}"
+    dest = f"{remote.rstrip('/')}/{_dest_name(ts, reason)}"
     try:
         r = subprocess.run(
             [RCLONE_BIN, 'copyto', str(DB_PATH), dest],
@@ -214,10 +221,10 @@ def _list_rclone_backups(remote: str) -> list:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
-def do_backup(folder: str, max_keep: int = 30) -> dict:
+def do_backup(folder: str, max_keep: int = 30, reason: str = None) -> dict:
     if _is_rclone(folder):
-        return _do_rclone_backup(folder, max_keep)
-    return _do_local_backup(folder, max_keep)
+        return _do_rclone_backup(folder, max_keep, reason)
+    return _do_local_backup(folder, max_keep, reason)
 
 
 def list_backups(folder: str) -> list:
@@ -300,7 +307,7 @@ def restore_backup(path: str) -> dict:
                 pass
 
 
-def run_all_backups() -> dict:
+def run_all_backups(reason: str = None) -> dict:
     cfg      = _load()
     paths    = [p for p in cfg.get('paths', []) if p]
     max_keep = cfg.get('max_keep', 30)
@@ -311,7 +318,7 @@ def run_all_backups() -> dict:
     results = []
     any_ok  = False
     for p in paths:
-        r = do_backup(p, max_keep)
+        r = do_backup(p, max_keep, reason)
         results.append(r)
         if r['ok']:
             any_ok = True
@@ -340,7 +347,7 @@ def check_annual_backup() -> dict:
         except ValueError:
             pass  # άκυρη/παλιά τιμή -> τρέχει σαν να μην είχε ξανατρέξει
 
-    result = run_all_backups()
+    result = run_all_backups(reason='annual')
     if not result['ok']:
         return {'ran': False, 'error': result.get('error')}
 
@@ -380,7 +387,7 @@ def check_adeia_backups(alerts_level1: list, alerts_level2: list) -> dict:
                     (not is_level2 and not entry.get('backup1_done'))
 
         if needs_run:
-            result = run_all_backups()
+            result = run_all_backups(reason='adeia2' if is_level2 else 'adeia1')
             if result['ok']:
                 entry['backup1_done'] = True
                 if is_level2:
