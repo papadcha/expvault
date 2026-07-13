@@ -139,10 +139,12 @@ export async function submitPdfEntries() {
         <div class="alert" style="background:#e8f4fd;border:1px solid #90cdf4;color:#2b6cb0;margin-top:8px;" id="ekk-eisagogi-prompt">
           <strong>📋 Βήμα 2: Έχεις επιστροφή για το <em>${escapeHtml(parstatiko)}</em>;</strong>
           <div style="display:flex;gap:8px;margin-top:10px;">
-            <button class="btn btn-sm btn-outline" onclick="showEkkEisagogiWait(${escapeHtml(JSON.stringify(parstatiko))})">🔄 ΝΑΙ — Θα περάσω πιστωτικό</button>
-            <button class="btn btn-sm btn-success" onclick="doAutoKataxorisiEisagogi(${escapeHtml(JSON.stringify(parstatiko))})">✅ ΟΧΙ — Καταχώρηση Κατανάλωσης</button>
+            <button class="btn btn-sm btn-outline" data-ekk-wait="${escapeHtml(parstatiko)}">🔄 ΝΑΙ — Θα περάσω πιστωτικό</button>
+            <button class="btn btn-sm btn-success" data-ekk-auto="${escapeHtml(parstatiko)}">✅ ΟΧΙ — Καταχώρηση Κατανάλωσης</button>
           </div>
         </div>`;
+      document.querySelector('[data-ekk-wait]')?.addEventListener('click', function() { showEkkEisagogiWait(this.dataset.ekkWait); });
+      document.querySelector('[data-ekk-auto]')?.addEventListener('click', function() { doAutoKataxorisiEisagogi(this.dataset.ekkAuto); });
     }
   }
 }

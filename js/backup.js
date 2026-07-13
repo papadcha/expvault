@@ -139,12 +139,15 @@ export async function bkRefreshRemotes() {
             <td style="padding:8px 12px;font-family:monospace;font-size:13px;">${escapeHtml(r.remote)}</td>
             <td style="padding:8px 12px;color:var(--muted);font-size:12px;">${escapeHtml(getLabel(r))}</td>
             <td style="padding:8px 12px;text-align:right;">
-              <button onclick="bkDeleteRemote(${escapeHtml(JSON.stringify(r.name))})"
+              <button data-remote-name="${escapeHtml(r.name)}"
                 style="padding:3px 10px;background:none;border:1px solid rgba(229,115,115,0.4);border-radius:4px;color:#e57373;font-size:11px;cursor:pointer;">Διαγραφή</button>
             </td>
           </tr>`).join('')}
         </tbody>
       </table>`;
+    el.querySelectorAll('button[data-remote-name]').forEach(btn => {
+      btn.addEventListener('click', () => bkDeleteRemote(btn.dataset.remoteName));
+    });
   } catch(e) {
     el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
   }

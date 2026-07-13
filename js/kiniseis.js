@@ -57,7 +57,7 @@ export function renderKiniseis(limit) {
     <td>${escapeHtml(k.promitheftis_onoma)||'—'}</td>
     <td>${escapeHtml(k.ypografi)||'—'}</td>
     <td class="text-center">
-      <button class="btn btn-outline btn-sm" onclick='editKinisi(${escapeHtml(JSON.stringify(k))})'>✏️</button>
+      <button class="btn btn-outline btn-sm" data-edit-id="${k.id}">✏️</button>
       <button class="btn btn-danger btn-sm" onclick="confirmDelete('kinisi',${k.id})">🗑</button>
     </td>
   </tr>`).join('') + (hasMore ? `<tr><td colspan="10" style="text-align:center;padding:10px;">
@@ -65,6 +65,13 @@ export function renderKiniseis(limit) {
       ▼ Εμφάνιση όλων (${all.length} κινήσεις)
     </button>
   </td></tr>` : '');
+
+  body.querySelectorAll('button[data-edit-id]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const k = (window._kinAll || []).find(x => x.id === parseInt(btn.dataset.editId));
+      if (k) editKinisi(k);
+    });
+  });
 }
 
 export async function editKinisi(k) {

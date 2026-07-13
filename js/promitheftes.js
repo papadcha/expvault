@@ -6,9 +6,15 @@ import { confirmDelete } from './delete-confirm.js';
 export async function loadProm() {
   setProm(await py('get_promitheftes'));
   const body = document.getElementById('prom-body');
-  body.innerHTML = allProm.map(p=>`<tr style="cursor:pointer" onclick='fillPromForm(${escapeHtml(JSON.stringify(p))})'>
+  body.innerHTML = allProm.map(p=>`<tr style="cursor:pointer" data-id="${p.id}">
     <td>${escapeHtml(p.onoma)}</td>
   </tr>`).join('') || '<tr><td style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
+  body.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const p = allProm.find(x => x.id === parseInt(tr.dataset.id));
+      if (p) fillPromForm(p);
+    });
+  });
 }
 
 export function fillPromForm(p) {

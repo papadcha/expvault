@@ -198,7 +198,7 @@ export async function loadTplList() {
           <td style="font-size:12px;color:var(--muted);">${fields || '—'}</td>
           <td class="mono" style="font-size:11px;color:var(--muted);">${(t.created_at||'').slice(0,16)}</td>
           <td style="text-align:right;">
-            <button class="btn btn-danger btn-sm" onclick="tplDelete(${t.id},${escapeHtml(JSON.stringify(t.name))})">🗑</button>
+            <button class="btn btn-danger btn-sm" data-tpl-id="${t.id}" data-tpl-name="${escapeHtml(t.name)}">🗑</button>
           </td>
         </tr>`;
     }).join('');
@@ -208,6 +208,9 @@ export async function loadTplList() {
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
+    body.querySelectorAll('button[data-tpl-id]').forEach(btn => {
+      btn.addEventListener('click', () => tplDelete(parseInt(btn.dataset.tplId), btn.dataset.tplName));
+    });
   } catch(e) {
     document.getElementById('tpl-list-body').innerHTML =
       `<div class="alert alert-error">Σφάλμα φόρτωσης: ${escapeHtml(e.message)}</div>`;

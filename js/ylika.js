@@ -6,13 +6,19 @@ import { confirmDelete } from './delete-confirm.js';
 export async function loadYlika() {
   setYlika(await py('get_ylika'));
   const body = document.getElementById('yl-body');
-  body.innerHTML = allYlika.map(y => `<tr style="cursor:pointer" onclick='fillYlikoForm(${escapeHtml(JSON.stringify(y))})'>
+  body.innerHTML = allYlika.map(y => `<tr style="cursor:pointer" data-id="${y.id}">
     <td><strong>${escapeHtml(y.onoma)}</strong></td>
     <td>${escapeHtml(y.diatomi_mm)||'—'}</td>
     <td>${escapeHtml(y.monada_metrisis)}</td>
     <td>${escapeHtml(y.nomiki_katigoria)||'—'}</td>
     <td>${escapeHtml(y.paratirishis)||'—'}</td>
   </tr>`).join('') || '<tr><td colspan="5" style="text-align:center;padding:24px;color:var(--muted)">Δεν υπάρχουν υλικά</td></tr>';
+  body.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const y = allYlika.find(x => x.id === parseInt(tr.dataset.id));
+      if (y) fillYlikoForm(y);
+    });
+  });
 }
 
 export function fillYlikoForm(y) {

@@ -33,7 +33,11 @@ def _save(cfg):
 
 
 def _is_rclone(path: str) -> bool:
-    # rclone paths look like "remote:some/path" — must contain ':' but not start with '/'
+    # rclone paths look like "remote:some/path" — must contain ':' but not start with '/'.
+    # Windows local paths (C:\..., C:/...) also contain ':' μετά το drive letter — πρέπει
+    # να αποκλειστούν πρώτα, αλλιώς κάθε τοπικό Windows path περνάει λανθασμένα από rclone.
+    if re.match(r'^[A-Za-z]:[\\/]', path):
+        return False
     return ':' in path and not path.startswith('/')
 
 

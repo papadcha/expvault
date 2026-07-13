@@ -13,10 +13,16 @@ export async function loadAdeies() {
       allYlika.map(y => `<option value="${y.id}">${escapeHtml(y.onoma)}${y.diatomi_mm?` (${escapeHtml(y.diatomi_mm)}mm)`:''} — ${escapeHtml(y.monada_metrisis)}</option>`).join('');
   }
   const body=document.getElementById('adeia-body');
-  body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" onclick='fillAdeiaForm(${escapeHtml(JSON.stringify(a))})'>
+  body.innerHTML=allAdeies.map(a=>`<tr style="cursor:pointer" data-id="${a.id}">
     <td><strong>${escapeHtml(a.arithmos_adeias)}</strong></td><td>${escapeHtml(a.perigrafi)||'—'}</td><td>${escapeHtml(a.syntomografia_ekdousas)||'—'}</td>
     <td style="white-space:nowrap">${a.imerominia_lixis ? fmtDate(a.imerominia_lixis) : '—'}</td>
   </tr>`).join('')||'<tr><td colspan="4" style="padding:20px;color:var(--muted)">Δεν υπάρχουν</td></tr>';
+  body.querySelectorAll('tr[data-id]').forEach(tr => {
+    tr.addEventListener('click', () => {
+      const a = allAdeies.find(x => x.id === parseInt(tr.dataset.id));
+      if (a) fillAdeiaForm(a);
+    });
+  });
 }
 
 export async function fillAdeiaForm(a) {
