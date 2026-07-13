@@ -1,9 +1,9 @@
 {
   "_comment": "Χειροκίνητα συντηρούμενο αρχείο — ενημερώνεται σε κάθε release, ή εκτάκτως αν μια έκδοση αποδειχτεί προβληματική. latestRecommendedVersion μπορεί να είναι ΠΙΣΩ από την τελευταία GitHub release αν αυτή έχει γνωστό πρόβλημα. ΠΡΟΣΟΧΗ: αν οριστεί notice/χαμηλώσει το latestRecommendedVersion, πρέπει ΕΠΙΣΗΣ να γίνει unpublish/draft το προβληματικό GitHub release — το electron-updater θα συνεχίσει να το προωθεί αυτόματα αλλιώς.",
-  "latestRecommendedVersion": "1.1.2",
-  "safeDowngradeFloor": "1.1.2",
-  "notice": "Μόνο η τρέχουσα έκδοση (1.1.2) θεωρείται επιβεβαιωμένα ασφαλής για επαναφορά. Οι 1.0.4–1.1.1 είχαν bug σε migration παλιού σχήματος αδειών που μπορούσε να διαγράψει οριστικά εγκεκριμένες ποσότητες (διορθώθηκε στην v1.1.2)· οι παλιότερες (έως 1.0.3) δεν έχουν επαληθευτεί έναντι του σημερινού σχήματος βάσης μετά από τόσα ενδιάμεσα migrations.",
+  "latestRecommendedVersion": "1.1.3",
+  "safeDowngradeFloor": "1.1.3",
+  "notice": "Μόνο η τρέχουσα έκδοση θεωρείται επιβεβαιωμένα ασφαλής για επαναφορά — ενημερώνεται σε κάθε release. Οι 1.0.4–1.1.1 είχαν bug σε migration παλιού σχήματος αδειών που μπορούσε να διαγράψει οριστικά εγκεκριμένες ποσότητες (διορθώθηκε στην v1.1.2)· οι παλιότερες (έως 1.0.3) δεν έχουν επαληθευτεί έναντι του σημερινού σχήματος βάσης μετά από τόσα ενδιάμεσα migrations.",
   "versions": [
-    { "version": "1.1.2", "date": "2026-07-13", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.2/ExpVault-Setup-1.1.2.exe", "notes": "Alert χαμηλού υπολοίπου άδειας, αυτόματο backup ανά άδεια + ετήσιο, fix destructive migration αδειών, fix ανασφαλές restore βάσης, fix αργό τοπικό backup μέσω rclone" }
+    { "version": "1.1.3", "date": "2026-07-13", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.3/ExpVault-Setup-1.1.3.exe", "notes": "Σκλήρυνση restore backup (μόνο γνωστά paths) και delete εντολών (έλεγχος id), ονόματα backup δείχνουν τον λόγο δημιουργίας (ετήσιο/ανά άδεια)" }
   ]
 }
