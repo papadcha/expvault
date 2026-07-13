@@ -38,6 +38,17 @@ import importlib
 import exports
 import backup
 
+def _int_id(payload, key='id'):
+    """Επιβεβαιώνει θετικό ακέραιο πριν φτάσει σε destructive delete εντολή —
+    defense-in-depth έναντι type confusion από τον caller."""
+    try:
+        val = int(payload.get(key))
+    except (TypeError, ValueError):
+        raise ValueError(f"Μη έγκυρο {key}: αναμένεται ακέραιος")
+    if val <= 0:
+        raise ValueError(f"Μη έγκυρο {key}: αναμένεται θετικός ακέραιος")
+    return val
+
 def handle(cmd, payload):
     # ── ΥΛΙΚΑ ────────────────────────────────────────────────────────────────
     if cmd == 'get_ylika':
@@ -54,7 +65,7 @@ def handle(cmd, payload):
         return {'ok': True}
 
     if cmd == 'delete_yliko':
-        database.delete_yliko(payload['id'])
+        database.delete_yliko(_int_id(payload))
         return {'ok': True}
 
     # ── ΠΡΟΜΗΘΕΥΤΕΣ ──────────────────────────────────────────────────────────
@@ -70,7 +81,7 @@ def handle(cmd, payload):
         return {'ok': True}
 
     if cmd == 'delete_promitheftis':
-        database.delete_promitheftis(payload['id'])
+        database.delete_promitheftis(_int_id(payload))
         return {'ok': True}
 
     # ── ΑΔΕΙΕΣ ───────────────────────────────────────────────────────────────
@@ -103,11 +114,11 @@ def handle(cmd, payload):
         return {'ok': True}
 
     if cmd == 'delete_adeia_yliko':
-        database.delete_adeia_yliko(payload['id'])
+        database.delete_adeia_yliko(_int_id(payload))
         return {'ok': True}
 
     if cmd == 'delete_adeia':
-        database.delete_adeia(payload['id'])
+        database.delete_adeia(_int_id(payload))
         return {'ok': True}
 
     # ── ΚΙΝΗΣΕΙΣ ─────────────────────────────────────────────────────────────
@@ -149,7 +160,7 @@ def handle(cmd, payload):
         return {'ok': True}
 
     if cmd == 'delete_kinisi':
-        database.delete_kinisi(payload['id'])
+        database.delete_kinisi(_int_id(payload))
         return {'ok': True}
 
     if cmd == 'batch_update_parstatiko':
@@ -251,7 +262,7 @@ def handle(cmd, payload):
 
     if cmd == 'delete_pdf_template':
         import pdf_templates
-        pdf_templates.delete_template(payload['id'])
+        pdf_templates.delete_template(_int_id(payload))
         return {'ok': True}
 
     if cmd == 'preview_pdf_template':

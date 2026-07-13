@@ -226,6 +226,19 @@ def list_backups(folder: str) -> list:
     return _list_local_backups(folder)
 
 
+def _known_backup_paths() -> set:
+    """Τα backup paths που η ίδια η εφαρμογή βλέπει μέσα στα configured backup
+    paths — defense-in-depth ώστε το restore_backup να μην δέχεται αυθαίρετο
+    path (π.χ. αν κάποιος καταφέρει να καλέσει απευθείας το IPC με δικό του
+    payload), μόνο ό,τι η ίδια η εφαρμογή ήδη έδειξε ως δικό της backup."""
+    cfg = _load()
+    known = set()
+    for folder in [p for p in cfg.get('paths', []) if p]:
+        for b in list_backups(folder):
+            known.add(b['path'])
+    return known
+
+
 def _validate_sqlite_file(path: str) -> tuple:
     """PRAGMA integrity_check πάνω στο υποψήφιο αρχείο πριν εφαρμοστεί ως restore."""
     try:
@@ -242,6 +255,9 @@ def _validate_sqlite_file(path: str) -> tuple:
 
 
 def restore_backup(path: str) -> dict:
+    if path not in _known_backup_paths():
+        return {'ok': False, 'error': 'Μη αναγνωρισμένο backup path — επιτρέπεται restore μόνο από τα configured backup paths.'}
+
     import tempfile
     tmp_path = None
     try:
