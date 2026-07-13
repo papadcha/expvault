@@ -17,16 +17,18 @@ export function confirmDelete(type, id) {
   document.getElementById('confirm-msg').textContent = msgs[type] || 'Επιβεβαίωση διαγραφής;';
   document.getElementById('confirm-modal').classList.add('open');
   setTimeout(() => document.getElementById('confirm-cancel-btn').focus(), 50);
+  // closeConfirm() (κοινό με το showConfirm() flow αλλού) μηδενίζει το onclick
+  // κάθε φορά που κλείνει το modal — πρέπει να το ξαναδένουμε σε κάθε άνοιγμα,
+  // αλλιώς μετά την πρώτη χρήση (επιτυχή ή με Ακύρωση) το κουμπί "Διαγραφή" πάει στο κενό.
+  document.getElementById('confirm-ok-btn').onclick = async () => {
+    const cmds = {kinisi:'delete_kinisi', yliko:'delete_yliko', prom:'delete_promitheftis', adeia:'delete_adeia'};
+    try {
+      await py(cmds[_delType], { id: parseInt(_delId) });
+      closeConfirm();
+      if (_delType==='kinisi')   loadKiniseis();
+      if (_delType==='yliko')    { clearYlikoForm(); loadYlika(); }
+      if (_delType==='prom')     { clearPromForm(); loadProm(); }
+      if (_delType==='adeia')    { clearAdeiaForm(); loadAdeies(); }
+    } catch(e) { closeConfirm(); alert('Σφάλμα: '+e.message); }
+  };
 }
-
-document.getElementById('confirm-ok-btn').onclick = async () => {
-  const cmds = {kinisi:'delete_kinisi', yliko:'delete_yliko', prom:'delete_promitheftis', adeia:'delete_adeia'};
-  try {
-    await py(cmds[_delType], { id: parseInt(_delId) });
-    closeConfirm();
-    if (_delType==='kinisi')   loadKiniseis();
-    if (_delType==='yliko')    { clearYlikoForm(); loadYlika(); }
-    if (_delType==='prom')     { clearPromForm(); loadProm(); }
-    if (_delType==='adeia')    { clearAdeiaForm(); loadAdeies(); }
-  } catch(e) { closeConfirm(); alert('Σφάλμα: '+e.message); }
-};

@@ -1026,7 +1026,7 @@ import {
 } from './js/kiniseis.js';
 import {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
-  checkEkkremotitaByParst, deleteParstatiko,
+  checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
 } from './js/pdf-import.js';
 import { loadExportDropdowns, doExport, exportListaAgores, exportDeltioDrastiriotitas } from './js/export.js';
 import {
@@ -1036,6 +1036,7 @@ import {
 import {
   loadParstatikaPage, loadEpistrofesWithoutParst, assignEpistrofiParst, loadRenamePreview,
   applyRename, promptDeleteParstatiko, cancelDeleteParstatiko, confirmDeleteParstatiko, saveParstEdit,
+  closeParstEditModal,
 } from './js/parstatika.js';
 
 // Functions called from inline onclick="..." attributes in the HTML must be
@@ -1052,12 +1053,13 @@ Object.assign(window, {
   loadKiniseis, renderKiniseis, editKinisi, closeEditKinisiModal, saveEditKinisi,
   checkAdeiaYpoloipo, saveKinisi, autoKataxorisiAll, clearKinisiForm, clearFilters, toggleAgoraRefRow,
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
-  checkEkkremotitaByParst, deleteParstatiko,
+  checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
   doExport, exportListaAgores, exportDeltioDrastiriotitas,
   showSenario, loadYpologismosAgora, calculateYpologismos,
   kataxoriYpologismos, saveEpistrofiFromYpologismos, exportYpologismosPdf,
   loadEpistrofesWithoutParst, assignEpistrofiParst, loadRenamePreview,
   applyRename, promptDeleteParstatiko, cancelDeleteParstatiko, confirmDeleteParstatiko, saveParstEdit,
+  closeParstEditModal,
 });
 
 // ── TOAST (αντικαθιστά alert() σε όλη την εφαρμογή) ──────────────────────────
