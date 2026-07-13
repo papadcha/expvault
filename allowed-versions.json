@@ -1,9 +1,11 @@
 {
   "_comment": "Χειροκίνητα συντηρούμενο αρχείο — ενημερώνεται σε κάθε release, ή εκτάκτως αν μια έκδοση αποδειχτεί προβληματική. latestRecommendedVersion μπορεί να είναι ΠΙΣΩ από την τελευταία GitHub release αν αυτή έχει γνωστό πρόβλημα. ΠΡΟΣΟΧΗ: αν οριστεί notice/χαμηλώσει το latestRecommendedVersion, πρέπει ΕΠΙΣΗΣ να γίνει unpublish/draft το προβληματικό GitHub release — το electron-updater θα συνεχίσει να το προωθεί αυτόματα αλλιώς.",
-  "latestRecommendedVersion": "1.1.0",
+  "latestRecommendedVersion": "1.1.2",
   "safeDowngradeFloor": "1.0.0",
   "notice": null,
   "versions": [
+    { "version": "1.1.2", "date": "2026-07-13", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.2/ExpVault-Setup-1.1.2.exe", "notes": "Alert χαμηλού υπολοίπου άδειας, αυτόματο backup ανά άδεια + ετήσιο, fix destructive migration αδειών, fix ανασφαλές restore βάσης, fix αργό τοπικό backup μέσω rclone" },
+    { "version": "1.1.1", "date": "2026-07-13", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.1/ExpVault-Setup-1.1.1.exe", "notes": "Fix κουμπιού Διαγραφή στο modal επιβεβαίωσης μετά την πρώτη χρήση, fix Άκυρο/Κλείσιμο σε modals, ευθυγράμμιση radio buttons, Iosevka ως system font" },
     { "version": "1.1.0", "date": "2026-07-12", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.0/ExpVault-Setup-1.1.0.exe", "notes": "Ομαδοποιημένο header στο Βιβλίο (PDF/Excel/Word), bundled rclone, fix γραμματοσειράς Word/Excel, Electron 43" },
     { "version": "1.0.6", "date": "2026-07-12", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.6/ExpVault-Setup-1.0.6.exe", "notes": "Fix scrollbar πίσω από titlebar, fix κουμπιών titlebar, όνομα εφαρμογής στο sidebar, πλατύτερο παράθυρο ιστορικού εκδόσεων" },
     { "version": "1.0.5", "date": "2026-07-11", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.0.5/ExpVault-Setup-1.0.5.exe", "notes": "Fix αλλοίωσης ελληνικού κειμένου, fix εξαγωγών Excel/PDF, νέο ιστορικό εκδόσεων" },

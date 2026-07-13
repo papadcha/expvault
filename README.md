@@ -4,7 +4,7 @@
 
 ## Download
 
-**[⬇ ExpVault-Setup-1.0.6.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault-Setup-1.0.6.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.0.6](https://github.com/papadcha/expvault/releases/tag/v1.0.6)
+**[⬇ ExpVault-Setup-1.1.2.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault-Setup-1.1.2.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.1.2](https://github.com/papadcha/expvault/releases/tag/v1.1.2)
 
 > Δεν απαιτείται Python. Αν εμφανιστεί Windows SmartScreen, πάτα **Περισσότερες πληροφορίες → Εκτέλεση παρόλα αυτά**.
 
@@ -29,6 +29,9 @@ Electron (UI)  ←→  Python IPC Bridge (stdin/stdout JSON)  ←→  SQLite
 | `backend/backup.py` | Τοπικό + rclone cloud backup & restore βάσης δεδομένων |
 | `backend/expvault.db` | Βάση δεδομένων |
 | `backend/backup_config.json` | Ρυθμίσεις backup (δημιουργείται αυτόματα) |
+
+> Για ανάπτυξη με Claude Code (IPC πρωτόκολλο, build pipeline, γνωστά
+> gotchas): **[CLAUDE.md](CLAUDE.md)**
 
 ---
 
