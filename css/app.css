@@ -74,6 +74,12 @@ input, select, textarea {
   outline: none;
 }
 input:focus, select:focus, textarea:focus { border-color: var(--navy3); background: white; }
+input[type="radio"], input[type="checkbox"] {
+  width: auto; padding: 0; border: none; background: none; flex-shrink: 0;
+}
+label:has(> input[type="radio"]), label:has(> input[type="checkbox"]) {
+  display: flex; align-items: center; gap: 6px; font-weight: 400;
+}
 textarea { resize: vertical; min-height: 60px; }
 .form-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 
