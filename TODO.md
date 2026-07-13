@@ -34,3 +34,19 @@
 ## Ανοιχτά σημεία πριν την υλοποίηση
 - Reset λογική για τα per-άδεια backup markers (πότε "ξαναφορτίζουν").
 - Αν μια άδεια έχει πολλές νομικές κατηγορίες με διαφορετικό υπόλοιπο, ποιο κατώφλι κρίνει το backup — το χειρότερο (πρώτο που πέφτει) ή όλες;
+
+## 3. Ευρήματα από static review (επιβεβαιωμένα — ολοκληρωμένα)
+
+Πρόταση εξωτερικού review (ChatGPT), ελεγμένη πάνω στο πραγματικό repo — μόνο τα επιβεβαιωμένα σημεία.
+
+- ~~**Destructive migration στο `adeia_ylika`** (`backend/database.py:80-87`)~~ — **ΈΓΙΝΕ.** Οι παλιές εγκεκριμένες ποσότητες σώζονται πριν το `DROP TABLE` (αθροιστικά ανά νόμιμη κατηγορία μέσω `classify_nomiki_katigoria`) και ξαναγράφονται μετά το `CREATE TABLE`. Επαληθεύτηκε με test script.
+- ~~**`restore_backup` χωρίς προστασία** (`backend/backup.py:219-242`)~~ — **ΈΓΙΝΕ.** Προστέθηκε `PRAGMA integrity_check` στο πηγαίο αρχείο πριν το restore, αυτόματο `expvault_prerestore_<ts>.db` snapshot της τρέχουσας βάσης, και atomic αντικατάσταση (`os.replace`). Επαληθεύτηκε με test script (άκυρο αρχείο απορρίπτεται χωρίς να πειράξει την ενεργή βάση).
+- ~~**`requirements.txt` λείπει**~~ — **ΈΓΙΝΕ.** Προστέθηκε `requirements.txt` με pinned εκδόσεις (τις ήδη εγκατεστημένες: pyinstaller 6.21.0, reportlab 5.0.0, openpyxl 3.1.5, python-docx 1.2.0), `build.ps1` και `CLAUDE.md` ενημερώθηκαν να το χρησιμοποιούν. Το `package-lock.json` υπήρχε ήδη (αυτό το κομμάτι του review ήταν λάθος).
+- ~~**`max_keep` του backup χωρίς validation** (`backend/backup.py:44-49`)~~ — **ΈΓΙΝΕ.** Το `save_config()` τώρα κάνει clamp σε ακέραιο 1–365, με fallback σε 30 για μη έγκυρες τιμές.
+
+## 4. Ευρήματα από static review (μικρής προτεραιότητας / defense-in-depth, για αργότερα)
+
+Δεν είναι ενεργά exploitable με τον τρόπο που περιγράφτηκαν, αλλά αξίζει σκλήρυνση/εκσυγχρονισμός όταν βρεθεί χρόνος:
+
+- **Εύθραυστο pattern `onclick='fn(${escapeHtml(JSON.stringify(obj))})'`**: εμφανίζεται σε 8 αρχεία (`kiniseis.js`, `adeies.js`, `promitheftes.js`, `ylika.js`, `backup.js`, `pdf-import.js`, `templates.js`). Επαληθεύτηκε ότι ο συνδυασμός `JSON.stringify` + `escapeHtml` είναι σήμερα ασφαλής (το πρώτο χειρίζεται το escaping μέσα στο JS string, το δεύτερο το HTML attribute boundary), αλλά είναι εύθραυστο — μια μελλοντική απλοποίηση του `escapeHtml` θα το έσπαγε αθόρυβα. Αντικατάσταση με `addEventListener` + `data-*` attributes θα το έκανε πιο ανθεκτικό δομικά.
+- **`window.api.call(cmd, payload)` περνάει οποιοδήποτε `cmd` string ατόφιο** (`preload.js:4` → `main.js:139` → `backend/bridge.py`): το bridge έχει ήδη fixed allowlist ~58 hardcoded commands (όχι πραγματικό αυθαίρετο RPC), αλλά αρκετά από αυτά είναι destructive (`delete_*`, `restore_backup` με ελεύθερο path, `delete_remote`) και προσβάσιμα χωρίς επιπλέον έλεγχο. Αξίζει σκλήρυνση ως defense-in-depth — ειδικά επειδή το `pdf_parser.py` επεξεργάζεται εξωτερικά PDF τιμολόγια προμηθευτή, ένα πιο ρεαλιστικό μελλοντικό attack surface από χειρόγραφα πεδία σημειώσεων.

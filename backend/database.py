@@ -79,9 +79,22 @@ def init_db():
     with get_db() as conn:
         # Pre-flight migration: adeia_ylika παλιό σχήμα (yliko_id) → διαγράφεται και
         # ξαναδημιουργείται παρακάτω με nomiki_katigoria. Πρέπει να τρέξει πριν το CREATE TABLE.
+        # Οι παλιές εγκεκριμένες ποσότητες σώζονται πρώτα (αθροιστικά ανά νόμιμη κατηγορία,
+        # μέσω classify_nomiki_katigoria στο όνομα του υλικού) και ξαναγράφονται μετά το
+        # CREATE TABLE παρακάτω — αλλιώς χάνονται οριστικά σε κάθε upgrade/restore παλιάς βάσης.
+        migrated_adeia_ylika = []
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(adeia_ylika)").fetchall()]
             if cols and 'yliko_id' in cols:
+                old_rows = conn.execute("""
+                    SELECT ay.adeia_id, y.onoma, ay.egekrimeni_posotita
+                    FROM adeia_ylika ay JOIN ylika y ON ay.yliko_id = y.id
+                """).fetchall()
+                aggregated = {}
+                for adeia_id, onoma, posotita in old_rows:
+                    key = (adeia_id, classify_nomiki_katigoria(onoma))
+                    aggregated[key] = aggregated.get(key, 0.0) + posotita
+                migrated_adeia_ylika = [(adeia_id, kat, posot) for (adeia_id, kat), posot in aggregated.items()]
                 conn.execute("DROP TABLE adeia_ylika")
         except Exception:
             pass
@@ -165,6 +178,12 @@ def init_db():
 
             INSERT OR IGNORE INTO auxon_counter(id, next_val) VALUES (1, 1);
         ''')
+
+        if migrated_adeia_ylika:
+            conn.executemany(
+                "INSERT INTO adeia_ylika (adeia_id, nomiki_katigoria, egekrimeni_posotita) VALUES (?, ?, ?)",
+                migrated_adeia_ylika
+            )
 
         # ── Migrations για παλιότερες εγκαταστάσεις (πίνακες προϋπάρχουν χωρίς κάποια στήλη) ──
 

@@ -88,7 +88,7 @@ modal built around this shared confirm dialog.
 
 ## Build pipeline (`build.ps1`)
 
-1. `pip install pyinstaller reportlab openpyxl python-docx`
+1. `pip install -r requirements.txt` (pinned versions of pyinstaller, reportlab, openpyxl, python-docx)
 2. `pyinstaller backend/bridge.spec --clean --noconfirm` → `backend/dist/bridge/bridge.exe`
 3. `node scripts/smoke-test-bridge.mjs` against the freshly built exe — aborts the build on failure
 4. Copies `backend/dist/bridge` → `dist/bridge` (matches `package.json`'s `extraResources.from`)

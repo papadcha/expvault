@@ -12,7 +12,7 @@ Write-Host "=== ExpVault Build Script ===" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "[1/5] Installing Python dependencies..." -ForegroundColor Yellow
 
-pip install --quiet pyinstaller reportlab openpyxl python-docx
+pip install --quiet -r "$root\requirements.txt"
 if ($LASTEXITCODE -ne 0) { Write-Error "pip install failed"; exit 1 }
 
 # -- 2. PyInstaller: build bridge.exe ----------------------------------------

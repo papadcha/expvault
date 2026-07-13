@@ -1,4 +1,4 @@
-import os, shutil, json, re, subprocess
+import os, shutil, json, re, subprocess, sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -42,6 +42,12 @@ def get_config():
 
 
 def save_config(paths: list, max_keep: int = 30):
+    try:
+        max_keep = int(max_keep)
+    except (TypeError, ValueError):
+        max_keep = 30
+    max_keep = max(1, min(max_keep, 365))
+
     cfg = _load()
     cfg['paths']    = paths
     cfg['max_keep'] = max_keep
@@ -216,30 +222,62 @@ def list_backups(folder: str) -> list:
     return _list_local_backups(folder)
 
 
+def _validate_sqlite_file(path: str) -> tuple:
+    """PRAGMA integrity_check πάνω στο υποψήφιο αρχείο πριν εφαρμοστεί ως restore."""
+    try:
+        conn = sqlite3.connect(f'file:{path}?mode=ro', uri=True)
+        try:
+            row = conn.execute('PRAGMA integrity_check').fetchone()
+            if not row or row[0] != 'ok':
+                return False, 'Το αρχείο απέτυχε στον έλεγχο ακεραιότητας SQLite (integrity_check)'
+            return True, ''
+        finally:
+            conn.close()
+    except sqlite3.Error as e:
+        return False, f'Μη έγκυρο αρχείο βάσης SQLite: {e}'
+
+
 def restore_backup(path: str) -> dict:
     import tempfile
+    tmp_path = None
     try:
         if _is_rclone(path):
             with tempfile.NamedTemporaryFile(suffix='.db', delete=False) as tmp:
                 tmp_path = tmp.name
-            try:
-                r = subprocess.run(
-                    [RCLONE_BIN, 'copyto', path, tmp_path],
-                    capture_output=True, text=True, timeout=120
-                )
-                if r.returncode != 0:
-                    return {'ok': False, 'error': r.stderr.strip() or r.stdout.strip()}
-                shutil.copy2(tmp_path, str(DB_PATH))
-            finally:
-                try:
-                    os.unlink(tmp_path)
-                except Exception:
-                    pass
+            r = subprocess.run(
+                [RCLONE_BIN, 'copyto', path, tmp_path],
+                capture_output=True, text=True, timeout=120
+            )
+            if r.returncode != 0:
+                return {'ok': False, 'error': r.stderr.strip() or r.stdout.strip()}
+            source_path = tmp_path
         else:
-            shutil.copy2(path, str(DB_PATH))
+            source_path = path
+
+        valid, err = _validate_sqlite_file(source_path)
+        if not valid:
+            return {'ok': False, 'error': err}
+
+        # Auto-snapshot της τρέχουσας βάσης πριν το restore, δίχτυ ασφαλείας
+        # αν το restore αποδειχτεί λάθος επιλογή αρχείου.
+        if DB_PATH.exists():
+            ts = datetime.now().strftime(TIMESTAMP_FMT)
+            shutil.copy2(DB_PATH, DB_PATH.parent / f'expvault_prerestore_{ts}{EXT}')
+
+        # Atomic αντικατάσταση: γράφε σε temp δίπλα στο DB_PATH, μετά os.replace().
+        tmp_dest = DB_PATH.parent / f'.{DB_PATH.name}.tmp_restore'
+        shutil.copy2(source_path, tmp_dest)
+        os.replace(tmp_dest, DB_PATH)
+
         return {'ok': True}
     except Exception as e:
         return {'ok': False, 'error': str(e)}
+    finally:
+        if tmp_path:
+            try:
+                os.unlink(tmp_path)
+            except Exception:
+                pass
 
 
 def run_all_backups() -> dict:
