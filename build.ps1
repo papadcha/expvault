@@ -2,6 +2,7 @@
 # Usage: .\build.ps1
 # Requirements: Python 3.8+, Node.js 18+, npm
 
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 $root = $PSScriptRoot
 

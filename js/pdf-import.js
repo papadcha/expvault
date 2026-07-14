@@ -16,7 +16,7 @@ export async function parsePdf() {
     document.getElementById('pdf-alert').innerHTML = '';
     window._lastEpistrofiParst = null;
     const s = r.suggested;
-    if (s.imerominia) {
+    if (s.imerominia && typeof s.imerominia === 'string') {
       const [d,m,y] = s.imerominia.split('/');
       document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
     }

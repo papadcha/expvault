@@ -500,9 +500,9 @@
         </div>
       </div>
       <div class="form-actions">
-        <button class="btn btn-danger" onclick="doExport('pdf')">📄 Εξαγωγή PDF (Νόμιμη Μορφή)</button>
-        <button class="btn btn-success" onclick="doExport('excel')">📊 Εξαγωγή Excel</button>
-        <button class="btn btn-primary" onclick="doExport('docx')">📝 Εξαγωγή Word (.docx)</button>
+        <button class="btn btn-danger" onclick="doExport('pdf', this)">📄 Εξαγωγή PDF (Νόμιμη Μορφή)</button>
+        <button class="btn btn-success" onclick="doExport('excel', this)">📊 Εξαγωγή Excel</button>
+        <button class="btn btn-primary" onclick="doExport('docx', this)">📝 Εξαγωγή Word (.docx)</button>
       </div>
       <div id="export-msg" class="mt-8"></div>
     </div>
@@ -515,7 +515,7 @@
           <div><label>Έως ημερομηνία</label><input type="date" id="la-eos"></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-success" onclick="exportListaAgores()">📊 Εξαγωγή Excel</button>
+          <button class="btn btn-success" onclick="exportListaAgores(this)">📊 Εξαγωγή Excel</button>
         </div>
         <div id="la-msg" class="mt-8"></div>
       </div>
@@ -528,8 +528,8 @@
           <div><label>Έως ημερομηνία</label><input type="date" id="dd-eos"></div>
         </div>
         <div class="form-actions">
-          <button class="btn btn-success" onclick="exportDeltioDrastiriotitas('excel')">📊 Εξαγωγή Excel</button>
-          <button class="btn btn-primary" onclick="exportDeltioDrastiriotitas('pdf')">📄 Εξαγωγή PDF</button>
+          <button class="btn btn-success" onclick="exportDeltioDrastiriotitas('excel', this)">📊 Εξαγωγή Excel</button>
+          <button class="btn btn-primary" onclick="exportDeltioDrastiriotitas('pdf', this)">📄 Εξαγωγή PDF</button>
         </div>
         <div id="dd-msg" class="mt-8"></div>
       </div>

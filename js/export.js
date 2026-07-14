@@ -16,8 +16,7 @@ export async function loadExportDropdowns() {
   }
 }
 
-export async function doExport(fmt) {
-  const btn = event.target;
+export async function doExport(fmt, btn) {
   const origText = btn.textContent;
   btn.textContent = '⏳ Παραγωγή...';
   btn.disabled = true;
@@ -49,8 +48,7 @@ export async function doExport(fmt) {
   }
 }
 
-export async function exportListaAgores() {
-  const btn = event.target;
+export async function exportListaAgores(btn) {
   const origText = btn.textContent;
   btn.textContent = '⏳ Παραγωγή...';
   btn.disabled = true;
@@ -75,8 +73,7 @@ export async function exportListaAgores() {
   }
 }
 
-export async function exportDeltioDrastiriotitas(fmt) {
-  const btn = event.target;
+export async function exportDeltioDrastiriotitas(fmt, btn) {
   const origText = btn.textContent;
   btn.textContent = '⏳ Παραγωγή...';
   btn.disabled = true;

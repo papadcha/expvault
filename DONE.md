@@ -2,6 +2,23 @@
 
 Αρχειοθέτηση ολοκληρωμένων items που προέκυψαν από το `TODO.md` — κρατιέται για ιστορικό/αναφορά, όχι για ενεργή δουλειά.
 
+## Σκλήρυνση scripts/IPC από review (Gemini, 2ο & 3ο πέρασμα)
+
+- `deploy.sh`: πρόσθεσε `set -euo pipefail`. Αναδιατυπώθηκαν οι γραμμές αντιγραφής
+  αρχείων από `[ -f X ] && cp X Y && echo ok` (θα τερμάτιζε όλο το script στην
+  πρώτη λείπουσα μορφή υπό `set -e`) σε `if [ -f X ]; then cp X Y; echo ok; fi`
+  μέσα σε loop πάνω από array `"src:dst"` ζευγών (μειώνει και το duplication
+  μεταξύ αντιγραφής/καθαρισμού).
+- `build.ps1`: πρόσθεσε `Set-StrictMode -Version Latest` (το
+  `$ErrorActionPreference = "Stop"` υπήρχε ήδη).
+- `js/export.js`: `doExport`/`exportListaAgores`/`exportDeltioDrastiriotitas`
+  έπαιρναν το κουμπί από το global `event.target` — δούλευε μόνο επειδή
+  καλούνται αποκλειστικά από inline `onclick`. Τώρα παίρνουν το κουμπί ως
+  παράμετρο (`btn`)· τα αντίστοιχα `onclick` στο `index.html` περνάνε `this`.
+  (Το ξεχωριστό, μη συνδεδεμένο `backend/templates/index.html` — δεν
+  φορτώνεται πουθενά από `main.js`/`backend/*.py` — έχει δικό του inline
+  `doExport` και δεν αγγίχτηκε, εκτός scope.)
+
 ## Alert χαμηλού υπολοίπου άδειας
 
 Όταν το υπόλοιπο μιας άδειας (ανά νομική κατηγορία) πέσει κάτω από **3× τον μέσο όρο των αγορών** της, εμφάνιση toast στον χρήστη.
