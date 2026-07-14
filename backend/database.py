@@ -92,7 +92,10 @@ def init_db():
                 """).fetchall()
                 aggregated = {}
                 for adeia_id, onoma, posotita in old_rows:
-                    key = (adeia_id, classify_nomiki_katigoria(onoma))
+                    kat = classify_nomiki_katigoria(onoma)
+                    if kat is None:
+                        continue  # αξεσουάρ (σακούλες/πένσες/crimpers) δεν έχουν νόμιμη κατηγορία/ποσόστωση
+                    key = (adeia_id, kat)
                     aggregated[key] = aggregated.get(key, 0.0) + posotita
                 migrated_adeia_ylika = [(adeia_id, kat, posot) for (adeia_id, kat), posot in aggregated.items()]
                 conn.execute("DROP TABLE adeia_ylika")

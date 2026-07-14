@@ -135,8 +135,36 @@ function callPython(cmd, payload = {}) {
   });
 }
 
+// Πρέπει να μείνει συγχρονισμένο με τη λίστα `if cmd == '...'` του backend/bridge.py —
+// αν προστεθεί νέα εντολή εκεί, πρέπει να προστεθεί και εδώ αλλιώς αποτυγχάνει σιωπηλά.
+const ALLOWED_PYTHON_COMMANDS = new Set([
+  'get_ylika', 'add_yliko', 'update_yliko', 'delete_yliko',
+  'get_promitheftes', 'add_promitheftis', 'update_promitheftis', 'delete_promitheftis',
+  'get_adeies', 'add_adeia', 'update_adeia', 'get_adeia_ylika', 'get_adeies_ypoloipa',
+  'get_adeia_katigoria_remaining', 'check_adeia_thresholds', 'set_adeia_katigoria',
+  'delete_adeia_yliko', 'delete_adeia',
+  'get_kiniseis', 'add_kinisi', 'update_kinisi', 'update_agora_ref', 'delete_kinisi',
+  'batch_update_parstatiko',
+  'get_apothemates',
+  'save_ypologismos', 'get_ypologismos', 'delete_ypologismos', 'compare_ypologismos',
+  'check_parstatiko', 'get_agores_with_pending_epistrofes', 'assign_epistrofi_parstatiko',
+  'get_epistrofes_without_parstatiko', 'get_kiniseis_by_parstatiko_yliko',
+  'delete_kiniseis_by_parstatiko', 'delete_parstatiko_with_related', 'check_ekkremotita',
+  'get_last_eisagogi_parstatiko',
+  'parse_pdf', 'extract_pdf_text',
+  'list_pdf_templates', 'delete_pdf_template', 'preview_pdf_template', 'save_pdf_template',
+  'export_pdf_templates', 'import_pdf_templates', 'build_and_preview_pdf_template',
+  'export_ypologismos_pdf', 'export_pdf', 'export_excel', 'export_docx', 'export_lista_agores',
+  'get_backup_config', 'save_backup_config', 'run_backup', 'check_startup_backups',
+  'list_backups', 'restore_backup',
+  'list_rclone_remotes', 'list_remotes_detail', 'delete_remote',
+]);
+
 function setupIPC() {
   ipcMain.handle('python', async (event, cmd, payload) => {
+    if (!ALLOWED_PYTHON_COMMANDS.has(cmd)) {
+      return { ok: false, error: `Άγνωστη εντολή: ${cmd}` };
+    }
     try {
       return { ok: true, result: await callPython(cmd, payload) };
     } catch (e) {

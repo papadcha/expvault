@@ -57,6 +57,9 @@ backend/bridge.py  →  backend/database.py (sqlite3)  →  expvault.db
   120s per-request timeout. Messages sent before the bridge's `{ready: true}` handshake are queued
   (`queuedMessages`) and flushed on ready. `backend/bridge.py` dispatches on `cmd` with a flat
   `if cmd == 'x': ...` chain — add new commands there and in the matching `py('x', …)` call site.
+  `main.js`'s `ipcMain.handle('python', …)` also checks `cmd` against an `ALLOWED_PYTHON_COMMANDS`
+  allowlist before forwarding to the bridge — a new command added only to `bridge.py` fails with
+  `"Άγνωστη εντολή"` in the renderer until it's added to that Set too.
 - **Data dir resolution**: `bridge.py` always overrides `database.DB_NAME` to an **absolute** path
   built from `EXPVAULT_DATA_DIR` (never relies on CWD). Dev mode: `main.js` sets this to
   `backend/` next to `bridge.py`, so the dev DB is `backend/expvault.db`. Packaged: it's
