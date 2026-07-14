@@ -1893,13 +1893,14 @@ def _deltio_sums(kiniseis):
             epistrofes[kat] += k['posotita']
     return OrderedDict((kat, max(0.0, agores[kat] - epistrofes[kat])) for kat in NOMIKES_KATIGORIES)
 
-def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label: str, adeia_label: str = None) -> bytes:
+def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label: str, adeia_label: str = None, ypoloipa: dict = None) -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from io import BytesIO
     from database import MONADES_NOMIKON_KATIGORION
 
     sums = _deltio_sums(kiniseis)
+    ypoloipa = ypoloipa or {}
 
     FONT = 'Iosevka'
     NAVY = "1A365D"; LBLU = "BEE3F8"; ALT = "EEF2F7"
@@ -1910,19 +1911,19 @@ def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label
     ws = wb.active
     ws.title = 'Δελτίο Δραστηριότητας'
 
-    ws.merge_cells('A1:C1')
-    c = ws.cell(row=1, column=1, value='ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΣΥΝΟΛΑ ΚΑΤΑΝΑΛΩΣΗΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ')
+    ws.merge_cells('A1:E1')
+    c = ws.cell(row=1, column=1, value='ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΚΑΤΑΝΑΛΩΣΗ & ΥΠΟΛΟΙΠΑ ΑΔΕΙΑΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ')
     c.font = Font(name=FONT, bold=True, size=13)
     c.alignment = Alignment(horizontal='center')
 
     period_text = f'Περίοδος: {apo_label} έως {eos_label}' if (apo_label or eos_label) else 'Περίοδος: Όλο το χρονικό διάστημα'
     subtitle = f'Άδεια: {adeia_label} — {period_text}' if adeia_label else period_text
-    ws.merge_cells('A2:C2')
+    ws.merge_cells('A2:E2')
     c = ws.cell(row=2, column=1, value=subtitle)
     c.font = Font(name=FONT, size=10)
     c.alignment = Alignment(horizontal='center')
 
-    headers = ['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση']
+    headers = ['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση Περιόδου', 'Εγκεκριμένη Άδειας', 'Υπόλοιπο Άδειας']
     for ci, h in enumerate(headers, 1):
         cell = ws.cell(row=4, column=ci, value=h)
         cell.fill      = PatternFill("solid", fgColor=NAVY)
@@ -1932,33 +1933,31 @@ def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label
 
     ri = 5
     for kat, total in sums.items():
-        cell = ws.cell(row=ri, column=1, value=kat)
-        cell.font = Font(name=FONT, size=10)
-        cell.alignment = Alignment(horizontal='left')
-        cell.border = brd
-        if ri % 2 == 0:
-            cell.fill = PatternFill("solid", fgColor=ALT)
-
-        cell = ws.cell(row=ri, column=2, value=MONADES_NOMIKON_KATIGORION[kat])
-        cell.font = Font(name=FONT, size=10)
-        cell.alignment = Alignment(horizontal='center')
-        cell.border = brd
-        if ri % 2 == 0:
-            cell.fill = PatternFill("solid", fgColor=ALT)
-
-        cell = ws.cell(row=ri, column=3, value=fmt_num(total) or '0,00')
-        cell.font = Font(name=FONT, size=10)
-        cell.alignment = Alignment(horizontal='right')
-        cell.border = brd
-        if ri % 2 == 0:
-            cell.fill = PatternFill("solid", fgColor=ALT)
+        yp = ypoloipa.get(kat)
+        values = [
+            kat,
+            MONADES_NOMIKON_KATIGORION[kat],
+            fmt_num(total) or '0,00',
+            (fmt_num(yp['egekrimeni_posotita']) or '0,00') if yp else '—',
+            (fmt_num(yp['ypoloipo']) or '0,00') if yp else '—',
+        ]
+        aligns = ['left', 'center', 'right', 'right', 'right']
+        for ci, (val, al) in enumerate(zip(values, aligns), 1):
+            cell = ws.cell(row=ri, column=ci, value=val)
+            cell.font = Font(name=FONT, size=10)
+            cell.alignment = Alignment(horizontal=al)
+            cell.border = brd
+            if ri % 2 == 0:
+                cell.fill = PatternFill("solid", fgColor=ALT)
         ri += 1
 
     ws.column_dimensions['A'].width = 32
     ws.column_dimensions['B'].width = 10
-    ws.column_dimensions['C'].width = 16
+    ws.column_dimensions['C'].width = 18
+    ws.column_dimensions['D'].width = 16
+    ws.column_dimensions['E'].width = 16
 
-    ws.page_setup.orientation = 'portrait'
+    ws.page_setup.orientation = 'landscape'
     ws.page_setup.fitToWidth  = 1
     ws.page_setup.fitToHeight = 0
 
@@ -1966,9 +1965,9 @@ def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label
     wb.save(buf)
     return buf.getvalue()
 
-def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: str, adeia_label: str = None) -> bytes:
+def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: str, adeia_label: str = None, ypoloipa: dict = None) -> bytes:
     from reportlab.lib import colors
-    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
     from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
     from reportlab.lib.styles import ParagraphStyle
@@ -1981,9 +1980,10 @@ def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: 
     FB = fbold if FONT_BOLD    else 'Helvetica-Bold'
 
     sums = _deltio_sums(kiniseis)
+    ypoloipa = ypoloipa or {}
 
     buf = BytesIO()
-    doc = SimpleDocTemplate(buf, pagesize=A4,
+    doc = SimpleDocTemplate(buf, pagesize=landscape(A4),
                             leftMargin=2*cm, rightMargin=2*cm,
                             topMargin=2*cm, bottomMargin=2*cm)
 
@@ -1993,15 +1993,22 @@ def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: 
     period_text = f'Περίοδος: {apo_label} έως {eos_label}' if (apo_label or eos_label) else 'Περίοδος: Όλο το χρονικό διάστημα'
     subtitle = f'Άδεια: {adeia_label} — {period_text}' if adeia_label else period_text
     story = [
-        Paragraph("ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΣΥΝΟΛΑ ΚΑΤΑΝΑΛΩΣΗΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ", TS),
+        Paragraph("ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΚΑΤΑΝΑΛΩΣΗ & ΥΠΟΛΟΙΠΑ ΑΔΕΙΑΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ", TS),
         Paragraph(subtitle, SS),
     ]
 
-    rows = [['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση']]
+    rows = [['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση Περιόδου', 'Εγκεκριμένη Άδειας', 'Υπόλοιπο Άδειας']]
     for kat, total in sums.items():
-        rows.append([kat, MONADES_NOMIKON_KATIGORION[kat], fmt_num(total) or '0,00'])
+        yp = ypoloipa.get(kat)
+        rows.append([
+            kat,
+            MONADES_NOMIKON_KATIGORION[kat],
+            fmt_num(total) or '0,00',
+            (fmt_num(yp['egekrimeni_posotita']) or '0,00') if yp else '—',
+            (fmt_num(yp['ypoloipo']) or '0,00') if yp else '—',
+        ])
 
-    col_w = [9*cm, 2.5*cm, 3.5*cm]
+    col_w = [9*cm, 2.5*cm, 4*cm, 3.5*cm, 3.5*cm]
     t = Table(rows, colWidths=col_w)
     t.setStyle(TableStyle([
         ('BACKGROUND',    (0,0), (-1,0), colors.HexColor('#1a365d')),

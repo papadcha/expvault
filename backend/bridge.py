@@ -436,13 +436,15 @@ def handle(cmd, payload):
     # ── ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ ─────────────────────────────────────────────────
     if cmd in ('export_deltio_drastiriotitas_excel', 'export_deltio_drastiriotitas_pdf'):
         importlib.reload(exports)
+        adeia_id = payload.get('adeia_id')
         kiniseis = database.get_kiniseis(
             apo=payload.get('apo'),
             eos=payload.get('eos'),
-            adeia_id=payload.get('adeia_id')
+            adeia_id=adeia_id
         )
+        ypoloipa = database.get_adeia_ypoloipa_by_katigoria(adeia_id)
         fn = exports.export_deltio_drastiriotitas_excel if cmd.endswith('excel') else exports.export_deltio_drastiriotitas_pdf
-        data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''), payload.get('adeia_label'))
+        data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''), payload.get('adeia_label'), ypoloipa)
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)

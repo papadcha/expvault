@@ -502,6 +502,39 @@ def get_adeies_ypoloipa():
             'monada_metrisis': MONADES_NOMIKON_KATIGORION.get(r['nomiki_katigoria'], ''),
         } for r in rows]
 
+def get_adeia_ypoloipa_by_katigoria(adeia_id=None):
+    """Εγκεκριμένη/χρησιμοποιημένη/υπόλοιπο αθροισμένα ανά νόμιμη κατηγορία — σε όλες τις
+    άδειες, ή περιορισμένο σε μία (adeia_id). Τρέχον (όχι ανά περίοδο) υπόλοιπο άδειας.
+    Χρήση: Δελτίο Δραστηριότητας."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT ay.nomiki_katigoria,
+                   SUM(ay.egekrimeni_posotita) AS egekrimeni_posotita,
+                   SUM(COALESCE(used.xrisimopoiimeni, 0.0)) AS xrisimopoiimeni
+            FROM adeia_ylika ay
+            LEFT JOIN (
+                SELECT k.adeia_id, y.nomiki_katigoria,
+                       SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                ELSE 0 END) as xrisimopoiimeni
+                FROM kiniseis k JOIN ylika y ON k.yliko_id = y.id
+                WHERE k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+                GROUP BY k.adeia_id, y.nomiki_katigoria
+            ) used ON used.adeia_id = ay.adeia_id AND used.nomiki_katigoria = ay.nomiki_katigoria
+            WHERE (:adeia_id IS NULL OR ay.adeia_id = :adeia_id)
+            GROUP BY ay.nomiki_katigoria
+        """, {'adeia_id': adeia_id}).fetchall()
+        result = {}
+        for r in rows:
+            egekrimeni = r['egekrimeni_posotita']
+            xrisimopoiimeni = round(r['xrisimopoiimeni'], 3)
+            result[r['nomiki_katigoria']] = {
+                'egekrimeni_posotita': egekrimeni,
+                'xrisimopoiimeni': xrisimopoiimeni,
+                'ypoloipo': round(egekrimeni - xrisimopoiimeni, 3),
+            }
+        return result
+
 def set_adeia_katigoria(adeia_id, nomiki_katigoria, egekrimeni_posotita):
     with get_db() as conn:
         conn.execute("""

@@ -469,23 +469,25 @@
       <h2>Εκτύπωση / Εξαγωγή</h2>
       <p>Έκδοση νόμιμης μορφής βιβλίου εκρηκτικών</p>
     </div>
-    <div class="card" style="max-width:560px;">
+    <div class="card">
       <div class="card-title">Φίλτρα Εξαγωγής</div>
-      <div class="form-row cols-2">
-        <div><label>Υλικό</label><select id="exp-yliko"><option value="">Όλα τα υλικά</option></select></div>
-        <div><label>Font PDF</label>
-          <select id="exp-font">
-            <option value="iosevka">Iosevka</option>
-            <option value="jetbrains">JetBrains Mono</option>
-            <option value="liberation">Liberation Mono</option>
-          </select>
+      <div class="grid-2">
+        <div>
+          <div class="form-row cols-2">
+            <div><label>Υλικό</label><select id="exp-yliko"><option value="">Όλα τα υλικά</option></select></div>
+            <div><label>Font PDF</label>
+              <select id="exp-font">
+                <option value="iosevka">Iosevka</option>
+                <option value="jetbrains">JetBrains Mono</option>
+                <option value="liberation">Liberation Mono</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row cols-2">
+            <div><label>Από ημερομηνία</label><input type="date" id="exp-apo"></div>
+            <div><label>Έως ημερομηνία</label><input type="date" id="exp-eos"></div>
+          </div>
         </div>
-      </div>
-      <div class="form-row cols-2">
-        <div><label>Από ημερομηνία</label><input type="date" id="exp-apo"></div>
-        <div><label>Έως ημερομηνία</label><input type="date" id="exp-eos"></div>
-      </div>
-      <div class="form-row">
         <div>
           <label>Εμφάνιση NONEL <span style="font-weight:400;color:var(--muted);font-size:12px;">(PDF / Word)</span></label>
           <div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">
