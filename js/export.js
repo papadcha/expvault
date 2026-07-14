@@ -3,11 +3,17 @@ import { ylikoLabel } from './state.js';
 
 // ── EXPORT ───────────────────────────────────────────────────────────────────
 export async function loadExportDropdowns() {
-  const ylika = await py('get_ylika');
+  const [ylika, adeies] = await Promise.all([py('get_ylika'), py('get_adeies')]);
   const sel = document.getElementById('exp-yliko');
   sel.innerHTML = '<option value="">Όλα τα υλικά</option>' +
     ylika.map(y=>`<option value="${y.id}">${ylikoLabel(y)}</option>`).join('');
   document.getElementById('nonel-detail-cols').textContent = ylika.length;
+
+  const ddSel = document.getElementById('dd-adeia');
+  if (ddSel) {
+    ddSel.innerHTML = '<option value="">Όλες οι άδειες</option>' +
+      adeies.map(a=>`<option value="${a.id}">${escapeHtml(a.arithmos_adeias)}</option>`).join('');
+  }
 }
 
 export async function doExport(fmt) {
@@ -79,12 +85,17 @@ export async function exportDeltioDrastiriotitas(fmt) {
   try {
     const ap = document.getElementById('dd-apo').value;
     const eo = document.getElementById('dd-eos').value;
+    const adeiaSel = document.getElementById('dd-adeia');
+    const adeiaId = adeiaSel?.value || '';
+    const adeiaLabel = adeiaId ? adeiaSel.options[adeiaSel.selectedIndex].textContent : null;
     const ext = fmt === 'excel' ? 'xlsx' : 'pdf';
     const savePath = await window.api.saveFile({ defaultName: `deltio_drastiriotitas.${ext}`, ext });
     if (!savePath) return;
     await py(`export_deltio_drastiriotitas_${fmt}`, {
       apo: ap || null, eos: eo || null,
-      apo_label: ap || '—', eos_label: eo || '—',
+      apo_label: ap || '', eos_label: eo || '',
+      adeia_id: adeiaId ? parseInt(adeiaId) : null,
+      adeia_label: adeiaLabel,
       out_path: savePath
     });
     msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${escapeHtml(savePath)}</div>`;

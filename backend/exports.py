@@ -1893,7 +1893,7 @@ def _deltio_sums(kiniseis):
             epistrofes[kat] += k['posotita']
     return OrderedDict((kat, max(0.0, agores[kat] - epistrofes[kat])) for kat in NOMIKES_KATIGORIES)
 
-def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
+def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label: str, adeia_label: str = None) -> bytes:
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from io import BytesIO
@@ -1915,8 +1915,10 @@ def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label
     c.font = Font(name=FONT, bold=True, size=13)
     c.alignment = Alignment(horizontal='center')
 
+    period_text = f'Περίοδος: {apo_label} έως {eos_label}' if (apo_label or eos_label) else 'Περίοδος: Όλο το χρονικό διάστημα'
+    subtitle = f'Άδεια: {adeia_label} — {period_text}' if adeia_label else period_text
     ws.merge_cells('A2:C2')
-    c = ws.cell(row=2, column=1, value=f'Περίοδος: {apo_label} έως {eos_label}')
+    c = ws.cell(row=2, column=1, value=subtitle)
     c.font = Font(name=FONT, size=10)
     c.alignment = Alignment(horizontal='center')
 
@@ -1964,7 +1966,7 @@ def export_deltio_drastiriotitas_excel(kiniseis: list, apo_label: str, eos_label
     wb.save(buf)
     return buf.getvalue()
 
-def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: str) -> bytes:
+def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: str, adeia_label: str = None) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm
@@ -1988,9 +1990,11 @@ def export_deltio_drastiriotitas_pdf(kiniseis: list, apo_label: str, eos_label: 
     TS = ParagraphStyle('t', fontSize=13, fontName=FB, alignment=TA_CENTER, spaceAfter=4)
     SS = ParagraphStyle('s', fontSize=9,  fontName=F,  alignment=TA_CENTER, spaceAfter=12)
 
+    period_text = f'Περίοδος: {apo_label} έως {eos_label}' if (apo_label or eos_label) else 'Περίοδος: Όλο το χρονικό διάστημα'
+    subtitle = f'Άδεια: {adeia_label} — {period_text}' if adeia_label else period_text
     story = [
         Paragraph("ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ — ΣΥΝΟΛΑ ΚΑΤΑΝΑΛΩΣΗΣ ΑΝΑ ΚΑΤΗΓΟΡΙΑ", TS),
-        Paragraph(f"Περίοδος: {apo_label} έως {eos_label}", SS),
+        Paragraph(subtitle, SS),
     ]
 
     rows = [['Κατηγορία Εκρηκτικού', 'Μονάδα', 'Κατανάλωση']]

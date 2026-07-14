@@ -472,6 +472,36 @@ def get_adeia_low_balance_alerts(adeia_id=None, threshold_multiplier=3.0):
                 })
         return alerts
 
+def get_adeies_ypoloipa():
+    """Υπόλοιπο (εγκεκριμένη - χρησιμοποιημένη) ανά άδεια/νόμιμη κατηγορία, για όλες τις
+    άδειες που έχουν εγκεκριμένες ποσότητες. Χρήση: Πίνακας Ελέγχου."""
+    with get_db() as conn:
+        rows = conn.execute("""
+            SELECT ay.adeia_id, a.arithmos_adeias, ay.nomiki_katigoria, ay.egekrimeni_posotita,
+                   COALESCE(used.xrisimopoiimeni, 0.0) AS xrisimopoiimeni
+            FROM adeia_ylika ay
+            JOIN adeies a ON a.id = ay.adeia_id
+            LEFT JOIN (
+                SELECT k.adeia_id, y.nomiki_katigoria,
+                       SUM(CASE WHEN k.tipos='ΕΙΣΑΓΩΓΗ' THEN k.posotita
+                                WHEN k.tipos='ΕΠΙΣΤΡΟΦΗ' THEN -k.posotita
+                                ELSE 0 END) as xrisimopoiimeni
+                FROM kiniseis k JOIN ylika y ON k.yliko_id = y.id
+                WHERE k.tipos IN ('ΕΙΣΑΓΩΓΗ','ΕΠΙΣΤΡΟΦΗ')
+                GROUP BY k.adeia_id, y.nomiki_katigoria
+            ) used ON used.adeia_id = ay.adeia_id AND used.nomiki_katigoria = ay.nomiki_katigoria
+            ORDER BY a.arithmos_adeias, ay.nomiki_katigoria
+        """).fetchall()
+        return [{
+            'adeia_id': r['adeia_id'],
+            'arithmos_adeias': r['arithmos_adeias'],
+            'nomiki_katigoria': r['nomiki_katigoria'],
+            'egekrimeni_posotita': r['egekrimeni_posotita'],
+            'xrisimopoiimeni': round(r['xrisimopoiimeni'], 3),
+            'ypoloipo': round(r['egekrimeni_posotita'] - r['xrisimopoiimeni'], 3),
+            'monada_metrisis': MONADES_NOMIKON_KATIGORION.get(r['nomiki_katigoria'], ''),
+        } for r in rows]
+
 def set_adeia_katigoria(adeia_id, nomiki_katigoria, egekrimeni_posotita):
     with get_db() as conn:
         conn.execute("""
@@ -507,7 +537,7 @@ def check_parstatiko_exists(arithmos_parstatikos):
 
 # ─── ΚΙΝΗΣΕΙΣ ────────────────────────────────────────────────────────────────
 
-def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
+def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None, adeia_id=None):
     sql = '''
         SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis, y.export_group, y.nomiki_katigoria,
                p.onoma as promitheftis_onoma, p.syntomografia as promitheftis_syntomografia, a.arithmos_adeias, a.perigrafi as ekdousa_archi, a.syntomografia_ekdousas
@@ -526,6 +556,8 @@ def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None):
         sql += " AND k.imerominia<=?"; params.append(eos)
     if tipos:
         sql += " AND k.tipos=?"; params.append(tipos)
+    if adeia_id:
+        sql += " AND k.adeia_id=?"; params.append(adeia_id)
     sql += " ORDER BY k.auxon_arithmos ASC"
     with get_db() as conn:
         return [dict(r) for r in conn.execute(sql, params).fetchall()]

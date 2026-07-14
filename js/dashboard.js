@@ -2,9 +2,10 @@ import { escapeHtml, py, fmtDate } from './utils.js';
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 export async function loadDashboard() {
-  const [apo, kin] = await Promise.all([
+  const [apo, kin, adeiaYpol] = await Promise.all([
     py('get_apothemates'),
-    py('get_kiniseis')
+    py('get_kiniseis'),
+    py('get_adeies_ypoloipa')
   ]);
 
   document.getElementById('stat-kiniseis').textContent = kin.length;
@@ -12,23 +13,17 @@ export async function loadDashboard() {
   document.getElementById('stat-epistrofi').textContent = new Set(kin.filter(k=>k.tipos==='ΕΠΙΣΤΡΟΦΗ' && k.arithmos_parstatikos).map(k=>k.arithmos_parstatikos)).size;
   document.getElementById('stat-ylika').textContent    = apo.length;
 
-  const apoBody = document.getElementById('dash-apo-body');
-  apoBody.innerHTML = apo.length ? apo.map(r => {
-    const yp = r.ypoloipo;
-    const cls   = yp > 0 ? 'pos' : 'zero';
-    const badge = yp > 0
-      ? '<span class="badge badge-neg">⚠️ ΑΔΙΚΑΙΟΛΟΓΗΤΟ</span>'
-      : '<span class="badge badge-ok">✅ ΟΚ</span>';
+  const adeiaBody = document.getElementById('dash-adeies-body');
+  adeiaBody.innerHTML = adeiaYpol.length ? adeiaYpol.map(r => {
+    const cls = r.ypoloipo > 0 ? 'pos' : 'neg';
     return `<tr>
-      <td><strong>${escapeHtml(r.onoma)}</strong>${r.diatomi_mm?` <small>(${escapeHtml(r.diatomi_mm)}mm)</small>`:''}</td>
-      <td>${escapeHtml(r.monada_metrisis)}</td>
-      <td class="text-right mono">${r.synolo_eisagogon.toFixed(3)}</td>
-      <td class="text-right mono">${r.synolo_katanalosis.toFixed(3)}</td>
-      <td class="text-right mono">${r.synolo_epistrofon.toFixed(3)}</td>
-      <td class="text-right ${cls}">${yp.toFixed(3)}</td>
-      <td>${badge}</td>
+      <td><strong>${escapeHtml(r.arithmos_adeias)}</strong></td>
+      <td>${escapeHtml(r.nomiki_katigoria)}</td>
+      <td class="text-right mono">${r.egekrimeni_posotita.toFixed(3)}</td>
+      <td class="text-right mono">${r.xrisimopoiimeni.toFixed(3)}</td>
+      <td class="text-right ${cls} mono">${r.ypoloipo.toFixed(3)} ${escapeHtml(r.monada_metrisis)}</td>
     </tr>`;
-  }).join('') : '<tr><td colspan="7" class="text-center" style="padding:24px;color:var(--muted)">Δεν υπάρχουν δεδομένα</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="text-center" style="padding:24px;color:var(--muted)">Δεν υπάρχουν εγκεκριμένες ποσότητες άδειας</td></tr>';
 
   const kinBody = document.getElementById('dash-kin-body');
   const last10 = kin.slice(-10).reverse();

@@ -103,6 +103,9 @@ def handle(cmd, payload):
     if cmd == 'get_adeia_ylika':
         return database.get_adeia_ylika(payload['adeia_id'])
 
+    if cmd == 'get_adeies_ypoloipa':
+        return database.get_adeies_ypoloipa()
+
     if cmd == 'get_adeia_katigoria_remaining':
         return database.get_adeia_katigoria_remaining(payload['adeia_id'], payload['nomiki_katigoria']) or {}
 
@@ -435,10 +438,11 @@ def handle(cmd, payload):
         importlib.reload(exports)
         kiniseis = database.get_kiniseis(
             apo=payload.get('apo'),
-            eos=payload.get('eos')
+            eos=payload.get('eos'),
+            adeia_id=payload.get('adeia_id')
         )
         fn = exports.export_deltio_drastiriotitas_excel if cmd.endswith('excel') else exports.export_deltio_drastiriotitas_pdf
-        data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''))
+        data = fn(kiniseis, payload.get('apo_label', ''), payload.get('eos_label', ''), payload.get('adeia_label'))
         out_path = payload['out_path']
         with open(out_path, 'wb') as f:
             f.write(data)
