@@ -23,6 +23,59 @@ export async function loadAdeies() {
       if (a) fillAdeiaForm(a);
     });
   });
+  renderAdeiaExpiryBadge(computeAdeiaExpiry(allAdeies));
+}
+
+// ── ΆΔΕΙΕΣ: ΥΠΕΝΘΥΜΙΣΗ ΛΗΞΗΣ ─────────────────────────────────────────────────
+// Παράθυρο εντός του οποίου μια άδεια θεωρείται "προς λήξη" (μετράει στο badge).
+const ADEIA_EXPIRY_WARNING_DAYS = 90;
+// Εντός αυτού του παραθύρου (ή ήδη ληγμένη) εμφανίζεται και toast στην εκκίνηση.
+const ADEIA_EXPIRY_TOAST_DAYS = 30;
+
+// Υπολογίζει τις ημέρες μέχρι λήξη για κάθε άδεια με ημ. λήξης, ταξινομημένες
+// από την πιο επείγουσα (ή ήδη ληγμένη) προς την πιο μακρινή.
+function computeAdeiaExpiry(adeies, warningDays = ADEIA_EXPIRY_WARNING_DAYS) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return adeies
+    .filter(a => a.imerominia_lixis)
+    .map(a => {
+      const lixi = new Date(a.imerominia_lixis + 'T00:00:00');
+      const days_left = Math.round((lixi - today) / 86400000);
+      return { ...a, days_left };
+    })
+    .filter(a => a.days_left <= warningDays)
+    .sort((a, b) => a.days_left - b.days_left);
+}
+
+function renderAdeiaExpiryBadge(rows) {
+  const badge = document.getElementById('adeies-expiry-badge');
+  if (!badge) return;
+  if (!rows.length) { badge.style.display = 'none'; return; }
+  const worst = rows[0].days_left;
+  const cls = worst <= 15 ? 'nav-badge-urgent' : worst <= 30 ? 'nav-badge-warn' : 'nav-badge-notice';
+  badge.className = 'nav-badge ' + cls;
+  badge.textContent = rows.length;
+  badge.style.display = 'inline-flex';
+}
+
+function adeiaExpiryMessage(a) {
+  if (a.days_left < 0) return `🔴 Άδεια ${a.arithmos_adeias} ΕΛΗΞΕ στις ${fmtDate(a.imerominia_lixis)} (πριν ${-a.days_left} ημέρες)`;
+  if (a.days_left === 0) return `🔴 Άδεια ${a.arithmos_adeias} λήγει ΣΗΜΕΡΑ (${fmtDate(a.imerominia_lixis)})`;
+  return `⏰ Άδεια ${a.arithmos_adeias} λήγει σε ${a.days_left} ημέρες (${fmtDate(a.imerominia_lixis)})`;
+}
+
+// Έλεγχος λήξης αδειών κατά την εκκίνηση: ενημερώνει το badge και δείχνει toast
+// για όσες λήγουν σύντομα ή έχουν ήδη λήξει.
+export async function checkAdeiaExpiryOnStartup() {
+  try {
+    const adeies = await py('get_adeies');
+    const rows = computeAdeiaExpiry(adeies);
+    renderAdeiaExpiryBadge(rows);
+    rows.filter(a => a.days_left <= ADEIA_EXPIRY_TOAST_DAYS)
+      .forEach(a => window._showToast?.(adeiaExpiryMessage(a), a.days_left < 0 ? 'error' : 'warn'));
+  } catch (e) {
+    console.error('[Adeia Expiry] startup check failed:', e);
+  }
 }
 
 export async function fillAdeiaForm(a) {

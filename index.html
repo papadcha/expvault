@@ -64,6 +64,7 @@
     </div>
     <div class="nav-item" data-page="adeies">
       <span class="nav-icon">📜</span> Άδειες
+      <span class="nav-badge" id="adeies-expiry-badge" style="display:none;" title="Άδειες προς λήξη"></span>
     </div>
     <div class="nav-item" data-page="backup">
       <span class="nav-icon">💾</span> Backup
@@ -1021,7 +1022,10 @@ import { loadDropdowns } from './js/state.js';
 import { loadDashboard, loadApothemates } from './js/dashboard.js';
 import { loadYlika, fillYlikoForm, saveYliko, deleteYliko, clearYlikoForm } from './js/ylika.js';
 import { loadProm, fillPromForm, saveProm, deleteProm, clearPromForm } from './js/promitheftes.js';
-import { loadAdeies, fillAdeiaForm, addAdeiaYliko, removeAdeiaYliko, saveAdeia, deleteAdeia, clearAdeiaForm } from './js/adeies.js';
+import {
+  loadAdeies, fillAdeiaForm, addAdeiaYliko, removeAdeiaYliko, saveAdeia, deleteAdeia, clearAdeiaForm,
+  checkAdeiaExpiryOnStartup,
+} from './js/adeies.js';
 import { confirmDelete } from './js/delete-confirm.js';
 import {
   loadKiniseis, renderKiniseis, editKinisi, closeEditKinisiModal, saveEditKinisi,
@@ -1171,6 +1175,7 @@ document.getElementById('kin-imerominia').value = todayInput();
 loadDashboard();
 checkAdeiaThresholdsOnStartup();
 checkAdeiaBackupsOnStartup();
+checkAdeiaExpiryOnStartup();
 </script>
 </body>
 </html>

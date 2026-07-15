@@ -43,6 +43,15 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .nav-item.active { background: rgba(232,160,32,0.15); color: var(--accent); border-left-color: var(--accent); }
 .nav-item .nav-icon { width: 18px; text-align: center; font-size: 15px; }
 
+.nav-badge {
+  margin-left: auto; display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
+  font-family: var(--mono); font-size: 11px; font-weight: 700;
+}
+.nav-badge-notice { background: #fff3cd; color: #856404; } /* 31-90 ημέρες */
+.nav-badge-warn   { background: #ffe0b2; color: #a15c00; } /* 16-30 ημέρες */
+.nav-badge-urgent { background: #fde8e8; color: #7b1c1c; } /* ≤15 ημέρες ή ληγμένη */
+
 /* ── MAIN ── */
 .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
 .page { display: none; }
