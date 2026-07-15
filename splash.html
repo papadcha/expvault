@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<title>Άδεια Αγοράς — Ειδοποίηση</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@600&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif; color: #fff;
+    background: linear-gradient(160deg, #0f2040, #1a365d);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 24px; text-align: center; -webkit-app-region: drag;
+  }
+  .icon { font-size: 32px; margin-bottom: 8px; }
+  h1 { font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; color: #e8a020; margin-bottom: 16px; }
+  .num-label { font-size: 11px; opacity: 0.7; letter-spacing: 1px; text-transform: uppercase; }
+  .num { font-family: 'IBM Plex Mono', monospace; font-size: 26px; font-weight: 700; margin: 4px 0 14px; }
+  .lixi-date { font-size: 12px; opacity: 0.75; margin-bottom: 14px; }
+  .status-pill {
+    display: inline-block; padding: 8px 18px; border-radius: 20px; font-weight: 700; font-size: 14px;
+    margin-bottom: 18px; -webkit-app-region: no-drag;
+  }
+  button {
+    -webkit-app-region: no-drag; background: rgba(255,255,255,0.12); color: #fff;
+    border: 1px solid rgba(255,255,255,0.28); padding: 8px 22px; border-radius: 6px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  button:hover { background: rgba(255,255,255,0.22); }
+  .loading { font-size: 13px; opacity: 0.6; }
+
+  .tier-default { background: linear-gradient(135deg, #475569, #1e293b); }
+  .tier-safe    { background: linear-gradient(135deg, #22c55e, #15803d); }
+  .tier-notice  { background: linear-gradient(135deg, #eab308, #a16207); }
+  .tier-warn    { background: linear-gradient(135deg, #f97316, #c2410c); }
+  .tier-urgent  { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+</style>
+</head>
+<body>
+  <div id="loading" class="loading">Έλεγχος άδειας…</div>
+  <div id="content" style="display:none">
+    <div class="icon">📜</div>
+    <h1>Άδεια Αγοράς σε Ισχύ</h1>
+    <div class="num-label">Α.Δ.</div>
+    <div class="num" id="num">—</div>
+    <div class="lixi-date" id="lixi-date"></div>
+    <div class="status-pill" id="status-pill"></div>
+    <div><button id="close-btn">Κλείσιμο</button></div>
+  </div>
+<script>
+  const AUTO_CLOSE_MS = 10000;
+
+  function fmtDate(s) {
+    if (!s) return '';
+    const [y, m, d] = s.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  window.splashApi.onAdeiaInfo((data) => {
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('num').textContent = data.arithmos_adeias;
+
+    const pill = document.getElementById('status-pill');
+    const dateEl = document.getElementById('lixi-date');
+    const d = data.days_left;
+    let tier, text;
+
+    if (d === null) {
+      tier = 'tier-default'; text = 'Χωρίς καταχωρημένη ημ. λήξης'; dateEl.textContent = '';
+    } else {
+      dateEl.textContent = 'Λήξη: ' + fmtDate(data.imerominia_lixis);
+      if (d < 0)        { tier = 'tier-urgent'; text = `ΕΛΗΞΕ πριν ${-d} ημέρες`; }
+      else if (d === 0) { tier = 'tier-urgent'; text = 'ΛΗΓΕΙ ΣΗΜΕΡΑ'; }
+      else if (d <= 15) { tier = 'tier-urgent'; text = `${d} ημέρες απομένουν`; }
+      else if (d <= 30) { tier = 'tier-warn';   text = `${d} ημέρες απομένουν`; }
+      else if (d <= 90) { tier = 'tier-notice'; text = `${d} ημέρες απομένουν`; }
+      else               { tier = 'tier-safe';   text = `${d} ημέρες απομένουν`; }
+    }
+
+    pill.className = 'status-pill ' + tier;
+    pill.textContent = text;
+
+    document.getElementById('close-btn').addEventListener('click', () => window.splashApi.close());
+    setTimeout(() => window.splashApi.close(), AUTO_CLOSE_MS);
+  });
+</script>
+</body>
+</html>

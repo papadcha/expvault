@@ -54,7 +54,11 @@ async function launch() {
     app = await electron.launch({ executablePath: electronBin, args: [APP_DIR], timeout: 30_000 });
   }
   await new Promise((r) => setTimeout(r, 2_000));
-  page = app.windows().find((w) => !w.url().startsWith('devtools://')) ?? await app.firstWindow();
+  // Το splash window (splash.html, ειδοποίηση λήξης άδειας) ανοίγει παράλληλα
+  // με το κύριο παράθυρο και μπορεί να είναι πρώτο στη λίστα — αγνόησέ το.
+  page = app.windows().find((w) => w.url().includes('index.html'))
+    ?? app.windows().find((w) => !w.url().startsWith('devtools://') && !w.url().includes('splash.html'))
+    ?? await app.firstWindow();
   return { windows: app.windows().length };
 }
 

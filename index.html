@@ -64,16 +64,16 @@
     </div>
     <div class="nav-item" data-page="adeies">
       <span class="nav-icon">📜</span> Άδειες
-      <span class="nav-badge" id="adeies-expiry-badge" style="display:none;"></span>
     </div>
     <div class="nav-item" data-page="backup">
       <span class="nav-icon">💾</span> Backup
     </div>
   </div>
-  <!-- Κουμπί εξόδου στο κάτω μέρος του sidebar -->
-  <div id="sidebar-exit" style="display:none; padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.1);">
-    <div class="nav-item-exit" onclick="if(window.api)window.api.close()" style="display:flex;align-items:center;gap:10px;padding:10px 20px;cursor:pointer;color:#e57373;font-size:13px;transition:all 0.15s;">
-      <span class="nav-icon">⏻</span> Έξοδος
+  <!-- Λωρίδα άδειας σε ισχύ, κάτω μέρος του sidebar -->
+  <div id="sidebar-bottom" style="display:none; padding: 12px 10px; border-top: 1px solid rgba(255,255,255,0.1);">
+    <div class="adeia-strip" id="adeies-expiry-badge" style="display:none;">
+      <span class="adeia-strip-icon">📜</span>
+      <span class="adeia-strip-text">Α.Δ. <span id="adeia-strip-num">—</span></span>
     </div>
     <div id="sidebar-version" style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:6px;cursor:pointer;"></div>
   </div>
@@ -1123,7 +1123,7 @@ function onPageLoad(page) {
 // ── ELECTRON DETECTION ───────────────────────────────────────────────────────
 if (window.api) {
   document.getElementById('titlebar').style.display = 'flex';
-  document.getElementById('sidebar-exit').style.display = 'block';
+  document.getElementById('sidebar-bottom').style.display = 'block';
   document.body.classList.add('electron');
 }
 

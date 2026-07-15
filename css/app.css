@@ -43,16 +43,23 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .nav-item.active { background: rgba(232,160,32,0.15); color: var(--accent); border-left-color: var(--accent); }
 .nav-item .nav-icon { width: 18px; text-align: center; font-size: 15px; }
 
-.nav-badge {
-  margin-left: auto; cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
-  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px;
-  font-family: var(--mono); font-size: 11px; font-weight: 700;
+/* ── ΛΩΡΙΔΑ ΆΔΕΙΑΣ ΣΕ ΙΣΧΥ (κάτω μέρος sidebar, θέση πρώην "Έξοδος") ── */
+.adeia-strip {
+  display: flex; align-items: center; gap: 8px; margin: 0 10px 10px;
+  padding: 12px 14px; border-radius: 8px; cursor: pointer;
+  color: #fff; font-weight: 700; font-size: 13px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  transition: filter 0.15s, transform 0.15s;
 }
-.nav-badge-default { background: rgba(255,255,255,0.15); color: rgba(255,255,255,0.85); } /* χωρίς ημ. λήξης */
-.nav-badge-safe    { background: #d4edda; color: #155724; } /* >90 ημέρες */
-.nav-badge-notice  { background: #fff3cd; color: #856404; } /* 31-90 ημέρες */
-.nav-badge-warn    { background: #ffe0b2; color: #a15c00; } /* 16-30 ημέρες */
-.nav-badge-urgent  { background: #fde8e8; color: #7b1c1c; } /* ≤15 ημέρες ή ληγμένη */
+.adeia-strip:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.adeia-strip-icon { font-size: 15px; }
+.adeia-strip-text #adeia-strip-num { font-family: var(--mono); }
+
+.adeia-strip-default { background: linear-gradient(135deg, #475569, #1e293b); } /* χωρίς ημ. λήξης */
+.adeia-strip-safe    { background: linear-gradient(135deg, #22c55e, #15803d); } /* >90 ημέρες */
+.adeia-strip-notice  { background: linear-gradient(135deg, #eab308, #a16207); } /* 31-90 ημέρες */
+.adeia-strip-warn    { background: linear-gradient(135deg, #f97316, #c2410c); } /* 16-30 ημέρες */
+.adeia-strip-urgent  { background: linear-gradient(135deg, #ef4444, #b91c1c); } /* ≤15 ημέρες ή ληγμένη */
 
 /* ── MAIN ── */
 .main { margin-left: 220px; padding: 32px; min-height: 100vh; }

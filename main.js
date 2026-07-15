@@ -8,6 +8,7 @@ const https = require('https');
 const { registerVersionIPC, checkVersionNotice } = require('./version-check');
 
 let mainWindow = null;
+let splashWindow = null;
 let pythonProcess = null;
 let pendingRequests = {};
 let reqCounter = 0;
@@ -260,6 +261,8 @@ function setupIPC() {
   ipcMain.on('update-install', () => autoUpdater.quitAndInstall());
   registerVersionIPC();
 
+  ipcMain.on('splash-close', () => splashWindow?.close());
+
   ipcMain.on('window-minimize', () => mainWindow?.minimize());
   ipcMain.on('window-maximize', () => {
     mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize();
@@ -387,11 +390,61 @@ function createWindow() {
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
+// Μόνο μία άδεια είναι σε ισχύ κάθε φορά — ίδια λογική με το js/adeies.js
+// (renderer), αλλά διπλωμένη εδώ γιατί το splash window τρέχει στη main
+// διεργασία, πριν καν φορτωθεί το index.html.
+function pickActiveAdeia(adeies) {
+  if (!adeies || !adeies.length) return null;
+  return [...adeies].sort((a, b) => {
+    const da = a.imerominia_ekdosis || '', db = b.imerominia_ekdosis || '';
+    return da !== db ? db.localeCompare(da) : b.id - a.id;
+  })[0];
+}
+
+function daysUntilDate(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return Math.round((new Date(dateStr + 'T00:00:00') - today) / 86400000);
+}
+
+function createSplashWindow() {
+  splashWindow = new BrowserWindow({
+    width: 440, height: 280,
+    frame: false, resizable: false, movable: true,
+    minimizable: false, maximizable: false, fullscreenable: false,
+    alwaysOnTop: true, center: true, show: false, skipTaskbar: true,
+    backgroundColor: '#0f2040',
+    webPreferences: {
+      preload: path.join(__dirname, 'splash-preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  splashWindow.loadFile(path.join(__dirname, 'splash.html'));
+  splashWindow.once('ready-to-show', () => splashWindow?.show());
+  splashWindow.on('closed', () => { splashWindow = null; });
+
+  callPython('get_adeies').then(adeies => {
+    const active = pickActiveAdeia(adeies);
+    if (!active) { splashWindow?.close(); return; }
+    splashWindow?.webContents.send('adeia-info', {
+      arithmos_adeias: active.arithmos_adeias,
+      imerominia_lixis: active.imerominia_lixis,
+      days_left: daysUntilDate(active.imerominia_lixis),
+    });
+  }).catch(e => {
+    console.error('[Splash] Αποτυχία φόρτωσης άδειας:', e.message);
+    splashWindow?.close();
+  });
+}
+
 app.commandLine.appendSwitch('lang', 'el');
 
 app.whenReady().then(() => {
   setupIPC();
   startBridge();
+  createSplashWindow();
   createWindow();
 });
 

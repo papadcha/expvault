@@ -16,10 +16,12 @@
     "files": [
       "main.js",
       "preload.js",
+      "splash-preload.js",
       "version-check.js",
       "VERSIONS.md",
       "github-token.json",
       "index.html",
+      "splash.html",
       "js/**/*",
       "css/**/*",
       "assets/**/*",

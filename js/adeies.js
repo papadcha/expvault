@@ -48,20 +48,21 @@ function daysUntil(dateStr) {
 
 function renderAdeiaExpiryBadge(active) {
   const badge = document.getElementById('adeies-expiry-badge');
+  const numEl = document.getElementById('adeia-strip-num');
   if (!badge) return;
   if (!active) { badge.style.display = 'none'; return; }
   const days_left = daysUntil(active.imerominia_lixis);
-  const cls = days_left === null ? 'nav-badge-default'
-    : days_left <= 15 ? 'nav-badge-urgent'
-    : days_left <= 30 ? 'nav-badge-warn'
-    : days_left <= 90 ? 'nav-badge-notice'
-    : 'nav-badge-safe';
-  badge.className = 'nav-badge ' + cls;
-  badge.textContent = active.arithmos_adeias;
+  const cls = days_left === null ? 'adeia-strip-default'
+    : days_left <= 15 ? 'adeia-strip-urgent'
+    : days_left <= 30 ? 'adeia-strip-warn'
+    : days_left <= 90 ? 'adeia-strip-notice'
+    : 'adeia-strip-safe';
+  badge.className = 'adeia-strip ' + cls;
+  if (numEl) numEl.textContent = active.arithmos_adeias;
   badge.title = days_left === null
     ? `Άδεια σε ισχύ: ${active.arithmos_adeias} (χωρίς ημ. λήξης) — κλικ για προβολή`
     : `Άδεια σε ισχύ: ${active.arithmos_adeias} — λήγει ${fmtDate(active.imerominia_lixis)} — κλικ για προβολή`;
-  badge.style.display = 'inline-flex';
+  badge.style.display = 'flex';
 }
 
 function adeiaExpiryMessage(a, days_left) {
@@ -70,10 +71,16 @@ function adeiaExpiryMessage(a, days_left) {
   return `⏰ Άδεια ${a.arithmos_adeias} λήγει σε ${days_left} ημέρες (${fmtDate(a.imerominia_lixis)})`;
 }
 
-// Κλικ στο badge → φόρτωση της άδειας σε ισχύ στη φόρμα επεξεργασίας (η
-// εναλλαγή σελίδας γίνεται από τον listener του γονικού .nav-item, μέσω bubbling).
+// Κλικ στη λωρίδα → εναλλαγή στη σελίδα Άδειες + φόρτωση της άδειας σε ισχύ
+// στη φόρμα επεξεργασίας. Η λωρίδα βρίσκεται εκτός των .nav-item (στο κάτω
+// μέρος του sidebar), οπότε η εναλλαγή σελίδας δεν γίνεται πια μέσω bubbling.
 document.getElementById('adeies-expiry-badge')?.addEventListener('click', async () => {
-  const active = getActiveAdeia(allAdeies.length ? allAdeies : await py('get_adeies'));
+  document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelector('.nav-item[data-page="adeies"]')?.classList.add('active');
+  document.getElementById('page-adeies')?.classList.add('active');
+  await loadAdeies();
+  const active = getActiveAdeia(allAdeies);
   if (active) fillAdeiaForm(active);
 });
 
