@@ -278,11 +278,11 @@ function checkForUpdatesManually() {
     headers: { 'User-Agent': 'ExpVault-Updater' },
     timeout: 10000,
   }, (res) => {
-    let data = '';
-    res.on('data', chunk => data += chunk);
+    const chunks = [];
+    res.on('data', chunk => chunks.push(chunk));
     res.on('end', () => {
       try {
-        const release = JSON.parse(data);
+        const release = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
         // Αγνοούμε pre-release/build suffix (π.χ. "1.0.4-beta.1" → "1.0.4")
         const latest = release.tag_name?.replace(/^v/, '').split(/[-+]/)[0];
         if (!latest) return;

@@ -40,10 +40,14 @@ function _fetchAllowedVersions() {
       headers: { 'User-Agent': 'ExpVault-Updater' },
       timeout: 10000,
     }, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
+      // Συλλογή ως Buffer chunks και αποκωδικοποίηση ΜΙΑ φορά στο τέλος —
+      // string concatenation ανά chunk (data += chunk) σπάει πολυ-byte
+      // ελληνικούς χαρακτήρες αν ο χαρακτήρας κοπεί ανάμεσα σε δύο network
+      // chunks (κάθε chunk γίνεται toString() ξεχωριστά με λάθος αποτέλεσμα).
+      const chunks = [];
+      res.on('data', (chunk) => chunks.push(chunk));
       res.on('end', () => {
-        try { resolve(JSON.parse(data)); } catch (e) { resolve(null); }
+        try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf-8'))); } catch (e) { resolve(null); }
       });
     });
     req.on('error', () => resolve(null));
@@ -163,9 +167,9 @@ function registerVersionIPC() {
             'User-Agent': 'ExpVault-Updater',
           },
         }, (res) => {
-          let data = '';
-          res.on('data', (chunk) => { data += chunk; });
-          res.on('end', () => resolve({ status: res.statusCode, data }));
+          const chunks = [];
+          res.on('data', (chunk) => chunks.push(chunk));
+          res.on('end', () => resolve({ status: res.statusCode, data: Buffer.concat(chunks).toString('utf-8') }));
         });
         req.on('error', reject);
         req.write(payload);
