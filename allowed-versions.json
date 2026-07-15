@@ -1,9 +1,9 @@
 {
   "_comment": "Χειροκίνητα συντηρούμενο αρχείο — ενημερώνεται σε κάθε release, ή εκτάκτως αν μια έκδοση αποδειχτεί προβληματική. latestRecommendedVersion μπορεί να είναι ΠΙΣΩ από την τελευταία GitHub release αν αυτή έχει γνωστό πρόβλημα. ΠΡΟΣΟΧΗ: αν οριστεί notice/χαμηλώσει το latestRecommendedVersion, πρέπει ΕΠΙΣΗΣ να γίνει unpublish/draft το προβληματικό GitHub release — το electron-updater θα συνεχίσει να το προωθεί αυτόματα αλλιώς.",
-  "latestRecommendedVersion": "1.1.8",
-  "safeDowngradeFloor": "1.1.8",
+  "latestRecommendedVersion": "1.1.9",
+  "safeDowngradeFloor": "1.1.9",
   "notice": "Μόνο η τρέχουσα έκδοση θεωρείται επιβεβαιωμένα ασφαλής για επαναφορά — ενημερώνεται σε κάθε release. Οι 1.0.4–1.1.1 είχαν bug σε migration παλιού σχήματος αδειών που μπορούσε να διαγράψει οριστικά εγκεκριμένες ποσότητες (διορθώθηκε στην v1.1.2)· οι παλιότερες (έως 1.0.3) δεν έχουν επαληθευτεί έναντι του σημερινού σχήματος βάσης μετά από τόσα ενδιάμεσα migrations.",
   "versions": [
-    { "version": "1.1.8", "date": "2026-07-15", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.8/ExpVault-Setup-1.1.8.exe", "notes": "Πραγματικό splash window στην εκκίνηση (άδεια/λήξη/ημέρες που απομένουν)· wide έγχρωμη λωρίδα στη θέση του Έξοδος αντί για το παλιό μικρό badge" }
+    { "version": "1.1.9", "date": "2026-07-15", "downloadUrl": "https://github.com/papadcha/expvault/releases/download/v1.1.9/ExpVault-Setup-1.1.9.exe", "notes": "Fix mojibake στο Ιστορικό Εκδόσεων (HTTP chunk decoding), επαναφορά πολιτικής safe-downgrade (μόνο η τρέχουσα έκδοση), αφαίρεση ετικέτας Α.Δ. από το splash window" }
   ]
 }
