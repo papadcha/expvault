@@ -2,6 +2,7 @@
   "name": "expvault",
   "version": "1.1.10",
   "description": "Βιβλίο Εκρηκτικών Υλών",
+  "license": "MIT",
   "main": "main.js",
   "scripts": {
     "start": "electron .",

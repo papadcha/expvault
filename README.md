@@ -218,7 +218,6 @@ electron .
 ## Εκκρεμή (TODO)
 
 - [ ] Νέος σχεδιασμός σελίδων export Word/Excel — εκκρεμεί αποστολή reference αρχείων (#18)
-- [ ] Άδεια χρήσης — απόφαση private/proprietary ή open source + προσθήκη LICENSE (#20)
 
 ---
 
