@@ -29,7 +29,7 @@ export async function doExport(fmt, btn) {
     const font = document.getElementById('exp-font').value;
     const nonel_mode = document.querySelector('input[name="nonel-mode"]:checked')?.value || 'detail';
     const cover_page = fmt === 'pdf' && document.getElementById('exp-cover').checked;
-    const blank_pages = cover_page ? parseInt(document.getElementById('exp-blank-pages').value) : 0;
+    const blank_pages = cover_page && document.getElementById('exp-blank-pages').checked ? 2 : 0;
     const ext = fmt === 'excel' ? 'xlsx' : fmt;
     const savePath = await window.api.saveFile({
       defaultName: `vivlio_ekrktikon.${ext}`, ext

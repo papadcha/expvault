@@ -500,15 +500,9 @@
           <div style="margin-top:6px;font-size:11px;color:var(--muted);">Το Excel βγάζει πάντα και τους 4 τρόπους (4 φύλλα).</div>
         </div>
       </div>
-      <div class="form-row cols-2">
-        <div><label><input type="checkbox" id="exp-cover" onchange="document.getElementById('exp-blank-wrap').style.display=this.checked?'':'none'"> Νέα μορφή PDF (εξώφυλλο + αντικρυστές σελίδες Αγορών/Καταναλώσεων)</label></div>
-        <div id="exp-blank-wrap" style="display:none;">
-          <label>Κενές σελίδες μετά το εξώφυλλο</label>
-          <select id="exp-blank-pages">
-            <option value="0">0</option>
-            <option value="2">2</option>
-          </select>
-        </div>
+      <div class="form-row" style="display:flex;align-items:center;gap:20px;flex-wrap:wrap;">
+        <label><input type="checkbox" id="exp-cover" onchange="document.getElementById('exp-blank-pages').disabled=!this.checked"> Νέα μορφή PDF (εξώφυλλο + αντικρυστές σελίδες Αγορών/Καταναλώσεων)</label>
+        <label><input type="checkbox" id="exp-blank-pages" disabled> 2 κενές σελίδες</label>
       </div>
       <div class="form-actions">
         <button class="btn btn-danger" onclick="doExport('pdf', this)">📄 Εξαγωγή PDF (Νόμιμη Μορφή)</button>

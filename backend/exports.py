@@ -767,10 +767,13 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                     v = kat_ylika.get(yid)
                     cells.append(p(fmt_num(v) if v else '—', RS))
             cells.append(p(kat.get('paratirishis',''), CS))
-            if ri % 2 == 0:
-                r_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
+        elif is_epi:
+            cells = [p('',CS), p('',CS)] + [p('—', ER)]*n + [p('ΕΠΙΣΤΡΟΦΗ', ES)]
         else:
             cells = [p('',CS), p('',CS)] + [p('',CS)]*n + [p('',CS)]
+
+        if ri % 2 == 0:
+            r_style.append(('BACKGROUND', (0,ri), (-1,ri), ALT_BG))
 
         r_data.append(cells)
 
