@@ -59,6 +59,12 @@ def _build_suggested(header, grammes_raw):
         'ekdousa_archi': (header.get('ekdousa_archi') or '').strip(),
         'promitheftis': (header.get('promitheftis') or '').strip(),
         'grammes': grammes,
+        # Προαιρετικό, μόνο για ΕΠΙΣΤΡΟΦΗ: ο αριθμός του τιμολογίου αγοράς που
+        # αφορά, αν αναγράφεται στο ίδιο το παραστατικό. Βλ. js/pdf-import.js
+        # submitPdfEntries() — σε batch import (πολλά παραστατικά μαζί) η
+        # ευρετική "τελευταία αγορά που καταχωρήθηκε" δεν αρκεί όταν υπάρχουν
+        # πολλές αγορές στην ουρά χωρίς οι επιστροφές τους να ακολουθούν αμέσως.
+        'agora_ref': (header.get('agora_ref') or header.get('sxetiko_parastatiko') or '').strip(),
     }
 
 

@@ -12,6 +12,9 @@ function _populatePdfForm(r) {
   document.getElementById('pdf-alert').innerHTML = '';
   window._lastEpistrofiParst = null;
   const s = r.suggested;
+  // Hint από το ίδιο το παραστατικό (πεδίο agora_ref, βλ. IMPORT_DATA_PROMPT) —
+  // used στο submitPdfEntries() για σωστό matching αγοράς/επιστροφής σε batch.
+  window._pdfSuggestedAgoraRef = s.agora_ref || '';
   if (s.imerominia && typeof s.imerominia === 'string') {
     const [d,m,y] = s.imerominia.split('/');
     document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
@@ -149,6 +152,7 @@ const IMPORT_DATA_PROMPT = `Ανάλυσε αυτή τη φωτογραφία τ
   "adeia": "ο αριθμός άδειας αγοράς/εκμετάλλευσης, αν αναφέρεται",
   "ekdousa_archi": "η εκδούσα αρχή της άδειας, αν αναφέρεται",
   "promitheftis": "το όνομα του προμηθευτή/εταιρείας",
+  "agora_ref": "ΜΟΝΟ αν tipos=ΕΠΙΣΤΡΟΦΗ και το παραστατικό αναφέρει τον αριθμό του αρχικού τιμολογίου αγοράς που αφορά — αλλιώς άσε κενό",
   "grammes": [
     { "onoma": "όνομα υλικού με ΚΕΦΑΛΑΙΑ όπως στο πρωτότυπο", "posotita": αριθμός, "monada": "Κιλ ή Τεμ ή Μετρ" }
   ]
@@ -233,8 +237,12 @@ export async function submitPdfEntries() {
     if (tipos === 'ΕΠΙΣΤΡΟΦΗ') {
       // ── ΕΠΙΣΤΡΟΦΗ: ζήτα το συσχετιζόμενο τιμολόγιο αγοράς ──
       window._lastEpistrofiParst = parstatiko; // αποθήκευση πριν καθαριστεί
-      const lastAgora = await py('get_last_eisagogi_parstatiko', {});
-      const lastParst = lastAgora.arithmos_parstatikos || '';
+      // Προτίμηση στο ρητό agora_ref του ίδιου του παραστατικού (αν υπάρχει —
+      // βλ. import_data.py) έναντι της ευρετικής "τελευταία αγορά που
+      // καταχωρήθηκε", που είναι αναξιόπιστη σε batch import με πολλές αγορές
+      // στην ουρά (θα έδειχνε πάντα την τελευταία, όχι απαραίτητα τη σωστή).
+      const lastAgora = window._pdfSuggestedAgoraRef ? null : await py('get_last_eisagogi_parstatiko', {});
+      const lastParst = window._pdfSuggestedAgoraRef || lastAgora?.arithmos_parstatikos || '';
       alertEl.innerHTML += `
         <div class="alert" style="background:#fff3cd;border:1px solid #ffc107;color:#856404;margin-top:8px;">
           <strong>⚠️ Βήμα 2: Συσχέτισε με τιμολόγιο αγοράς</strong>
