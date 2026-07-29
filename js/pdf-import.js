@@ -3,6 +3,36 @@ import { allYlika, allProm, allAdeies, setYlika, setProm, setAdeies } from './st
 
 // ── PDF IMPORT ────────────────────────────────────────────────────────────────
 
+function _levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = [];
+  for (let i = 0; i <= m; i++) dp.push([i, ...Array(n).fill(0)]);
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] : 1 + Math.min(dp[i-1][j-1], dp[i-1][j], dp[i][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+
+// Προειδοποίηση για near-duplicate υλικά κατά το import (PDF ή JSON/CSV):
+// αν το εξαγόμενο όνομα δεν ταιριάζει ακριβώς με κάποιο ήδη καταχωρημένο
+// υλικό αλλά είναι πολύ κοντά (π.χ. λατινικό/ελληνικό Χ, τυπογραφικό λάθος
+// OCR/LLM), θα δημιουργούνταν σιωπηλά διπλότυπο υλικό — silent data
+// corruption σε αθροίσματα αποθεμάτων/αδειών. Δεν μπλοκάρει, απλώς προτείνει.
+function _findCloseYlikoMatch(onoma) {
+  const target = (onoma || '').trim().toUpperCase();
+  if (!target || allYlika.some(y => y.onoma === target)) return null;
+  let best = null, bestDist = Infinity;
+  for (const y of allYlika) {
+    const dist = _levenshtein(target, y.onoma);
+    const threshold = Math.max(2, Math.round(Math.min(target.length, y.onoma.length) * 0.25));
+    if (dist <= threshold && dist < bestDist) { best = y; bestDist = dist; }
+  }
+  return best;
+}
+
 // Κοινό preview/edit UI για ό,τι επιστρέφει parse_pdf ή parse_import_data —
 // ίδιο σχήμα { raw_text, suggested: {imerominia, tipos, arithmos_parstatikos,
 // adeia, ekdousa_archi, promitheftis, grammes[]}, template_used }.
@@ -27,7 +57,14 @@ function _populatePdfForm(r) {
   const container = document.getElementById('pdf-grammes-container');
   if (s.grammes.length) {
     container.innerHTML = '<div class="card-title" style="margin-top:16px;margin-bottom:10px;">Αναγνωρισμένα Υλικά</div>' +
-      s.grammes.map((g,i)=>`
+      s.grammes.map((g,i)=>{
+        const match = _findCloseYlikoMatch(g.onoma);
+        const warnHtml = match ? `
+          <div class="yliko-fuzzy-warn" style="grid-column:1/-1;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:4px 8px;">
+            ⚠️ Υπάρχει ήδη παρόμοιο υλικό: <strong>${escapeHtml(match.onoma)}</strong> — μήπως εννοείς αυτό αντί για νέο υλικό;
+            <button type="button" class="btn btn-sm btn-outline" style="padding:2px 8px;margin-left:4px;" data-yliko-fix="${i}" data-yliko-name="${escapeHtml(match.onoma)}">Χρήση αυτού</button>
+          </div>` : '';
+        return `
         <div class="form-row cols-3" style="margin-bottom:8px;">
           <div><label>Υλικό ${i+1}</label><input type="text" id="pdf-g-onoma-${i}" value="${escapeHtml(g.onoma)}"></div>
           <div><label>Ποσότητα</label><input type="number" id="pdf-g-pos-${i}" value="${escapeHtml(g.posotita)}" step="0.001"></div>
@@ -38,7 +75,15 @@ function _populatePdfForm(r) {
               <option ${g.monada==='Μετρ'?'selected':''}>Μετρ</option>
             </select>
           </div>
-        </div>`).join('');
+          ${warnHtml}
+        </div>`;
+      }).join('');
+    container.querySelectorAll('[data-yliko-fix]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById(`pdf-g-onoma-${btn.dataset.ylikoFix}`).value = btn.dataset.ylikoName;
+        btn.closest('.yliko-fuzzy-warn').remove();
+      });
+    });
   } else {
     container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">⚠️ Δεν αναγνωρίστηκαν αυτόματα υλικά. Συμπληρώστε χειροκίνητα.</div>';
   }
