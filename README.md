@@ -4,9 +4,12 @@
 
 ## Download
 
-**[⬇ ExpVault-Setup-1.1.10.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault-Setup-1.1.10.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.1.10](https://github.com/papadcha/expvault/releases/tag/v1.1.10)
+**[⬇ ExpVault-Setup-1.1.12.exe](https://github.com/papadcha/expvault/releases/latest/download/ExpVault-Setup-1.1.12.exe)** — Windows 10/11 x64 · [Τι νέο στην v1.1.12](https://github.com/papadcha/expvault/releases/tag/v1.1.12)
 
 > Δεν απαιτείται Python. Αν εμφανιστεί Windows SmartScreen, πάτα **Περισσότερες πληροφορίες → Εκτέλεση παρόλα αυτά**.
+
+> 🔧 Αυτό είναι το branch `v2` — ενεργή ανάπτυξη, δεν έχει κυκλοφορήσει ακόμα.
+> Δείτε **[README-v2.md](README-v2.md)** για τα νέα που προστέθηκαν εδώ.
 
 ---
 
@@ -217,7 +220,9 @@ electron .
 
 ## Εκκρεμή (TODO)
 
-- [ ] Νέος σχεδιασμός σελίδων export Word/Excel — εκκρεμεί αποστολή reference αρχείων (#18)
+Καμία ανοιχτή εκκρεμότητα στο v1 (μόνο διορθώσεις λαθών/αναβαθμίσεις εξαρτήσεων εδώ πλέον —
+βλ. [`RELEASE-CHECKLIST.md`](RELEASE-CHECKLIST.md)). Η νέα ανάπτυξη γίνεται στο branch `v2`
+(δείτε [`TODO-v2.md`](TODO-v2.md) εκεί).
 
 ---
 

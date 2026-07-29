@@ -151,3 +151,35 @@ with **spaces** (`ExpVault Setup X.Y.Z.exe`), but `latest.yml` (electron-updater
 prior GitHub release assets use **hyphens** (`ExpVault-Setup-X.Y.Z.exe`) — rename before uploading
 release assets, and verify the actual filename on GitHub before locking in any download URL in
 `allowed-versions.json` or `README.md`.
+
+## Branch structure: `main` vs `v2`
+
+Since 2026-07-29 this repo runs two long-lived branches, mirroring the split used in the
+sibling `lab-galatista` project (there: `v1-maintenance` / `v2-esm-redesign`; here the maintenance
+line keeps the `main` name since it's also what `electron-updater` and `version-check.js`'s
+hardcoded raw.githubusercontent.com fetch depend on):
+
+- **`main`** — the released line. `electron-updater` pushes whatever GitHub marks "latest"
+  (not branch-aware), and `version-check.js` always reads `allowed-versions.json` from
+  `main` specifically (hardcoded path) — so **only `main` content ever reaches an installed
+  user**, regardless of what exists on `v2`. Accepts bugfixes and bundled-dependency-upgrade
+  fixes only, no new features. Routine patch releases (`RELEASE-CHECKLIST.md`).
+- **`v2`** — all new feature development. Never gets a GitHub release/tag until it's mature
+  enough to become the new `main` (`RELEASE-CHECKLIST-v2.md` covers that merge event
+  specifically — it's a different, one-time process from a routine patch release).
+
+**Docs on `v2` are split**: each of `README.md`/`ΟΔΗΓΟΣ_ΧΡΗΣΗΣ.md`/`VERSIONS.md`/`DONE.md`/
+`TODO.md` stays a mirror of what's actually released on `main`, and a `-v2.md` sibling
+(`README-v2.md` etc.) carries only the not-yet-released `v2` delta. When touching docs while
+on `v2`, add new user-facing/technical content to the `-v2.md` file, not the base file — the
+base file only changes when backporting something that also applies to `main` (like the
+`_clean_parst` fix in `DONE-v2.md`/`VERSIONS.md`). These `-v2.md` files get merged into the
+base files and deleted at merge time (see `RELEASE-CHECKLIST-v2.md`), not carried forward.
+
+**Backporting a bug fix found on `v2` to `main`**: if the bug predates the `v2` branch split
+(check with `git show main:path/to/file | grep ...` — if the buggy code already exists on
+`main`, it's not something `v2`'s new work introduced), it belongs on `main` too per the
+bugfix-only policy above. Apply the same fix directly on `main` (e.g. `git checkout v2 --
+path/to/file` if the fix is isolated enough to bring the whole file over cleanly, otherwise
+hand-apply the same diff) as its own commit — don't cherry-pick `v2` commits wholesale, since
+those usually mix the fix with `v2`-only feature code that must not leak onto `main`.
