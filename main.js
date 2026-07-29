@@ -387,7 +387,10 @@ function createWindow() {
     mainWindow.close();
   });
 
-  mainWindow.on('closed', () => { mainWindow = null; });
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    if (splashWindow && !splashWindow.isDestroyed()) splashWindow.close();
+  });
 }
 
 // Μόνο μία άδεια είναι σε ισχύ κάθε φορά — ίδια λογική με το js/adeies.js
