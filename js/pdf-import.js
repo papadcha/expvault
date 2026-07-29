@@ -66,6 +66,7 @@ export async function parsePdf() {
     const r = await py('parse_pdf', { path: filePath });
     status.textContent = '';
     _clearImportQueue();
+    window._pdfImportSource = 'pdf';
     _populatePdfForm(r);
   } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
 }
@@ -76,6 +77,7 @@ export async function parsePdf() {
 // Ένα αρχείο (ή φάκελος/zip) μπορεί να περιέχει πολλά παραστατικά — γίνονται
 // review/submit ΕΝΑ-ΕΝΑ μέσα από την ίδια φόρμα, με το "Επόμενο Παραστατικό".
 function _loadImportResult(r) {
+  window._pdfImportSource = 'data';
   window._importQueue  = r.items || [];
   window._importErrors = r.errors || [];
   if (!window._importQueue.length) {
@@ -208,6 +210,11 @@ export async function submitPdfEntries() {
     adeiaId = a?.id || null;
   }
 
+  // Ετικέτα προέλευσης για paratirishis — ξεχωρίζει PDF από JSON/CSV/φάκελο/zip
+  // import (window._pdfImportSource, βλ. parsePdf()/_loadImportResult()) ώστε
+  // να μένει ιχνηλάσιμο από πού προήλθε κάθε αυτόματη καταχώρηση.
+  const sourceLabel = window._pdfImportSource === 'data' ? 'JSON/CSV' : 'PDF';
+
   let saved = 0, errors = [];
   for (let i=0; i<window.pdfGrammesCount; i++) {
     const onoma = document.getElementById(`pdf-g-onoma-${i}`)?.value?.trim().toUpperCase();
@@ -216,7 +223,7 @@ export async function submitPdfEntries() {
     if (!onoma || isNaN(pos)) continue;
     let yliko = allYlika.find(y=>y.onoma===onoma);
     if (!yliko) {
-      try { await py('add_yliko', {onoma, monada_metrisis:mon, paratirishis:'Αυτόματη εισαγωγή PDF'}); } catch(e) {}
+      try { await py('add_yliko', {onoma, monada_metrisis:mon, paratirishis:`Αυτόματη εισαγωγή ${sourceLabel}`}); } catch(e) {}
       setYlika(await py('get_ylika'));
       yliko = allYlika.find(y=>y.onoma===onoma);
     }
@@ -224,7 +231,7 @@ export async function submitPdfEntries() {
     try {
       await py('add_kinisi', {imerominia, tipos, yliko_id:yliko.id,
         posotita:pos, arithmos_parstatikos:parstatiko,
-        adeia_id:adeiaId, promitheftis_id:promId, paratirishis:'Εισαγωγή από PDF'});
+        adeia_id:adeiaId, promitheftis_id:promId, paratirishis:`Εισαγωγή από ${sourceLabel}`});
       saved++;
     } catch(e) { errors.push(onoma+': '+e.message); }
   }
