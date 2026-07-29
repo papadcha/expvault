@@ -2,6 +2,49 @@ import { escapeHtml, py } from './utils.js';
 import { allYlika, allProm, allAdeies, setYlika, setProm, setAdeies } from './state.js';
 
 // ── PDF IMPORT ────────────────────────────────────────────────────────────────
+
+// Κοινό preview/edit UI για ό,τι επιστρέφει parse_pdf ή parse_import_data —
+// ίδιο σχήμα { raw_text, suggested: {imerominia, tipos, arithmos_parstatikos,
+// adeia, ekdousa_archi, promitheftis, grammes[]}, template_used }.
+function _populatePdfForm(r) {
+  document.getElementById('pdf-raw-text').textContent = r.raw_text || '(Δεν εξήχθη κείμενο)';
+  document.getElementById('pdf-results').style.display = 'block';
+  document.getElementById('pdf-alert').innerHTML = '';
+  window._lastEpistrofiParst = null;
+  const s = r.suggested;
+  if (s.imerominia && typeof s.imerominia === 'string') {
+    const [d,m,y] = s.imerominia.split('/');
+    document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
+  }
+  document.getElementById('pdf-tipos').value   = s.tipos || 'ΕΙΣΑΓΩΓΗ';
+  document.getElementById('pdf-parstatiko').value = s.arithmos_parstatikos||'';
+  document.getElementById('pdf-adeia-txt').value  = s.adeia||'';
+  document.getElementById('pdf-ekdousa-txt').value = s.ekdousa_archi||'';
+  document.getElementById('pdf-prom-txt').value   = s.promitheftis||'';
+  const container = document.getElementById('pdf-grammes-container');
+  if (s.grammes.length) {
+    container.innerHTML = '<div class="card-title" style="margin-top:16px;margin-bottom:10px;">Αναγνωρισμένα Υλικά</div>' +
+      s.grammes.map((g,i)=>`
+        <div class="form-row cols-3" style="margin-bottom:8px;">
+          <div><label>Υλικό ${i+1}</label><input type="text" id="pdf-g-onoma-${i}" value="${escapeHtml(g.onoma)}"></div>
+          <div><label>Ποσότητα</label><input type="number" id="pdf-g-pos-${i}" value="${escapeHtml(g.posotita)}" step="0.001"></div>
+          <div><label>Μονάδα</label>
+            <select id="pdf-g-mon-${i}">
+              <option ${g.monada==='Κιλ'?'selected':''}>Κιλ</option>
+              <option ${g.monada==='Τεμ'?'selected':''}>Τεμ</option>
+              <option ${g.monada==='Μετρ'?'selected':''}>Μετρ</option>
+            </select>
+          </div>
+        </div>`).join('');
+  } else {
+    container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">⚠️ Δεν αναγνωρίστηκαν αυτόματα υλικά. Συμπληρώστε χειροκίνητα.</div>';
+  }
+  if (r.template_used) {
+    window._showToast(`✅ Χρησιμοποιήθηκε πρότυπο: ${r.template_used}`, 'success');
+  }
+  window.pdfGrammesCount = s.grammes.length;
+}
+
 export async function parsePdf() {
   const status = document.getElementById('pdf-status');
   status.textContent = '⏳ Επιλογή αρχείου...';
@@ -11,43 +54,47 @@ export async function parsePdf() {
   try {
     const r = await py('parse_pdf', { path: filePath });
     status.textContent = '';
-    document.getElementById('pdf-raw-text').textContent = r.raw_text || '(Δεν εξήχθη κείμενο)';
-    document.getElementById('pdf-results').style.display = 'block';
-    document.getElementById('pdf-alert').innerHTML = '';
-    window._lastEpistrofiParst = null;
-    const s = r.suggested;
-    if (s.imerominia && typeof s.imerominia === 'string') {
-      const [d,m,y] = s.imerominia.split('/');
-      document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
-    }
-    document.getElementById('pdf-tipos').value   = s.tipos || 'ΕΙΣΑΓΩΓΗ';
-    document.getElementById('pdf-parstatiko').value = s.arithmos_parstatikos||'';
-    document.getElementById('pdf-adeia-txt').value  = s.adeia||'';
-    document.getElementById('pdf-ekdousa-txt').value = s.ekdousa_archi||'';
-    document.getElementById('pdf-prom-txt').value   = s.promitheftis||'';
-    const container = document.getElementById('pdf-grammes-container');
-    if (s.grammes.length) {
-      container.innerHTML = '<div class="card-title" style="margin-top:16px;margin-bottom:10px;">Αναγνωρισμένα Υλικά</div>' +
-        s.grammes.map((g,i)=>`
-          <div class="form-row cols-3" style="margin-bottom:8px;">
-            <div><label>Υλικό ${i+1}</label><input type="text" id="pdf-g-onoma-${i}" value="${escapeHtml(g.onoma)}"></div>
-            <div><label>Ποσότητα</label><input type="number" id="pdf-g-pos-${i}" value="${escapeHtml(g.posotita)}" step="0.001"></div>
-            <div><label>Μονάδα</label>
-              <select id="pdf-g-mon-${i}">
-                <option ${g.monada==='Κιλ'?'selected':''}>Κιλ</option>
-                <option ${g.monada==='Τεμ'?'selected':''}>Τεμ</option>
-                <option ${g.monada==='Μετρ'?'selected':''}>Μετρ</option>
-              </select>
-            </div>
-          </div>`).join('');
-    } else {
-      container.innerHTML = '<div style="padding:12px;color:var(--muted);font-size:13px;">⚠️ Δεν αναγνωρίστηκαν αυτόματα υλικά. Συμπληρώστε χειροκίνητα.</div>';
-    }
-    if (r.template_used) {
-      window._showToast(`✅ Χρησιμοποιήθηκε πρότυπο: ${r.template_used}`, 'success');
-    }
-    window.pdfGrammesCount = s.grammes.length;
+    _populatePdfForm(r);
   } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
+}
+
+// Εναλλακτική στο PDF parsing: JSON/CSV που παρήγαγε εξωτερικό LLM (π.χ.
+// upload φωτογραφίας τιμολογίου σε Claude/Gemini free web UI) — βλ.
+// importDataPromptText() για το prompt που δίνει στον χειριστή το σωστό σχήμα.
+export async function parseImportData() {
+  const status = document.getElementById('pdf-status');
+  status.textContent = '⏳ Επιλογή αρχείου...';
+  const filePath = await window.api.openImportData();
+  if (!filePath) { status.textContent = ''; return; }
+  status.textContent = '⏳ Ανάλυση...';
+  try {
+    const r = await py('parse_import_data', { path: filePath });
+    status.textContent = '';
+    _populatePdfForm(r);
+  } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
+}
+
+const IMPORT_DATA_PROMPT = `Ανάλυσε αυτή τη φωτογραφία τιμολογίου/δελτίου εκρηκτικών υλών και απάντησε ΜΟΝΟ με το παρακάτω JSON (χωρίς άλλο κείμενο πριν/μετά):
+
+{
+  "imerominia": "ΗΗ/ΜΜ/ΕΕΕΕ",
+  "tipos": "ΕΙΣΑΓΩΓΗ ή ΕΠΙΣΤΡΟΦΗ",
+  "arithmos_parstatikou": "ο αριθμός του παραστατικού όπως αναγράφεται",
+  "adeia": "ο αριθμός άδειας αγοράς/εκμετάλλευσης, αν αναφέρεται",
+  "ekdousa_archi": "η εκδούσα αρχή της άδειας, αν αναφέρεται",
+  "promitheftis": "το όνομα του προμηθευτή/εταιρείας",
+  "grammes": [
+    { "onoma": "όνομα υλικού με ΚΕΦΑΛΑΙΑ όπως στο πρωτότυπο", "posotita": αριθμός, "monada": "Κιλ ή Τεμ ή Μετρ" }
+  ]
+}`;
+
+export async function copyImportDataPrompt() {
+  try {
+    await navigator.clipboard.writeText(IMPORT_DATA_PROMPT);
+    window._showToast('✅ Το prompt αντιγράφηκε — επικόλλησέ το στο Claude/Gemini μαζί με τη φωτογραφία', 'success');
+  } catch(e) {
+    alert('Δεν ήταν δυνατή η αντιγραφή: ' + e.message);
+  }
 }
 
 export async function submitPdfEntries() {

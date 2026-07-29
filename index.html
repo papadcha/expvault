@@ -336,7 +336,13 @@
       <div class="card-title">Φόρτωση PDF</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-accent" onclick="parsePdf()">📂 Επιλογή & Ανάλυση PDF</button>
+        <button class="btn btn-outline" onclick="parseImportData()">📥 Εισαγωγή από JSON/CSV</button>
+        <button class="btn btn-outline" onclick="copyImportDataPrompt()">📋 Αντιγραφή Prompt για Claude/Gemini</button>
         <span id="pdf-status" style="font-size:13px;color:var(--muted);"></span>
+      </div>
+      <div style="margin-top:8px;font-size:12px;color:var(--muted);">
+        Για φωτογραφία τιμολογίου/δελτίου χωρίς PDF: ανέβασέ τη σε Claude ή Gemini (δωρεάν, χωρίς API) μαζί με το prompt παραπάνω,
+        αποθήκευσε την απάντηση ως .json ή .csv, και εισήγαγέ το εδώ.
       </div>
     </div>
 
@@ -1038,6 +1044,7 @@ import {
 import {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
+  parseImportData, copyImportDataPrompt,
 } from './js/pdf-import.js';
 import { loadExportDropdowns, doExport, exportListaAgores, exportDeltioDrastiriotitas } from './js/export.js';
 import {
@@ -1065,6 +1072,7 @@ Object.assign(window, {
   checkAdeiaYpoloipo, saveKinisi, autoKataxorisiAll, clearKinisiForm, clearFilters, toggleAgoraRefRow,
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
+  parseImportData, copyImportDataPrompt,
   doExport, exportListaAgores, exportDeltioDrastiriotitas,
   showSenario, loadYpologismosAgora, calculateYpologismos,
   kataxoriYpologismos, saveEpistrofiFromYpologismos, exportYpologismosPdf,

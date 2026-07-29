@@ -254,6 +254,15 @@ def handle(cmd, payload):
                 result['template_used'] = tpl_result.get('template_used', '')
         return {'ok': True, **result}
 
+    if cmd == 'parse_import_data':
+        import import_data
+        path = payload['path']
+        fmt = 'csv' if path.lower().endswith('.csv') else 'json'
+        with open(path, 'r', encoding='utf-8-sig') as f:
+            raw_text = f.read()
+        suggested = import_data.parse_import_text(raw_text, fmt)
+        return {'ok': True, 'raw_text': raw_text, 'suggested': suggested, 'template_used': None}
+
     # ── PDF TEMPLATES ─────────────────────────────────────────────────────────
     if cmd == 'extract_pdf_text':
         raw_text = pdf_parser.extract_text_from_pdf(payload['path'])

@@ -152,7 +152,7 @@ const ALLOWED_PYTHON_COMMANDS = new Set([
   'get_epistrofes_without_parstatiko', 'get_kiniseis_by_parstatiko_yliko',
   'delete_kiniseis_by_parstatiko', 'delete_parstatiko_with_related', 'check_ekkremotita',
   'get_last_eisagogi_parstatiko',
-  'parse_pdf', 'extract_pdf_text',
+  'parse_pdf', 'extract_pdf_text', 'parse_import_data',
   'list_pdf_templates', 'delete_pdf_template', 'preview_pdf_template', 'save_pdf_template',
   'export_pdf_templates', 'import_pdf_templates', 'build_and_preview_pdf_template',
   'export_ypologismos_pdf', 'export_pdf', 'export_excel', 'export_docx', 'export_lista_agores',
@@ -193,6 +193,14 @@ function setupIPC() {
       filters
     });
     return canceled ? null : filePath;
+  });
+
+  ipcMain.handle('open-import-data-dialog', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      filters: [{ name: 'JSON / CSV', extensions: ['json', 'csv'] }],
+      properties: ['openFile']
+    });
+    return canceled ? null : filePaths[0];
   });
 
   ipcMain.handle('open-json-dialog', async () => {
