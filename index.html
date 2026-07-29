@@ -349,7 +349,24 @@
       <div id="import-queue-bar" style="display:none;align-items:center;gap:12px;margin-top:10px;padding:8px 12px;background:#e8f4fd;border:1px solid #90cdf4;border-radius:6px;font-size:13px;">
         <strong id="import-queue-pos"></strong>
         <button class="btn btn-sm btn-accent" id="import-queue-next-btn" onclick="nextImportQueueItem()">⏭ Επόμενο Παραστατικό</button>
+        <button class="btn btn-sm btn-outline" id="import-queue-back-btn" onclick="showImportOverview()">🔙 Πίσω στην επισκόπηση</button>
         <span id="import-queue-errors" style="display:none;color:#c0392b;"></span>
+      </div>
+    </div>
+
+    <div id="import-overview" class="card" style="display:none;">
+      <div class="card-title">Επισκόπηση Παραστατικών</div>
+      <div id="import-overview-errors" style="display:none;margin-bottom:10px;"></div>
+      <div style="overflow-x:auto;">
+        <table style="width:100%;">
+          <thead>
+            <tr>
+              <th>#</th><th>Πηγή</th><th>Ημερομηνία</th><th>Τύπος</th>
+              <th>Αρ. Παραστατικού</th><th>Υλικά</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="import-overview-body"></tbody>
+        </table>
       </div>
     </div>
 
@@ -1053,6 +1070,7 @@ import {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
   parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem, skipDuplicateAndNext,
+  showImportOverview,
 } from './js/pdf-import.js';
 import { loadExportDropdowns, doExport, exportListaAgores, exportDeltioDrastiriotitas } from './js/export.js';
 import {
@@ -1081,6 +1099,7 @@ Object.assign(window, {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
   parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem, skipDuplicateAndNext,
+  showImportOverview,
   doExport, exportListaAgores, exportDeltioDrastiriotitas,
   showSenario, loadYpologismosAgora, calculateYpologismos,
   kataxoriYpologismos, saveEpistrofiFromYpologismos, exportYpologismosPdf,

@@ -97,8 +97,11 @@ function _clearImportQueue() {
   window._importQueue = [];
   window._importQueueIndex = 0;
   window._importErrors = [];
+  window._importSubmitted = new Set();
   const bar = document.getElementById('import-queue-bar');
   if (bar) bar.style.display = 'none';
+  const overview = document.getElementById('import-overview');
+  if (overview) overview.style.display = 'none';
 }
 
 export async function parsePdf() {
@@ -121,10 +124,14 @@ export async function parsePdf() {
 // IMPORT_DATA_PROMPT για το prompt που δίνει στον χειριστή το σωστό σχήμα.
 // Ένα αρχείο (ή φάκελος/zip) μπορεί να περιέχει πολλά παραστατικά — γίνονται
 // review/submit ΕΝΑ-ΕΝΑ μέσα από την ίδια φόρμα, με το "Επόμενο Παραστατικό".
+// Σε >1 παραστατικά, δείχνουμε πρώτα πίνακα επισκόπησης (βλ. showImportOverview)
+// ώστε ο χειριστής να εντοπίσει προφανώς λάθος extraction πριν μπει στη
+// λεπτομέρεια του καθενός — ιδίως χρήσιμο σε μεγάλους φακέλους.
 function _loadImportResult(r) {
   window._pdfImportSource = 'data';
   window._importQueue  = r.items || [];
   window._importErrors = r.errors || [];
+  window._importSubmitted = new Set();
   if (!window._importQueue.length) {
     const errTxt = window._importErrors.length
       ? '\n' + window._importErrors.map(e => `${e.source}: ${e.error}`).join('\n')
@@ -132,12 +139,52 @@ function _loadImportResult(r) {
     alert('Δεν βρέθηκε κανένα έγκυρο παραστατικό.' + errTxt);
     return;
   }
-  _showImportQueueItem(0);
+  if (window._importQueue.length > 1) {
+    showImportOverview();
+  } else {
+    _showImportQueueItem(0);
+  }
+}
+
+export function showImportOverview() {
+  const queue = window._importQueue || [];
+  document.getElementById('pdf-results').style.display = 'none';
+  document.getElementById('import-queue-bar').style.display = 'none';
+
+  const errBox = document.getElementById('import-overview-errors');
+  if (window._importErrors.length) {
+    errBox.style.display = '';
+    errBox.innerHTML = '⚠️ Απέτυχαν: ' + window._importErrors.map(e => `${escapeHtml(e.source)} (${escapeHtml(e.error)})`).join(', ');
+  } else {
+    errBox.style.display = 'none';
+  }
+
+  const body = document.getElementById('import-overview-body');
+  body.innerHTML = queue.map((item, i) => {
+    const s = item.suggested;
+    const done = window._importSubmitted?.has(i);
+    return `
+      <tr data-overview-row="${i}" style="cursor:pointer;${done ? 'opacity:0.55;' : ''}">
+        <td>${done ? '✅' : i + 1}</td>
+        <td>${escapeHtml(item.source || '—')}</td>
+        <td>${escapeHtml(s.imerominia || '—')}</td>
+        <td>${escapeHtml(s.tipos || '—')}</td>
+        <td>${escapeHtml(s.arithmos_parstatikos || '—')}</td>
+        <td>${s.grammes.length}</td>
+        <td><button type="button" class="btn btn-sm btn-outline" data-overview-open="${i}">Άνοιγμα</button></td>
+      </tr>`;
+  }).join('');
+  body.querySelectorAll('[data-overview-row]').forEach(row => {
+    row.addEventListener('click', () => _showImportQueueItem(parseInt(row.dataset.overviewRow)));
+  });
+
+  document.getElementById('import-overview').style.display = 'block';
 }
 
 function _showImportQueueItem(i) {
   const queue = window._importQueue;
   window._importQueueIndex = i;
+  document.getElementById('import-overview').style.display = 'none';
   _populatePdfForm(queue[i]);
 
   const bar = document.getElementById('import-queue-bar');
@@ -148,6 +195,7 @@ function _showImportQueueItem(i) {
   document.getElementById('import-queue-pos').textContent =
     `Παραστατικό ${i+1} από ${queue.length}` + (queue[i].source ? ` — ${queue[i].source}` : '');
   document.getElementById('import-queue-next-btn').style.display = i < queue.length - 1 ? '' : 'none';
+  document.getElementById('import-queue-back-btn').style.display = queue.length > 1 ? '' : 'none';
 
   const errBox = document.getElementById('import-queue-errors');
   if (window._importErrors.length) {
@@ -285,6 +333,9 @@ export async function submitPdfEntries() {
   if (errors.length) alertEl.innerHTML += `<div class="alert alert-error">Σφάλματα: ${escapeHtml(errors.join(', '))}</div>`;
   if (saved) {
     alertEl.innerHTML += `<div class="alert alert-success">✅ Καταχωρήθηκαν ${saved} γραμμές!</div>`;
+    if (window._importQueue?.length) {
+      (window._importSubmitted ??= new Set()).add(window._importQueueIndex);
+    }
 
     if (tipos === 'ΕΠΙΣΤΡΟΦΗ') {
       // ── ΕΠΙΣΤΡΟΦΗ: ζήτα το συσχετιζόμενο τιμολόγιο αγοράς ──
