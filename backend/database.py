@@ -559,6 +559,12 @@ def delete_adeia(id):
 
 def check_parstatiko_exists(arithmos_parstatikos):
     """Ελέγχει αν παραστατικό υπάρχει ήδη στη βάση."""
+    # _clean_parst εδώ επίσης — το add_kinisi αποθηκεύει κανονικοποιημένο
+    # (παύλα -> κενό), οπότε χωρίς αυτό ένα "ΔΙΧΝ-19586" (με παύλα, όπως θα
+    # το έγραφε φυσικά ο χειριστής ή θα το έβγαζε το parsing) δεν έβρισκε
+    # ποτέ το ήδη αποθηκευμένο "ΔΙΧΝ 19586" — η προστασία από διπλοεγγραφή
+    # δεν ενεργοποιούνταν ποτέ σε αυτό το πολύ κοινό σενάριο.
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     if not arithmos_parstatikos:
         return []
     with get_db() as conn:
@@ -640,6 +646,12 @@ def update_kinisi(id, imerominia, tipos, yliko_id, posotita, arithmos_parstatiko
               paratirishis or None, ypografi or None, agora_ref or None, id))
 
 def update_agora_ref(arithmos_parstatikos, agora_ref):
+    # Ίδιο bug class με το check_parstatiko_exists: χωρίς _clean_parst εδώ, ένα
+    # "ΔΙΧΝ-19586" (με παύλα) στο WHERE δεν ταιριάζει ποτέ με το ήδη
+    # αποθηκευμένο "ΔΙΧΝ 19586" (κανονικοποιημένο από το add_kinisi) — η
+    # UPDATE ταιριάζει 0 γραμμές σιωπηλά, καμία ένδειξη σφάλματος.
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
+    agora_ref = _clean_parst(agora_ref)
     with get_db() as conn:
         conn.execute(
             "UPDATE kiniseis SET agora_ref=? WHERE arithmos_parstatikos=? AND tipos='ΕΠΙΣΤΡΟΦΗ'",
@@ -740,6 +752,7 @@ def check_ekkremotita(yliko_id=None, imerominia=None, parstatiko=None):
       - posotita: η υπολογισμένη ποσότητα που λείπει
       - imerominia, parstatiko: στοιχεία σχετικής αγοράς
     """
+    parstatiko = _clean_parst(parstatiko) if parstatiko else parstatiko
     with get_db() as conn:
         # Πάρε όλες τις κινήσεις του υλικού για αυτή την ημερομηνία
         sql = '''
@@ -846,6 +859,8 @@ def get_agores_with_pending_epistrofes():
 
 def assign_epistrofi_parstatiko(agora_ref, new_parstatiko, new_date=None):
     """Αναθέτει παραστατικό+ημερομηνία σε επιστροφές linked με αγορά που δεν έχουν ακόμα παραστατικό."""
+    agora_ref = _clean_parst(agora_ref)
+    new_parstatiko = _clean_parst(new_parstatiko)
     with get_db() as conn:
         if new_date:
             conn.execute(
@@ -865,6 +880,7 @@ def assign_epistrofi_parstatiko(agora_ref, new_parstatiko, new_date=None):
 
 def get_epistrofes_without_parstatiko(agora_ref):
     """Επιστρέφει επιστροφές χωρίς παραστατικό για συγκεκριμένη αγορά."""
+    agora_ref = _clean_parst(agora_ref)
     with get_db() as conn:
         rows = conn.execute('''
             SELECT k.id, k.auxon_arithmos, k.imerominia, k.posotita,
@@ -878,6 +894,7 @@ def get_epistrofes_without_parstatiko(agora_ref):
 
 def get_kiniseis_by_parstatiko_yliko(arithmos_parstatikos, yliko_id):
     """Επιστρέφει τις κινήσεις ενός υλικού που ανήκουν σε ένα παραστατικό (αγορά + κατανάλωση + επιστροφή)."""
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         rows = conn.execute('''
             SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis,
@@ -896,6 +913,7 @@ def get_kiniseis_by_parstatiko_yliko(arithmos_parstatikos, yliko_id):
 
 def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
     """Διαγράφει όλες τις κινήσεις με συγκεκριμένο παραστατικό."""
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         conn.execute(
             "DELETE FROM kiniseis WHERE arithmos_parstatikos=?",
@@ -904,6 +922,7 @@ def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
 
 def delete_parstatiko_with_related(arithmos_parstatikos, include_agora_ref=True):
     """Διαγράφει παραστατικό + επιστροφές συνδεδεμένες μέσω agora_ref."""
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         conn.execute("DELETE FROM kiniseis WHERE arithmos_parstatikos=?", (arithmos_parstatikos,))
         if include_agora_ref:
