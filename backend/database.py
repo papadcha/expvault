@@ -559,6 +559,12 @@ def delete_adeia(id):
 
 def check_parstatiko_exists(arithmos_parstatikos):
     """Ελέγχει αν παραστατικό υπάρχει ήδη στη βάση."""
+    # _clean_parst εδώ επίσης — το add_kinisi αποθηκεύει κανονικοποιημένο
+    # (παύλα -> κενό), οπότε χωρίς αυτό ένα "ΔΙΧΝ-19586" (με παύλα, όπως θα
+    # το έγραφε φυσικά ο χειριστής ή θα το έβγαζε το parsing) δεν έβρισκε
+    # ποτέ το ήδη αποθηκευμένο "ΔΙΧΝ 19586" — η προστασία από διπλοεγγραφή
+    # δεν ενεργοποιούνταν ποτέ σε αυτό το πολύ κοινό σενάριο.
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     if not arithmos_parstatikos:
         return []
     with get_db() as conn:

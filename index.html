@@ -1010,6 +1010,7 @@
     <p style="font-size:12px;color:var(--danger);margin-bottom:12px;">Αν είναι λάθος καταχώρηση, μπορείς να διαγράψεις όλες τις εγγραφές του παραστατικού:</p>
     <div class="modal-actions">
       <button class="btn btn-danger" id="diplo-del-btn" onclick="deleteParstatiko()">🗑 Διαγραφή Όλων</button>
+      <button class="btn btn-outline" id="diplo-skip-btn" style="display:none;" onclick="skipDuplicateAndNext()">⏭ Παράλειψη & Επόμενο</button>
       <button class="btn btn-primary" onclick="closeDiploModal()">Κλείσιμο</button>
     </div>
   </div>
@@ -1051,7 +1052,7 @@ import {
 import {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
-  parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem,
+  parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem, skipDuplicateAndNext,
 } from './js/pdf-import.js';
 import { loadExportDropdowns, doExport, exportListaAgores, exportDeltioDrastiriotitas } from './js/export.js';
 import {
@@ -1079,7 +1080,7 @@ Object.assign(window, {
   checkAdeiaYpoloipo, saveKinisi, autoKataxorisiAll, clearKinisiForm, clearFilters, toggleAgoraRefRow,
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
-  parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem,
+  parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem, skipDuplicateAndNext,
   doExport, exportListaAgores, exportDeltioDrastiriotitas,
   showSenario, loadYpologismosAgora, calculateYpologismos,
   kataxoriYpologismos, saveEpistrofiFromYpologismos, exportYpologismosPdf,

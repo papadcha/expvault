@@ -383,7 +383,17 @@ export function showDiploModal(parstatiko, existing) {
   document.getElementById('diplo-list').innerHTML = existing.map(e =>
     `<div>• ${escapeHtml(e.yliko_onoma)}: ${e.posotita.toFixed(3)} ${escapeHtml(e.monada_metrisis)} (${escapeHtml(e.imerominia)})</div>`
   ).join('');
+  // "Παράλειψη & Επόμενο" μόνο σε batch import (φάκελος/zip/JSON λίστα) και
+  // μόνο όταν υπάρχει επόμενο στοιχείο — σε μεμονωμένο PDF/JSON δεν έχει νόημα.
+  const queue = window._importQueue || [];
+  const hasNext = queue.length > 0 && (window._importQueueIndex || 0) < queue.length - 1;
+  document.getElementById('diplo-skip-btn').style.display = hasNext ? '' : 'none';
   document.getElementById('diplo-modal').classList.add('open');
+}
+
+export function skipDuplicateAndNext() {
+  closeDiploModal();
+  nextImportQueueItem();
 }
 
 export async function deleteParstatiko() {
