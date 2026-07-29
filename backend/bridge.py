@@ -257,11 +257,13 @@ def handle(cmd, payload):
     if cmd == 'parse_import_data':
         import import_data
         path = payload['path']
-        fmt = 'csv' if path.lower().endswith('.csv') else 'json'
-        with open(path, 'r', encoding='utf-8-sig') as f:
-            raw_text = f.read()
-        suggested = import_data.parse_import_text(raw_text, fmt)
-        return {'ok': True, 'raw_text': raw_text, 'suggested': suggested, 'template_used': None}
+        if os.path.isdir(path):
+            items, errors = import_data.parse_folder(path)
+        elif path.lower().endswith('.zip'):
+            items, errors = import_data.parse_zip(path)
+        else:
+            items, errors = import_data.parse_single_file(path), []
+        return {'ok': True, 'items': items, 'errors': errors}
 
     # ── PDF TEMPLATES ─────────────────────────────────────────────────────────
     if cmd == 'extract_pdf_text':

@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('api', {
   openDir: ()                   => ipcRenderer.invoke('open-dir-dialog'),
   openJson: ()                  => ipcRenderer.invoke('open-json-dialog'),
   openImportData: ()            => ipcRenderer.invoke('open-import-data-dialog'),
+  openImportFolder: ()          => ipcRenderer.invoke('open-import-folder-dialog'),
   saveJson: (opts)              => ipcRenderer.invoke('save-json-dialog', opts),
   minimize: ()                  => ipcRenderer.send('window-minimize'),
   maximize: ()                  => ipcRenderer.send('window-maximize'),

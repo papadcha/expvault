@@ -197,8 +197,15 @@ function setupIPC() {
 
   ipcMain.handle('open-import-data-dialog', async () => {
     const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
-      filters: [{ name: 'JSON / CSV', extensions: ['json', 'csv'] }],
+      filters: [{ name: 'JSON / CSV / ZIP', extensions: ['json', 'csv', 'zip'] }],
       properties: ['openFile']
+    });
+    return canceled ? null : filePaths[0];
+  });
+
+  ipcMain.handle('open-import-folder-dialog', async () => {
+    const { canceled, filePaths } = await dialog.showOpenDialog(mainWindow, {
+      properties: ['openDirectory']
     });
     return canceled ? null : filePaths[0];
   });

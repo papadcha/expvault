@@ -45,6 +45,14 @@ function _populatePdfForm(r) {
   window.pdfGrammesCount = s.grammes.length;
 }
 
+function _clearImportQueue() {
+  window._importQueue = [];
+  window._importQueueIndex = 0;
+  window._importErrors = [];
+  const bar = document.getElementById('import-queue-bar');
+  if (bar) bar.style.display = 'none';
+}
+
 export async function parsePdf() {
   const status = document.getElementById('pdf-status');
   status.textContent = '⏳ Επιλογή αρχείου...';
@@ -54,13 +62,58 @@ export async function parsePdf() {
   try {
     const r = await py('parse_pdf', { path: filePath });
     status.textContent = '';
+    _clearImportQueue();
     _populatePdfForm(r);
   } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
 }
 
-// Εναλλακτική στο PDF parsing: JSON/CSV που παρήγαγε εξωτερικό LLM (π.χ.
+// Εναλλακτικό στο PDF parsing: JSON/CSV που παρήγαγε εξωτερικό LLM (π.χ.
 // upload φωτογραφίας τιμολογίου σε Claude/Gemini free web UI) — βλ.
-// importDataPromptText() για το prompt που δίνει στον χειριστή το σωστό σχήμα.
+// IMPORT_DATA_PROMPT για το prompt που δίνει στον χειριστή το σωστό σχήμα.
+// Ένα αρχείο (ή φάκελος/zip) μπορεί να περιέχει πολλά παραστατικά — γίνονται
+// review/submit ΕΝΑ-ΕΝΑ μέσα από την ίδια φόρμα, με το "Επόμενο Παραστατικό".
+function _loadImportResult(r) {
+  window._importQueue  = r.items || [];
+  window._importErrors = r.errors || [];
+  if (!window._importQueue.length) {
+    const errTxt = window._importErrors.length
+      ? '\n' + window._importErrors.map(e => `${e.source}: ${e.error}`).join('\n')
+      : '';
+    alert('Δεν βρέθηκε κανένα έγκυρο παραστατικό.' + errTxt);
+    return;
+  }
+  _showImportQueueItem(0);
+}
+
+function _showImportQueueItem(i) {
+  const queue = window._importQueue;
+  window._importQueueIndex = i;
+  _populatePdfForm(queue[i]);
+
+  const bar = document.getElementById('import-queue-bar');
+  const showBar = queue.length > 1 || window._importErrors.length > 0;
+  bar.style.display = showBar ? 'flex' : 'none';
+  if (!showBar) return;
+
+  document.getElementById('import-queue-pos').textContent =
+    `Παραστατικό ${i+1} από ${queue.length}` + (queue[i].source ? ` — ${queue[i].source}` : '');
+  document.getElementById('import-queue-next-btn').style.display = i < queue.length - 1 ? '' : 'none';
+
+  const errBox = document.getElementById('import-queue-errors');
+  if (window._importErrors.length) {
+    errBox.style.display = '';
+    errBox.innerHTML = '⚠️ Απέτυχαν: ' + window._importErrors.map(e => `${escapeHtml(e.source)} (${escapeHtml(e.error)})`).join(', ');
+  } else {
+    errBox.style.display = 'none';
+  }
+}
+
+export function nextImportQueueItem() {
+  const queue = window._importQueue || [];
+  const next = (window._importQueueIndex || 0) + 1;
+  if (next < queue.length) _showImportQueueItem(next);
+}
+
 export async function parseImportData() {
   const status = document.getElementById('pdf-status');
   status.textContent = '⏳ Επιλογή αρχείου...';
@@ -70,7 +123,20 @@ export async function parseImportData() {
   try {
     const r = await py('parse_import_data', { path: filePath });
     status.textContent = '';
-    _populatePdfForm(r);
+    _loadImportResult(r);
+  } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
+}
+
+export async function parseImportFolder() {
+  const status = document.getElementById('pdf-status');
+  status.textContent = '⏳ Επιλογή φακέλου...';
+  const dirPath = await window.api.openImportFolder();
+  if (!dirPath) { status.textContent = ''; return; }
+  status.textContent = '⏳ Ανάλυση...';
+  try {
+    const r = await py('parse_import_data', { path: dirPath });
+    status.textContent = '';
+    _loadImportResult(r);
   } catch(e) { status.textContent = ''; alert('Σφάλμα: ' + e.message); }
 }
 

@@ -336,13 +336,20 @@
       <div class="card-title">Φόρτωση PDF</div>
       <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
         <button class="btn btn-accent" onclick="parsePdf()">📂 Επιλογή & Ανάλυση PDF</button>
-        <button class="btn btn-outline" onclick="parseImportData()">📥 Εισαγωγή από JSON/CSV</button>
+        <button class="btn btn-outline" onclick="parseImportData()">📥 Εισαγωγή από JSON/CSV/ZIP</button>
+        <button class="btn btn-outline" onclick="parseImportFolder()">📁 Εισαγωγή από φάκελο</button>
         <button class="btn btn-outline" onclick="copyImportDataPrompt()">📋 Αντιγραφή Prompt για Claude/Gemini</button>
         <span id="pdf-status" style="font-size:13px;color:var(--muted);"></span>
       </div>
       <div style="margin-top:8px;font-size:12px;color:var(--muted);">
         Για φωτογραφία τιμολογίου/δελτίου χωρίς PDF: ανέβασέ τη σε Claude ή Gemini (δωρεάν, χωρίς API) μαζί με το prompt παραπάνω,
-        αποθήκευσε την απάντηση ως .json ή .csv, και εισήγαγέ το εδώ.
+        αποθήκευσε την απάντηση ως .json ή .csv, και εισήγαγέ το εδώ. Πολλά παραστατικά μαζί: JSON λίστα, CSV με πολλά
+        παραστατικά, φάκελος με πολλά αρχεία, ή ένα .zip — γίνονται review/καταχώρηση ένα-ένα.
+      </div>
+      <div id="import-queue-bar" style="display:none;align-items:center;gap:12px;margin-top:10px;padding:8px 12px;background:#e8f4fd;border:1px solid #90cdf4;border-radius:6px;font-size:13px;">
+        <strong id="import-queue-pos"></strong>
+        <button class="btn btn-sm btn-accent" id="import-queue-next-btn" onclick="nextImportQueueItem()">⏭ Επόμενο Παραστατικό</button>
+        <span id="import-queue-errors" style="display:none;color:#c0392b;"></span>
       </div>
     </div>
 
@@ -1044,7 +1051,7 @@ import {
 import {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
-  parseImportData, copyImportDataPrompt,
+  parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem,
 } from './js/pdf-import.js';
 import { loadExportDropdowns, doExport, exportListaAgores, exportDeltioDrastiriotitas } from './js/export.js';
 import {
@@ -1072,7 +1079,7 @@ Object.assign(window, {
   checkAdeiaYpoloipo, saveKinisi, autoKataxorisiAll, clearKinisiForm, clearFilters, toggleAgoraRefRow,
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
-  parseImportData, copyImportDataPrompt,
+  parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem,
   doExport, exportListaAgores, exportDeltioDrastiriotitas,
   showSenario, loadYpologismosAgora, calculateYpologismos,
   kataxoriYpologismos, saveEpistrofiFromYpologismos, exportYpologismosPdf,
