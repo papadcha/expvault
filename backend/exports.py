@@ -418,11 +418,11 @@ def build_book_rows(kiniseis):
 
 # ─── PDF ─────────────────────────────────────────────────────────────────────
 
-def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka', nonel_mode: str = 'detail') -> bytes:
+def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka', nonel_mode: str = 'detail', cover_page: bool = False, blank_pages: int = 0) -> bytes:
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
-    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, PageBreak
+    from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, PageBreak, Spacer
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 
@@ -782,7 +782,80 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     doc = SimpleDocTemplate(buf, pagesize=pagesize,
                             leftMargin=0.7*cm, rightMargin=0.7*cm,
                             topMargin=1.2*cm, bottomMargin=1.2*cm)
-    doc.build([left_t, PageBreak(), right_t])
+
+    story = []
+    if not cover_page:
+        # Παλιά μορφή, αμετάβλητη: όλες οι σελίδες Αγορών/Επιστροφών πρώτα,
+        # μετά όλες των Καταναλώσεων (1,2,3...N, N+1...2N) — το
+        # SimpleDocTemplate αυτοσελιδοποιεί κάθε table μόνο του.
+        story = [left_t, PageBreak(), right_t]
+    else:
+        # Νέα μορφή: εξώφυλλο [+ κενές σελίδες] και μετά εναλλάξ σελίδες
+        # Αγορές/Επιστροφές-σελ.Ν → Καταναλώσεις-σελ.Ν (1,4,2,5,3,6 αντί για
+        # 1,2,3,4,5,6), ώστε να είναι αντικρυστές όταν τυπωθεί διπλής όψης.
+        #
+        # left_t/right_t μοιράζονται ακριβώς το ίδιο row_heights (ίδιος
+        # αριθμός γραμμών, ίδιο ROW_H, ίδιο header_heights) — άρα σπάνε σε
+        # σελίδες στα ίδια σημεία. Τις σπάμε ρητά εδώ (αντί να αφήσουμε το
+        # SimpleDocTemplate να τις παραθέσει τη μία μετά την άλλη) ώστε να
+        # μπορούμε να τις interleave-άρουμε σελίδα-σελίδα.
+        # -12pt: το προεπιλεγμένο Frame padding του SimpleDocTemplate (6pt ανά
+        # πλευρά, reportlab.platypus.frames.Frame), όχι μόνο τα margins — αν
+        # παραλειφθεί, τα "one-page" κομμάτια που υπολογίζουμε εδώ είναι λίγο
+        # ψηλότερα απ' όσο πραγματικά χωράει η σελίδα και το doc.build() τα
+        # ξανασπάει, διπλασιάζοντας σελίδες.
+        avail_w = pagesize[0] - 1.4*cm - 12
+        avail_h = pagesize[1] - 2.4*cm - 12
+
+        def _paginate(table):
+            pages = []
+            remaining = table
+            remaining.wrap(avail_w, avail_h)
+            while True:
+                parts = remaining.split(avail_w, avail_h)
+                if not parts:
+                    pages.append(remaining)
+                    break
+                pages.append(parts[0])
+                if len(parts) == 1:
+                    break
+                remaining = parts[1]
+                remaining.wrap(avail_w, avail_h)
+            return pages
+
+        left_pages = _paginate(left_t)
+        right_pages = _paginate(right_t)
+
+        COVER_TITLE = ParagraphStyle('cover_title', fontSize=22, fontName=FB,
+                                      alignment=TA_CENTER, leading=28,
+                                      textColor=colors.HexColor('#1C252E'))
+        COVER_SUB   = ParagraphStyle('cover_sub', fontSize=13, fontName=F,
+                                      alignment=TA_CENTER, leading=18,
+                                      textColor=colors.HexColor('#1C252E'))
+        story += [
+            Spacer(1, 8*cm),
+            Paragraph('ΒΙΒΛΙΟ ΑΓΟΡΑΣ ΚΑΙ ΚΑΤΑΝΑΛΩΣΗΣ<br/>ΕΚΡΗΚΤΙΚΩΝ ΥΛΩΝ', COVER_TITLE),
+            Spacer(1, 1.5*cm),
+            Paragraph(f'Υλικό: {yliko_label}', COVER_SUB),
+            Paragraph(f'Περίοδος: {period_label}', COVER_SUB),
+            Spacer(1, 1*cm),
+            Paragraph(f'Ημερομηνία έκδοσης: {datetime.now().strftime("%d/%m/%Y")}', COVER_SUB),
+            PageBreak(),
+        ]
+
+        # blank_pages πρέπει να είναι άρτιος (0 ή 2) ώστε η πρώτη σελίδα
+        # αναφοράς (Αγορές) να πέσει σε ζυγή απόλυτη σελίδα — το εξώφυλλο
+        # είναι μονή (1), οπότε μονός αριθμός κενών θα αναποδογύριζε το
+        # ζευγάρωμα Αγορές/Καταναλώσεις στις αντικρυστές σελίδες.
+        for _ in range(blank_pages):
+            story += [Spacer(1, 1), PageBreak()]
+
+        for i, (lp, rp) in enumerate(zip(left_pages, right_pages)):
+            story += [lp, PageBreak(), rp]
+            if i < len(left_pages) - 1:
+                story.append(PageBreak())
+
+    doc.build(story)
     return buf.getvalue()
 
 

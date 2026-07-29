@@ -28,6 +28,8 @@ export async function doExport(fmt, btn) {
     const eo = document.getElementById('exp-eos').value;
     const font = document.getElementById('exp-font').value;
     const nonel_mode = document.querySelector('input[name="nonel-mode"]:checked')?.value || 'detail';
+    const cover_page = fmt === 'pdf' && document.getElementById('exp-cover').checked;
+    const blank_pages = cover_page ? parseInt(document.getElementById('exp-blank-pages').value) : 0;
     const ext = fmt === 'excel' ? 'xlsx' : fmt;
     const savePath = await window.api.saveFile({
       defaultName: `vivlio_ekrktikon.${ext}`, ext
@@ -37,7 +39,7 @@ export async function doExport(fmt, btn) {
       yliko_id: yl ? parseInt(yl) : null,
       apo: ap || null, eos: eo || null,
       yliko_label: 'Όλα', period_label: `${ap||'—'} έως ${eo||'—'}`,
-      out_path: savePath, font: font, nonel_mode: nonel_mode
+      out_path: savePath, font: font, nonel_mode: nonel_mode, cover_page: cover_page, blank_pages: blank_pages
     });
     msgEl.innerHTML = `<div class="alert alert-success">✅ Αποθηκεύτηκε: ${escapeHtml(savePath)}</div>`;
   } catch(e) {

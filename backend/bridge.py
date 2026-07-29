@@ -379,7 +379,7 @@ def handle(cmd, payload):
         )
         _mod = importlib.import_module('exports'); importlib.reload(_mod)
         try:
-            data = _mod.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'), payload.get('nonel_mode','detail'))
+            data = _mod.export_pdf(kiniseis, payload.get('yliko_label','Όλα'), payload.get('period_label','—'), payload.get('font','iosevka'), payload.get('nonel_mode','detail'), payload.get('cover_page', False), payload.get('blank_pages', 0))
         except Exception as _e:
             import sys, traceback
             traceback.print_exc(file=sys.stderr)
