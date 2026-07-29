@@ -151,3 +151,31 @@ with **spaces** (`ExpVault Setup X.Y.Z.exe`), but `latest.yml` (electron-updater
 prior GitHub release assets use **hyphens** (`ExpVault-Setup-X.Y.Z.exe`) — rename before uploading
 release assets, and verify the actual filename on GitHub before locking in any download URL in
 `allowed-versions.json` or `README.md`.
+
+## Branch structure: `main` vs `v2`
+
+Since 2026-07-29 this repo runs two long-lived branches, mirroring the split used in the
+sibling `lab-galatista` project (there: `v1-maintenance` / `v2-esm-redesign`; here the maintenance
+line keeps the `main` name since it's also what `electron-updater` and `version-check.js`'s
+hardcoded raw.githubusercontent.com fetch depend on):
+
+- **`main`** (this branch) — the released line. `electron-updater` pushes whatever GitHub
+  marks "latest" (not branch-aware), and `version-check.js` always reads
+  `allowed-versions.json` from `main` specifically (hardcoded path) — so **only `main` content
+  ever reaches an installed user**, regardless of what exists on `v2`. Accepts bugfixes and
+  bundled-dependency-upgrade fixes only, no new features. Routine patch releases
+  (`RELEASE-CHECKLIST.md`).
+- **`v2`** — all new feature development happens there instead. Never gets a GitHub
+  release/tag until it's mature enough to become the new `main` (`RELEASE-CHECKLIST-v2.md` on
+  that branch covers that merge event specifically — a different, one-time process from a
+  routine patch release, not present on `main`).
+
+**Docs are split on `v2`**: `README.md`/`ΟΔΗΓΟΣ_ΧΡΗΣΗΣ.md`/`VERSIONS.md`/`DONE.md`/`TODO.md`
+(this branch's copies) always mirror what's actually released here on `main`; on `v2` each has
+a `-v2.md` sibling carrying only the not-yet-released delta. Backporting a fix found on `v2`:
+if the bug predates the branch split (check with `git show main:path/to/file | grep ...` — if
+the buggy code already exists here, `v2`'s new work didn't introduce it), it belongs on `main`
+too. Apply the same fix directly here (e.g. `git checkout v2 -- path/to/file` if isolated
+enough to bring the whole file over cleanly, otherwise hand-apply the same diff) as its own
+commit — don't cherry-pick `v2` commits wholesale, they usually mix the fix with `v2`-only
+feature code that must not land on `main`.
