@@ -105,9 +105,13 @@ def parse_csv_multi(text):
         raise ValueError('Το CSV δεν έχει γραμμές δεδομένων')
     groups = {}
     for i, row in enumerate(rows):
-        key = (row.get('arithmos_parstatikou') or row.get('arithmos_parstatikos') or '').strip()
-        if not key:
-            key = f'__row_{i}__'  # χωρίς αριθμό παραστατικού -> κάθε γραμμή δικό της παραστατικό
+        parst = (row.get('arithmos_parstatikou') or row.get('arithmos_parstatikos') or '').strip()
+        # Group key = (αριθμός, τύπος) όχι μόνο αριθμός — αν δύο γραμμές μοιράζονται τυχαία
+        # τον ίδιο αριθμό παραστατικού αλλά διαφορετικό tipos (π.χ. λάθος στο LLM output, ή
+        # ξαναχρησιμοποιημένος αριθμός εγγράφου), δεν πρέπει να συγχωνευτούν σε ένα
+        # παραστατικό — θα έπαιρναν σιωπηλά όλες τον τύπο της πρώτης γραμμής.
+        tipos = (row.get('tipos') or '').strip().upper()
+        key = (parst, tipos) if parst else (f'__row_{i}__', tipos)
         groups.setdefault(key, []).append(row)
     return [_build_suggested(group_rows[0], group_rows) for group_rows in groups.values()]
 
