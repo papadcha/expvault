@@ -859,6 +859,8 @@ def get_agores_with_pending_epistrofes():
 
 def assign_epistrofi_parstatiko(agora_ref, new_parstatiko, new_date=None):
     """Αναθέτει παραστατικό+ημερομηνία σε επιστροφές linked με αγορά που δεν έχουν ακόμα παραστατικό."""
+    agora_ref = _clean_parst(agora_ref)
+    new_parstatiko = _clean_parst(new_parstatiko)
     with get_db() as conn:
         if new_date:
             conn.execute(
@@ -878,6 +880,7 @@ def assign_epistrofi_parstatiko(agora_ref, new_parstatiko, new_date=None):
 
 def get_epistrofes_without_parstatiko(agora_ref):
     """Επιστρέφει επιστροφές χωρίς παραστατικό για συγκεκριμένη αγορά."""
+    agora_ref = _clean_parst(agora_ref)
     with get_db() as conn:
         rows = conn.execute('''
             SELECT k.id, k.auxon_arithmos, k.imerominia, k.posotita,
@@ -891,6 +894,7 @@ def get_epistrofes_without_parstatiko(agora_ref):
 
 def get_kiniseis_by_parstatiko_yliko(arithmos_parstatikos, yliko_id):
     """Επιστρέφει τις κινήσεις ενός υλικού που ανήκουν σε ένα παραστατικό (αγορά + κατανάλωση + επιστροφή)."""
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         rows = conn.execute('''
             SELECT k.*, y.onoma as yliko_onoma, y.diatomi_mm, y.monada_metrisis,
@@ -909,6 +913,7 @@ def get_kiniseis_by_parstatiko_yliko(arithmos_parstatikos, yliko_id):
 
 def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
     """Διαγράφει όλες τις κινήσεις με συγκεκριμένο παραστατικό."""
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         conn.execute(
             "DELETE FROM kiniseis WHERE arithmos_parstatikos=?",
@@ -917,6 +922,7 @@ def delete_kiniseis_by_parstatiko(arithmos_parstatikos):
 
 def delete_parstatiko_with_related(arithmos_parstatikos, include_agora_ref=True):
     """Διαγράφει παραστατικό + επιστροφές συνδεδεμένες μέσω agora_ref."""
+    arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     with get_db() as conn:
         conn.execute("DELETE FROM kiniseis WHERE arithmos_parstatikos=?", (arithmos_parstatikos,))
         if include_agora_ref:
