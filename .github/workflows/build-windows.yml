@@ -1,0 +1,32 @@
+name: Build Windows installer
+
+# Χειροκίνητο trigger — δεν τρέχει αυτόματα σε κάθε push, ώστε ένα
+# ενδιάμεσο/wip commit να μην σκάει άσκοπα build. Καλείται από το tab
+# Actions του GitHub repo ("Run workflow"), από οποιοδήποτε μηχάνημα.
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.11'
+
+      - name: Run build.ps1
+        shell: pwsh
+        run: .\build.ps1
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ExpVault-Setup
+          path: dist/*.exe
+          if-no-files-found: error
