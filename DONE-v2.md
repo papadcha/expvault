@@ -123,3 +123,31 @@ UI. Χρειάστηκε `clearInterval` στο `window-all-closed` ώστε τ�
 **UI** (`js/backup.js`, σελίδα Backup): νέο panel "Συνδεδεμένοι χρήστες" κάτω από τα "Remotes
 rclone" — πράσινο "● online" αν `last_seen` < 2 λεπτά, αλλιώς "τελευταία σύνδεση: πριν Χ" με
 νέο τοπικό relative-time helper (`_relativeTimeGr`, δεν υπήρχε παρόμοιο πουθενά στο repo).
+
+## Sidebar/titlebar redesign — presence status button στην κορυφή
+
+Το presence detection παραπάνω ήταν αρχικά ορατό μόνο στον αναλυτικό πίνακα της σελίδας
+Backup — τετράδα commits (`3b733ff`, `f962abc`, `2239382`, `cbb1158`) το ανέβασε σε ένα
+compact status button στην κορυφή του sidebar, ορατό από παντού:
+
+- **`.sidebar-logo`** (`index.html`): το app icon (`assets/icon.png`) έγινε το ίδιο ο τίτλος —
+  αφαιρέθηκε το ξεχωριστό κείμενο τίτλου (πλέον περιττό, το icon ήδη κουβαλάει το wordmark
+  "ExpVault"), clickable button που πλοηγεί στο Dashboard. Από κάτω: `#sidebar-version`
+  (κεντραρισμένο, 26px title ↔ 26px icon box baseline-aligned — 4 rounds tuning μέχρι να
+  χωράει τίτλος+έκδοση σε μία γραμμή με 23px περιθώριο). Ίδιο branding refresh στο custom
+  titlebar (`#titlebar-drag`): έφυγε το παλιό 💣 emoji + ελληνικό όνομα, μπήκε το πραγματικό
+  icon + "ExpVault" + έκδοση.
+- **`#sidebar-presence`**: νέο πράσινο/κόκκινο status button ακριβώς κάτω από την έκδοση —
+  πράσινο όταν δεν υπάρχει άλλος συνδεδεμένος χρήστης, κόκκινο όταν υπάρχει. Click πλοηγεί
+  στη σελίδα Backup (τον αναλυτικό πίνακα). Νέα bridge εντολή `whoami` (`backend/presence.py`)
+  ώστε το renderer να αγνοεί το δικό του heartbeat κατά τον υπολογισμό "υπάρχει *άλλος*
+  online" — ίδιο "εξαίρεσε τον εαυτό σου" pattern με το identity-based φιλτράρισμα.
+- Το εικονίδιο του presence button ξεκίνησε emoji, έγινε inline SVG (`cbb1158`) — το emoji
+  είχε διαφορετικά vertical ink metrics ανάμεσα στο automated screenshot tool και το
+  πραγματικό desktop, δημιουργώντας misalignment ορατό μόνο στην πραγματική εφαρμογή. Το SVG
+  αποφεύγει ολόκληρη αυτή την κλάση bug.
+- Ίδια οικογένεια πράσινο/κόκκινο status button αργότερα αναπαρήχθη στο sibling project
+  `lab-galatista` (`src/index.html`'s `#sidebar-presence-badge`, βλ. εκεί το TODOLIST.md) —
+  ίδια λογική threshold (2 λεπτά), ίδιο "εξαίρεσε τον εαυτό σου" identity filtering, αλλά με
+  δικό της UI στο sidebar footer/header layout του lab-galatista αντί να αντιγραφεί
+  κατά λέξη.
