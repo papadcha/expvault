@@ -27,13 +27,17 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .sidebar-logo {
   padding: 18px 20px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.1);
+  display: flex; flex-direction: column; align-items: center;
 }
-.sidebar-logo-row { display: flex; align-items: center; gap: 10px; }
-.sidebar-logo .icon { width: 26px; height: 26px; flex-shrink: 0; border-radius: 5px; }
-.sidebar-logo-title { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
-.sidebar-logo h1 { color: var(--accent); font-size: 26px; font-weight: 700; letter-spacing: 0.3px; line-height: 1; }
-.sidebar-version { font-size: 12px; color: rgba(255,255,255,0.45); letter-spacing: 0.2px; cursor: pointer; }
-.sidebar-version:hover { color: rgba(255,255,255,0.7); }
+.sidebar-icon-btn {
+  background: none; border: none; padding: 0; margin: 0; cursor: pointer;
+  border-radius: 12px; line-height: 0;
+  transition: transform 0.15s, filter 0.15s;
+}
+.sidebar-icon-btn:hover { transform: translateY(-1px); filter: brightness(1.12); }
+.sidebar-icon-btn .icon-big { width: 64px; height: 64px; border-radius: 12px; display: block; }
+.sidebar-version { margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.5); letter-spacing: 0.2px; cursor: pointer; text-align: center; }
+.sidebar-version:hover { color: rgba(255,255,255,0.75); }
 
 .sidebar-presence {
   display: flex; align-items: center; justify-content: center; gap: 7px;
@@ -45,7 +49,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .sidebar-presence:hover { filter: brightness(1.15); transform: translateY(-1px); }
 .sidebar-presence.presence-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-.sidebar-presence-icon { font-size: 13px; }
+.sidebar-presence-icon { width: 14px; height: 14px; flex-shrink: 0; display: block; }
 .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
 .nav-section { padding: 8px 20px 4px; color: rgba(255,255,255,0.3); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; }
 .nav-item {
@@ -227,7 +231,10 @@ tbody td { padding: 9px 12px; vertical-align: middle; }
 #titlebar-drag {
   padding: 0 16px; font-size: 12px; font-weight: 600;
   color: var(--accent); letter-spacing: 1px;
+  display: flex; align-items: center; gap: 8px;
 }
+.titlebar-icon { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
+.titlebar-version { color: rgba(255,255,255,0.4); font-weight: 400; letter-spacing: 0; font-size: 11px; }
 #titlebar-btns {
   display: flex; -webkit-app-region: no-drag;
 }

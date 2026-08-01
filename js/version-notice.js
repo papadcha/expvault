@@ -145,11 +145,14 @@ if (window.api?.onVersionNotice) {
 // ασφαλές downgrade", κάτι που το electron-updater δεν ξέρει.
 if (window.api?.getAppVersion) {
   window.api.getAppVersion().then(ver => {
+    if (!ver) return;
     const el = document.getElementById('sidebar-version');
-    if (el && ver) {
+    if (el) {
       el.textContent = 'v' + ver;
       el.title = 'Δες τι άλλαξε';
       el.onclick = showVersionHistory;
     }
+    const tbEl = document.getElementById('titlebar-version');
+    if (tbEl) tbEl.textContent = 'v' + ver;
   });
 }
