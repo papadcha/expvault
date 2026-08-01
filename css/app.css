@@ -31,7 +31,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 .sidebar-logo-row { display: flex; align-items: center; gap: 10px; }
 .sidebar-logo .icon { width: 26px; height: 26px; flex-shrink: 0; border-radius: 5px; }
 .sidebar-logo-title { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
-.sidebar-logo h1 { color: var(--accent); font-size: 16px; font-weight: 700; letter-spacing: 0.3px; line-height: 1.2; }
+.sidebar-logo h1 { color: var(--accent); font-size: 26px; font-weight: 700; letter-spacing: 0.3px; line-height: 1; }
 .sidebar-version { font-size: 12px; color: rgba(255,255,255,0.45); letter-spacing: 0.2px; cursor: pointer; }
 .sidebar-version:hover { color: rgba(255,255,255,0.7); }
 
