@@ -501,6 +501,9 @@ def handle(cmd, payload):
     if cmd == 'list_presence':
         return presence.list_presence()
 
+    if cmd == 'whoami':
+        return presence.whoami()
+
     return {'error': f'Άγνωστη εντολή: {cmd}'}
 
 

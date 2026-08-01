@@ -147,7 +147,7 @@ if (window.api?.getAppVersion) {
   window.api.getAppVersion().then(ver => {
     const el = document.getElementById('sidebar-version');
     if (el && ver) {
-      el.textContent = 'ExpVault v' + ver;
+      el.textContent = 'v' + ver;
       el.title = 'Δες τι άλλαξε';
       el.onclick = showVersionHistory;
     }

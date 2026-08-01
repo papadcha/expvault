@@ -169,7 +169,7 @@ const ALLOWED_PYTHON_COMMANDS = new Set([
   'get_backup_config', 'save_backup_config', 'run_backup', 'check_startup_backups',
   'list_backups', 'restore_backup',
   'list_rclone_remotes', 'list_remotes_detail', 'delete_remote',
-  'list_presence',
+  'list_presence', 'whoami',
 ]);
 
 function setupIPC() {

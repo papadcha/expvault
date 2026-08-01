@@ -31,6 +31,13 @@ def _identity() -> dict:
     return {'user': user, 'computer': computer}
 
 
+def whoami() -> dict:
+    """Δημόσιο wrapper της _identity() για το bridge — ώστε ο renderer να μπορεί
+    να εξαιρέσει το δικό του heartbeat όταν υπολογίζει αν υπάρχει *άλλος*
+    συνδεδεμένος χρήστης."""
+    return _identity()
+
+
 def _remote_dir():
     cfg = backup.get_config()
     paths = cfg.get('paths') or ['', '']

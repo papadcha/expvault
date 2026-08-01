@@ -23,9 +23,17 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <div class="icon">💣</div>
-    <h1>Βιβλίο<br>Εκρηκτικών<br>Υλών</h1>
-    <p>Λατομείο · Διαχείριση</p>
+    <div class="sidebar-logo-row">
+      <div class="icon">💣</div>
+      <div class="sidebar-logo-title">
+        <h1>ExpVault</h1>
+        <div id="sidebar-version" class="sidebar-version"></div>
+      </div>
+    </div>
+    <div class="sidebar-presence" id="sidebar-presence" onclick="document.querySelector('.nav-item[data-page=&quot;backup&quot;]').click()" title="Έλεγχος παρουσίας…">
+      <span class="sidebar-presence-icon">👥</span>
+      <span id="sidebar-presence-label">Έλεγχος…</span>
+    </div>
   </div>
   <div class="sidebar-nav">
     <div class="nav-section">Κύριο</div>
@@ -75,7 +83,6 @@
       <span class="adeia-strip-icon">📜</span>
       <span class="adeia-strip-text">Α.Δ. <span id="adeia-strip-num">—</span></span>
     </div>
-    <div id="sidebar-version" style="font-size:11px;color:rgba(255,255,255,0.35);text-align:center;margin-top:6px;cursor:pointer;"></div>
   </div>
 </nav>
 
@@ -1062,7 +1069,7 @@
 <script type="module">
 import { escapeHtml, py, todayInput, _lock, fmtDate, showConfirm, closeConfirm, checkAdeiaThresholdsOnStartup, checkAdeiaBackupsOnStartup } from './js/utils.js';
 import { tplReset, tplLoadPdf, tplCapture, tplPreview, tplSave, loadTplList, tplDelete, tplExport, tplImport } from './js/templates.js';
-import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore, bkRefreshPresence } from './js/backup.js';
+import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore, bkRefreshPresence, refreshSidebarPresence } from './js/backup.js';
 import { submitVersionIssueReport } from './js/version-notice.js';
 import { loadDropdowns } from './js/state.js';
 import { loadDashboard, loadApothemates } from './js/dashboard.js';
@@ -1226,6 +1233,8 @@ loadDashboard();
 checkAdeiaThresholdsOnStartup();
 checkAdeiaBackupsOnStartup();
 checkAdeiaExpiryOnStartup();
+refreshSidebarPresence();
+setInterval(refreshSidebarPresence, 60000);
 </script>
 </body>
 </html>
