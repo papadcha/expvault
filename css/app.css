@@ -28,12 +28,12 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   padding: 18px 20px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.1);
 }
-.sidebar-logo-row { display: flex; align-items: center; gap: 8px; }
-.sidebar-logo .icon { font-size: 16px; line-height: 1; flex-shrink: 0; }
-.sidebar-logo-title { min-width: 0; }
-.sidebar-logo h1 { color: var(--accent); font-size: 14px; font-weight: 700; letter-spacing: 0.5px; line-height: 1.2; }
-.sidebar-version { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 0.3px; margin-top: 1px; cursor: pointer; }
-.sidebar-version:hover { color: rgba(255,255,255,0.65); }
+.sidebar-logo-row { display: flex; align-items: center; gap: 10px; }
+.sidebar-logo .icon { width: 26px; height: 26px; flex-shrink: 0; border-radius: 5px; }
+.sidebar-logo-title { display: flex; align-items: baseline; gap: 6px; min-width: 0; white-space: nowrap; }
+.sidebar-logo h1 { color: var(--accent); font-size: 16px; font-weight: 700; letter-spacing: 0.3px; line-height: 1.2; }
+.sidebar-version { font-size: 12px; color: rgba(255,255,255,0.45); letter-spacing: 0.2px; cursor: pointer; }
+.sidebar-version:hover { color: rgba(255,255,255,0.7); }
 
 .sidebar-presence {
   display: flex; align-items: center; justify-content: center; gap: 7px;
