@@ -19,6 +19,7 @@ a = Analysis(
         'database',
         'exports',
         'backup',
+        'presence',
         'pdf_parser',
         'pdf_templates',
         'reportlab',

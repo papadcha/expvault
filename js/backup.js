@@ -1,5 +1,18 @@
 import { escapeHtml, py, showConfirm } from './utils.js';
 
+function _relativeTimeGr(iso) {
+  const then = new Date(iso);
+  if (!iso || isNaN(then)) return '';
+  const diffSec = Math.max(0, Math.round((Date.now() - then.getTime()) / 1000));
+  if (diffSec < 60) return 'μόλις τώρα';
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `πριν ${diffMin} λεπτ${diffMin === 1 ? 'ό' : 'ά'}`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `πριν ${diffHr} ώρ${diffHr === 1 ? 'α' : 'ες'}`;
+  const diffDay = Math.round(diffHr / 24);
+  return `πριν ${diffDay} μέρ${diffDay === 1 ? 'α' : 'ες'}`;
+}
+
 // ── BACKUP ───────────────────────────────────────────────────────────────────
 export async function loadBackupPage() {
   try {
@@ -78,6 +91,7 @@ export async function loadBackupPage() {
     console.error('loadBackupPage:', e);
   }
   bkRefreshRemotes();
+  bkRefreshPresence();
 }
 
 export async function bkPickDir(idx) {
@@ -149,6 +163,46 @@ export async function bkRefreshRemotes() {
       btn.addEventListener('click', () => bkDeleteRemote(btn.dataset.remoteName));
     });
   } catch(e) {
+    el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+export async function bkRefreshPresence() {
+  const el = document.getElementById('bk-presence-list');
+  if (!el) return;
+  try {
+    const users = await py('list_presence');
+    if (users.length === 0) {
+      el.innerHTML = `<div style="padding:16px;color:var(--muted);text-align:center;">Κανένας χρήστης δεν έχει καταγραφεί ακόμα.</div>`;
+      return;
+    }
+    const ONLINE_MS = 2 * 60 * 1000; // "online" αν last_seen < 2 λεπτά
+    const now = Date.now();
+    const rows = users
+      .slice()
+      .sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen))
+      .map(u => {
+        const lastMs = new Date(u.last_seen).getTime();
+        const online = !isNaN(lastMs) && (now - lastMs) < ONLINE_MS;
+        const status = online
+          ? `<span style="color:#4caf50;">● online</span>`
+          : `<span style="color:var(--muted);">τελευταία σύνδεση: ${escapeHtml(_relativeTimeGr(u.last_seen))}</span>`;
+        return `<tr style="border-top:1px solid rgba(255,255,255,0.05);">
+          <td style="padding:8px 12px;font-size:13px;">${escapeHtml(u.user)}</td>
+          <td style="padding:8px 12px;color:var(--muted);font-size:12px;font-family:monospace;">${escapeHtml(u.computer)}</td>
+          <td style="padding:8px 12px;text-align:right;font-size:12px;">${status}</td>
+        </tr>`;
+      }).join('');
+    el.innerHTML = `
+      <table style="width:100%;border-collapse:collapse;">
+        <thead><tr style="background:rgba(0,0,0,0.2);">
+          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--navy2);">Χρήστης</th>
+          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--navy2);">Υπολογιστής</th>
+          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:600;color:var(--navy2);">Κατάσταση</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch (e) {
     el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
   }
 }

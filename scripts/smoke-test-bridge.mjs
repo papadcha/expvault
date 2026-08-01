@@ -84,7 +84,14 @@ try {
   check('ελληνικό κείμενο round-trip χωρίς αλλοίωση', found?.onoma === GREEK);
   if (found) await call('delete_promitheftis', { id: found.id });
 
-  // 3. Κάθε μορφή εξαγωγής εγγράφου — bug: ModuleNotFoundError / NameError
+  // 3. Presence module — εισάγεται σωστά (bridge.spec hiddenimports) και κάνει
+  //    σωστά short-circuit χωρίς configured cloud remote, χωρίς δίκτυο.
+  const hb = await call('send_heartbeat');
+  check('send_heartbeat εισάγεται σωστά (skip χωρίς configured remote)', !hb.error && hb.result?.skipped === true);
+  const pres = await call('list_presence');
+  check('list_presence εισάγεται σωστά (άδεια λίστα χωρίς configured remote)', !pres.error && Array.isArray(pres.result) && pres.result.length === 0);
+
+  // 4. Κάθε μορφή εξαγωγής εγγράφου — bug: ModuleNotFoundError / NameError
   //    μόνο στο packaged exe, αόρατο σε dev mode ή σε static analysis.
   const exportChecks = [
     ['export_excel', 'x.xlsx'],

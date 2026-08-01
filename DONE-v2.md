@@ -93,3 +93,33 @@ input τους — προϋπήρχε ήδη στο v1.1.11, εντοπίστη�
 `arithmos_parstatikos`/`agora_ref`, πρέπει να καλεί `_clean_parst()` στο input της πρώτα —
 δεν υπάρχει κεντρικό boundary layer που το κάνει αυτόματα (θα άξιζε σκέψη σε μελλοντικό
 refactor, αλλά όχι τώρα — ρίσκο χωρίς άμεσο όφελος).
+
+## Presence detection μέσω rclone (ποιος είναι online)
+
+Κάθε εγκατάσταση γράφει periodic heartbeat στο ίδιο rclone remote που ήδη χρησιμοποιείται
+για DB backup/sync (το slot "Cloud (rclone)" στη σελίδα Backup), ώστε άλλες εγκαταστάσεις να
+βλέπουν ποιος χειριστής είναι online. Reference implementation στο sibling project
+`lab-galatista` (`modules/cloud-sync.js`) έκανε τις rclone κλήσεις απευθείας στο Electron main
+process· εδώ όλη η rclone/backup λογική ζει στο Python backend, οπότε το reference
+προσαρμόστηκε στο pattern του `backend/backup.py` αντί να αντιγραφεί.
+
+**Backend** (`backend/presence.py`, νέο αρχείο): `send_heartbeat()` γράφει
+`{user, computer, last_seen}` (UTC ISO8601) σε `<remote>/presence/<computer>__<user>.json` —
+όχι μόνο hostname, ώστε δύο μηχανήματα με ίδιο default hostname (π.χ. δύο καινούργια Windows
+"DESKTOP-XXXXX") να μην αλληλοεπικαλύπτονται. `list_presence()` κάνει ένα `rclone copy
+<remote>/presence <tmpdir>` (όχι `lsjson`+per-file `cat`) και διαβάζει όλα τα ληφθέντα JSON
+τοπικά — ένα round-trip ανεξάρτητα από τον αριθμό εγκαταστάσεων, ίδιο pattern με το
+manifest-merge του `sync-document-library` στο lab-galatista. Ταυτότητα (`user`/`computer`)
+από OS-level `USERNAME`/`USER`/`socket.gethostname()` — καμία νέα ρύθμιση identity, η
+εφαρμογή δεν είχε ποτέ concept "τρέχων χρήστης".
+
+**Bridge/main.js**: νέες εντολές `send_heartbeat`/`list_presence`. Η `send_heartbeat` καλείται
+μόνο από το main process (`main.js`'s `callPython`, το πρώτο `setInterval` σε αυτό το
+codebase — 90 δευτερόλεπτα, μέσα στο εύρος 1-2 λεπτών του spec), όχι από το renderer, οπότε
+δεν μπαίνει στο `ALLOWED_PYTHON_COMMANDS`· η `list_presence` μπαίνει, γιατί τη χρειάζεται το
+UI. Χρειάστηκε `clearInterval` στο `window-all-closed` ώστε το heartbeat να μην τρέξει μετά
+το κλείσιμο του bridge stdin.
+
+**UI** (`js/backup.js`, σελίδα Backup): νέο panel "Συνδεδεμένοι χρήστες" κάτω από τα "Remotes
+rclone" — πράσινο "● online" αν `last_seen` < 2 λεπτά, αλλιώς "τελευταία σύνδεση: πριν Χ" με
+νέο τοπικό relative-time helper (`_relativeTimeGr`, δεν υπήρχε παρόμοιο πουθενά στο repo).

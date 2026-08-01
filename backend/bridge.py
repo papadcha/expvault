@@ -37,6 +37,7 @@ import pdf_parser
 import importlib
 import exports
 import backup
+import presence
 
 def _int_id(payload, key='id'):
     """Επιβεβαιώνει θετικό ακέραιο πριν φτάσει σε destructive delete εντολή —
@@ -492,6 +493,13 @@ def handle(cmd, payload):
 
     if cmd == 'delete_remote':
         return backup.delete_remote(payload['name'])
+
+    # ── PRESENCE ─────────────────────────────────────────────────────────────
+    if cmd == 'send_heartbeat':
+        return presence.send_heartbeat()
+
+    if cmd == 'list_presence':
+        return presence.list_presence()
 
     return {'error': f'Άγνωστη εντολή: {cmd}'}
 

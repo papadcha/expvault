@@ -917,6 +917,17 @@
         «Νέο Remote» ανοίγει terminal με <code>rclone config</code> — κλείστε το terminal και πατήστε 🔄 Ανανέωση.
       </div>
     </div>
+
+    <!-- ── Παρουσία χρηστών (presence) ── -->
+    <div style="max-width:680px;margin-top:36px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+        <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--navy2);">Συνδεδεμένοι χρήστες</h3>
+        <button onclick="bkRefreshPresence()" style="padding:6px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;">🔄 Ανανέωση</button>
+      </div>
+      <div id="bk-presence-list" style="background:var(--card);border-radius:8px;overflow:hidden;font-size:13px;">
+        <div style="padding:16px;color:var(--muted);text-align:center;">Φόρτωση...</div>
+      </div>
+    </div>
   </div>
 
 
@@ -1051,7 +1062,7 @@
 <script type="module">
 import { escapeHtml, py, todayInput, _lock, fmtDate, showConfirm, closeConfirm, checkAdeiaThresholdsOnStartup, checkAdeiaBackupsOnStartup } from './js/utils.js';
 import { tplReset, tplLoadPdf, tplCapture, tplPreview, tplSave, loadTplList, tplDelete, tplExport, tplImport } from './js/templates.js';
-import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore } from './js/backup.js';
+import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore, bkRefreshPresence } from './js/backup.js';
 import { submitVersionIssueReport } from './js/version-notice.js';
 import { loadDropdowns } from './js/state.js';
 import { loadDashboard, loadApothemates } from './js/dashboard.js';
@@ -1087,7 +1098,7 @@ import {
 // global — ES modules don't put their exports on window automatically.
 Object.assign(window, {
   tplReset, tplLoadPdf, tplCapture, tplPreview, tplSave, tplDelete, tplExport, tplImport,
-  bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore,
+  bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore, bkRefreshPresence,
   submitVersionIssueReport,
   closeConfirm,
   fillYlikoForm, saveYliko, deleteYliko, clearYlikoForm,

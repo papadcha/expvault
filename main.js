@@ -136,6 +136,16 @@ function callPython(cmd, payload = {}) {
   });
 }
 
+const PRESENCE_INTERVAL_MS = 90 * 1000; // εντός του 1-2 λεπτών του spec
+let presenceInterval = null;
+
+function startPresenceHeartbeat() {
+  const sendOnce = () => callPython('send_heartbeat').catch(e =>
+    console.error('[Presence] heartbeat απέτυχε:', e.message));
+  sendOnce();
+  presenceInterval = setInterval(sendOnce, PRESENCE_INTERVAL_MS);
+}
+
 // Πρέπει να μείνει συγχρονισμένο με τη λίστα `if cmd == '...'` του backend/bridge.py —
 // αν προστεθεί νέα εντολή εκεί, πρέπει να προστεθεί και εδώ αλλιώς αποτυγχάνει σιωπηλά.
 const ALLOWED_PYTHON_COMMANDS = new Set([
@@ -159,6 +169,7 @@ const ALLOWED_PYTHON_COMMANDS = new Set([
   'get_backup_config', 'save_backup_config', 'run_backup', 'check_startup_backups',
   'list_backups', 'restore_backup',
   'list_rclone_remotes', 'list_remotes_detail', 'delete_remote',
+  'list_presence',
 ]);
 
 function setupIPC() {
@@ -462,11 +473,13 @@ app.commandLine.appendSwitch('lang', 'el');
 app.whenReady().then(() => {
   setupIPC();
   startBridge();
+  startPresenceHeartbeat();
   createSplashWindow();
   createWindow();
 });
 
 app.on('window-all-closed', () => {
+  if (presenceInterval) clearInterval(presenceInterval);
   if (pythonProcess) {
     pythonProcess.stdin.end();
     pythonProcess.kill('SIGTERM');
