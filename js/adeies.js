@@ -53,6 +53,7 @@ function renderAdeiaExpiryBadge(active) {
   if (!active) { badge.style.display = 'none'; return; }
   const days_left = daysUntil(active.imerominia_lixis);
   const cls = days_left === null ? 'adeia-strip-default'
+    : days_left < 0 ? 'adeia-strip-expired'
     : days_left <= 15 ? 'adeia-strip-urgent'
     : days_left <= 30 ? 'adeia-strip-warn'
     : days_left <= 90 ? 'adeia-strip-notice'

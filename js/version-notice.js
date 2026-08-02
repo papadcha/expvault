@@ -54,7 +54,7 @@ export async function showVersionHistory() {
   const allowedMap = new Map((allowed?.versions || []).map(v => [v.version, v]));
 
   const noticeHtml = allowed?.notice
-    ? `<div style="background:#fde8e8;border:1px solid #f5b7b1;color:#7b1c1c;
+    ? `<div style="background:rgba(220,38,38,0.1);border:1px solid #dc2626;
          border-radius:6px;padding:10px 14px;margin-bottom:12px;font-size:13px;">
          ⚠️ ${escapeHtml(allowed.notice)}</div>`
     : '';
@@ -62,8 +62,8 @@ export async function showVersionHistory() {
   const entriesHtml = entries.map(e => {
     const safe      = allowedMap.get(e.version);
     const isCurrent = e.version === currentVersion;
-    const color = safe ? '#68d391' : '#fc8181';
-    const bg    = safe ? '#c6f6d520' : '#fed7d720';
+    const color = safe ? '#22c55e' : '#ef4444';
+    const bg    = safe ? 'rgba(34,197,94,0.06)' : 'rgba(239,68,68,0.06)';
     const action = safe
       ? `<button class="btn btn-outline btn-sm" onclick="window.api.openExternal('${escapeHtml(safe.downloadUrl)}')">⬇ Λήψη</button>`
       : `<span style="color:var(--muted);font-size:11px;">δεν συνιστάται downgrade</span>`;
@@ -193,10 +193,11 @@ export async function refreshPresenceList() {
       box.classList.toggle('presence-clear', others.length === 0);
     }
 
-    // Ακριβή χρώματα από το υπόλοιπο app (όχι αυθαίρετα): --accent = δική μας
-    // κάρτα όταν υπάρχει έστω κι ένας άλλος, --success = δική μας κάρτα όταν
-    // είμαστε μόνοι, --danger = κάρτες άλλων online.
-    const ME_ORANGE = '#e8a020', ME_GREEN = '#1a7a4a', OTHER_RED = '#c0392b';
+    // --accent = δική μας κάρτα όταν υπάρχει έστω κι ένας άλλος, ίδιο ύφος με
+    // το lab-galatista (--ok/--fail) για το πράσινο/κόκκινο — το πορτοκαλί
+    // παραμένει το δικό μας --accent (το lab-galatista δανείζεται εκεί το
+    // πορτοκαλί του λογότυπου του, δεν είναι κοινό token ούτε στο δικό του app).
+    const ME_ORANGE = '#e8a020', ME_GREEN = '#16a34a', OTHER_RED = '#dc2626';
     const cards = onlineUsers
       .slice()
       .sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen))
@@ -211,7 +212,7 @@ export async function refreshPresenceList() {
       }).join('');
     el.innerHTML = `<div style="display:flex;gap:8px;padding:10px;">${cards}</div>`;
   } catch (e) {
-    el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
+    el.innerHTML = `<div style="padding:16px;color:#ef4444;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
   }
 }
 

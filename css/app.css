@@ -13,6 +13,19 @@
   --muted:   #6b7a99;
   --mono:    'IBM Plex Mono', monospace;
   --sans:    'IBM Plex Sans', sans-serif;
+
+  /* Κατάσταση/επείγον (παρουσία, λήξη άδειας, ασφαλές downgrade) — ξεχωριστά
+     από --success/--danger, που ήδη χρησιμοποιούνται ευρέως για κουμπιά και
+     θετικές/αρνητικές τιμές πίνακα. Τιμές ευθυγραμμισμένες με το lab-galatista
+     (--ok/--warn/--fail) ώστε τα δύο projects να "μιλάνε" το ίδιο χρωματικό
+     λεξιλόγιο σε αυτά τα status badges. */
+  --status-ok:           #16a34a;
+  --status-ok-light:     #22c55e;
+  --status-warn-light:   #f59e0b;
+  --status-warn:         #d97706;
+  --status-danger-light: #ef4444;
+  --status-danger:       #dc2626;
+  --status-neutral:      #94a3b8;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -41,14 +54,15 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
    ζει πλέον και η αναλυτική λίστα συνδεδεμένων χρηστών. */
 .sidebar-presence-badge {
   display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: 100%; margin-top: 10px; padding: 7px 10px; border: none; border-radius: 8px;
-  cursor: pointer; font-family: inherit; color: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  transition: filter 0.15s, transform 0.15s;
-  background: linear-gradient(135deg, #22c55e, #15803d);
+  width: 100%; margin-top: 10px; padding: 7px 10px; border-radius: 8px;
+  cursor: pointer; font-family: inherit; font-weight: 700;
+  transition: filter 0.15s, transform 0.15s, background 0.15s, border-color 0.15s;
+  background: rgba(22,163,74,0.16); border: 1px solid rgba(22,163,74,0.35); color: var(--status-ok);
 }
 .sidebar-presence-badge:hover { filter: brightness(1.15); transform: translateY(-1px); }
-.sidebar-presence-badge.presence-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.sidebar-presence-badge.presence-red {
+  background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.4); color: var(--status-danger-light);
+}
 .sidebar-version-top { font-weight: 700; font-size: 16px; letter-spacing: 0.2px; }
 #sidebar-presence-label:not(:empty)::before { content: '· '; }
 
@@ -57,13 +71,13 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
   border-radius: 8px; padding: 12px; margin-bottom: 14px;
   border: 1px solid var(--border); transition: background .2s, border-color .2s;
 }
-#presence-section-box.presence-clear { background: rgba(26,122,74,0.07); border-color: rgba(26,122,74,0.35); }
-#presence-section-box.presence-alert { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); }
-.sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
-.nav-section { padding: 8px 20px 4px; color: rgba(255,255,255,0.3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
+#presence-section-box.presence-clear { background: rgba(22,163,74,0.10); border-color: rgba(22,163,74,0.35); }
+#presence-section-box.presence-alert { background: rgba(220,38,38,0.15); border-color: rgba(220,38,38,0.4); }
+.sidebar-nav { flex: 1; padding: 10px 0; overflow-y: auto; }
+.nav-section { padding: 6px 20px 3px; color: rgba(255,255,255,0.3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 10px 20px; cursor: pointer; transition: all 0.15s;
+  padding: 8px 20px; cursor: pointer; transition: all 0.15s;
   color: rgba(255,255,255,0.65); font-size: 15px; font-weight: 400;
   border-left: 3px solid transparent;
 }
@@ -74,20 +88,20 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 /* ── ΛΩΡΙΔΑ ΆΔΕΙΑΣ ΣΕ ΙΣΧΥ (κάτω μέρος sidebar, θέση πρώην "Έξοδος") ── */
 .adeia-strip {
   display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 10px 10px;
-  padding: 12px 14px; border-radius: 8px; cursor: pointer;
-  color: #fff; font-weight: 700; font-size: 16px;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-  transition: filter 0.15s, transform 0.15s;
+  padding: 12px 14px; border-radius: 8px; cursor: pointer; border: 1px solid;
+  font-weight: 700; font-size: 16px;
+  transition: filter 0.15s, transform 0.15s, background 0.15s, border-color 0.15s;
 }
 .adeia-strip:hover { filter: brightness(1.15); transform: translateY(-1px); }
 .adeia-strip-icon { font-size: 17px; }
 .adeia-strip-text #adeia-strip-num { font-family: var(--mono); }
 
-.adeia-strip-default { background: linear-gradient(135deg, #475569, #1e293b); } /* χωρίς ημ. λήξης */
-.adeia-strip-safe    { background: linear-gradient(135deg, #22c55e, #15803d); } /* >90 ημέρες */
-.adeia-strip-notice  { background: linear-gradient(135deg, #eab308, #a16207); } /* 31-90 ημέρες */
-.adeia-strip-warn    { background: linear-gradient(135deg, #f97316, #c2410c); } /* 16-30 ημέρες */
-.adeia-strip-urgent  { background: linear-gradient(135deg, #ef4444, #b91c1c); } /* ≤15 ημέρες ή ληγμένη */
+.adeia-strip-default { background: rgba(148,163,184,0.14); border-color: rgba(148,163,184,0.4); color: var(--status-neutral); } /* χωρίς ημ. λήξης */
+.adeia-strip-safe    { background: rgba(22,163,74,0.16);   border-color: rgba(22,163,74,0.35);  color: var(--status-ok); } /* >90 ημέρες */
+.adeia-strip-notice  { background: rgba(245,158,11,0.15);  border-color: rgba(245,158,11,0.4);  color: var(--status-warn-light); } /* 31-90 ημέρες */
+.adeia-strip-warn    { background: rgba(217,119,6,0.16);   border-color: rgba(217,119,6,0.4);   color: var(--status-warn); } /* 16-30 ημέρες */
+.adeia-strip-urgent  { background: rgba(239,68,68,0.15);   border-color: rgba(239,68,68,0.4);   color: var(--status-danger-light); } /* 1-15 ημέρες */
+.adeia-strip-expired { background: rgba(220,38,38,0.2);    border-color: rgba(220,38,38,0.5);   color: var(--status-danger); } /* λήγει σήμερα ή έχει ήδη λήξει */
 
 /* ── MAIN ── */
 .main { margin-left: 220px; padding: 32px; min-height: 100vh; }
