@@ -30,10 +30,9 @@
     <button type="button" class="sidebar-icon-btn" onclick="document.querySelector('.nav-item[data-page=&quot;dashboard&quot;]').click()" title="ExpVault — Αρχική">
       <img src="./assets/icon.png" alt="ExpVault" class="icon-big">
     </button>
-    <div id="sidebar-version" class="sidebar-version"></div>
-    <div class="sidebar-presence" id="sidebar-presence" onclick="document.querySelector('.nav-item[data-page=&quot;backup&quot;]').click()" title="Έλεγχος παρουσίας…">
-      <svg class="sidebar-presence-icon" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M7 8a3 3 0 100-6 3 3 0 000 6zM14.5 9a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.615 16.428a1.224 1.224 0 01-.569-1.175 6.002 6.002 0 0111.908 0c.058.467-.172.92-.57 1.174A9.953 9.953 0 017 18a9.953 9.953 0 01-5.385-1.572zM14.5 16h-.106c.07-.297.088-.611.048-.933a7.47 7.47 0 00-1.588-3.755 4.502 4.502 0 015.874 2.636.818.818 0 01-.36.98A7.465 7.465 0 0114.5 16z"/></svg>
-      <span id="sidebar-presence-label">Έλεγχος…</span>
+    <div class="sidebar-presence-badge" id="sidebar-presence-badge" onclick="showVersionHistory()" title="Δες τι άλλαξε">
+      <span id="sidebar-version" class="sidebar-version-top"></span>
+      <span id="sidebar-presence-label"></span>
     </div>
   </div>
   <div class="sidebar-nav">
@@ -925,17 +924,6 @@
         «Νέο Remote» ανοίγει terminal με <code>rclone config</code> — κλείστε το terminal και πατήστε 🔄 Ανανέωση.
       </div>
     </div>
-
-    <!-- ── Παρουσία χρηστών (presence) ── -->
-    <div style="max-width:680px;margin-top:36px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
-        <h3 style="margin:0;font-size:15px;font-weight:700;color:var(--navy2);">Συνδεδεμένοι χρήστες</h3>
-        <button onclick="bkRefreshPresence()" style="padding:6px 14px;background:var(--card);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:var(--text);font-size:12px;cursor:pointer;">🔄 Ανανέωση</button>
-      </div>
-      <div id="bk-presence-list" style="background:var(--card);border-radius:8px;overflow:hidden;font-size:13px;">
-        <div style="padding:16px;color:var(--muted);text-align:center;">Φόρτωση...</div>
-      </div>
-    </div>
   </div>
 
 
@@ -1070,8 +1058,8 @@
 <script type="module">
 import { escapeHtml, py, todayInput, _lock, fmtDate, showConfirm, closeConfirm, checkAdeiaThresholdsOnStartup, checkAdeiaBackupsOnStartup } from './js/utils.js';
 import { tplReset, tplLoadPdf, tplCapture, tplPreview, tplSave, loadTplList, tplDelete, tplExport, tplImport } from './js/templates.js';
-import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore, bkRefreshPresence, refreshSidebarPresence } from './js/backup.js';
-import { submitVersionIssueReport } from './js/version-notice.js';
+import { loadBackupPage, bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore } from './js/backup.js';
+import { submitVersionIssueReport, showVersionHistory, refreshPresenceList, updateSidebarPresenceBadge } from './js/version-notice.js';
 import { loadDropdowns } from './js/state.js';
 import { loadDashboard, loadApothemates } from './js/dashboard.js';
 import { loadYlika, fillYlikoForm, saveYliko, deleteYliko, clearYlikoForm } from './js/ylika.js';
@@ -1106,8 +1094,8 @@ import {
 // global — ES modules don't put their exports on window automatically.
 Object.assign(window, {
   tplReset, tplLoadPdf, tplCapture, tplPreview, tplSave, tplDelete, tplExport, tplImport,
-  bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore, bkRefreshPresence,
-  submitVersionIssueReport,
+  bkPickDir, bkSetRemote, bkRefreshRemotes, bkOpenRcloneTerminal, bkDeleteRemote, bkSave, bkNow, bkRestore,
+  submitVersionIssueReport, showVersionHistory, refreshPresenceList,
   closeConfirm,
   fillYlikoForm, saveYliko, deleteYliko, clearYlikoForm,
   fillPromForm, saveProm, deleteProm, clearPromForm,
@@ -1234,8 +1222,8 @@ loadDashboard();
 checkAdeiaThresholdsOnStartup();
 checkAdeiaBackupsOnStartup();
 checkAdeiaExpiryOnStartup();
-refreshSidebarPresence();
-setInterval(refreshSidebarPresence, 60000);
+updateSidebarPresenceBadge();
+setInterval(updateSidebarPresenceBadge, 60000);
 </script>
 </body>
 </html>

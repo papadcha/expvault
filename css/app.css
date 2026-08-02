@@ -36,20 +36,29 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .sidebar-icon-btn:hover { transform: translateY(-1px); filter: brightness(1.12); }
 .sidebar-icon-btn .icon-big { width: 64px; height: 64px; border-radius: 12px; display: block; }
-.sidebar-version { margin-top: 8px; font-size: 13px; color: rgba(255,255,255,0.5); letter-spacing: 0.2px; cursor: pointer; text-align: center; }
-.sidebar-version:hover { color: rgba(255,255,255,0.75); }
-
-.sidebar-presence {
-  display: flex; align-items: center; justify-content: center; gap: 7px;
-  width: 100%; margin-top: 12px; padding: 8px 10px; border: none; border-radius: 8px;
-  cursor: pointer; font-family: inherit; color: #fff; font-weight: 700; font-size: 11px;
+/* Έκδοση + presence ενωμένα σε ΕΝΑ badge (πράσινο = κανείς άλλος online,
+   κόκκινο = υπάρχει άλλος) — κλικ ανοίγει το Ιστορικό Εκδόσεων modal, όπου
+   ζει πλέον και η αναλυτική λίστα συνδεδεμένων χρηστών. */
+.sidebar-presence-badge {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  width: 100%; margin-top: 10px; padding: 7px 10px; border: none; border-radius: 8px;
+  cursor: pointer; font-family: inherit; color: #fff;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   transition: filter 0.15s, transform 0.15s;
   background: linear-gradient(135deg, #22c55e, #15803d);
 }
-.sidebar-presence:hover { filter: brightness(1.15); transform: translateY(-1px); }
-.sidebar-presence.presence-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-.sidebar-presence-icon { width: 14px; height: 14px; flex-shrink: 0; display: block; }
+.sidebar-presence-badge:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.sidebar-presence-badge.presence-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
+.sidebar-version-top { font-weight: 700; font-size: 13px; letter-spacing: 0.2px; }
+#sidebar-presence-label:not(:empty)::before { content: '· '; }
+
+/* Κουτί με τη λίστα συνδεδεμένων χρηστών μέσα στο modal Ιστορικού Εκδόσεων */
+#presence-section-box {
+  border-radius: 8px; padding: 12px; margin-bottom: 14px;
+  border: 1px solid var(--border); transition: background .2s, border-color .2s;
+}
+#presence-section-box.presence-clear { background: rgba(26,122,74,0.07); border-color: rgba(26,122,74,0.35); }
+#presence-section-box.presence-alert { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); }
 .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
 .nav-section { padding: 8px 20px 4px; color: rgba(255,255,255,0.3); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; }
 .nav-item {

@@ -151,3 +151,41 @@ compact status button στην κορυφή του sidebar, ορατό από π
   ίδια λογική threshold (2 λεπτά), ίδιο "εξαίρεσε τον εαυτό σου" identity filtering, αλλά με
   δικό της UI στο sidebar footer/header layout του lab-galatista αντί να αντιγραφεί
   κατά λέξη.
+
+## Presence badge + Ιστορικό Εκδόσεων redesign — πόρτο από το lab-galatista
+
+Το lab-galatista προχώρησε το presence button παραπάνω σε ένα δεύτερο redesign (2026-08-01,
+βλ. εκεί `CHANGELOG-v2.md` "Presence detection + redesign sidebar/Ιστορικό Εκδόσεων") που
+είχε προαναγγελθεί ότι θα ερχόταν και εδώ (`TODOLIST.md` εκεί: "Εκκρεμεί: το ίδιο pattern στο
+expvault"). Ίδια ιδέα, προσαρμοσμένη στο δικό μας navy sidebar (συμπαγές gradient pill αντί
+για το light-theme translucent box του lab-galatista):
+
+- **Sidebar badge**: το `#sidebar-version` και το `#sidebar-presence` ενώθηκαν σε ΕΝΑ
+  `#sidebar-presence-badge` (πράσινο/κόκκινο ίδιο gradient με πριν) — η ξεχωριστή SVG
+  εικόνα presence αφαιρέθηκε, το πράσινο/κόκκινο χρώμα του ίδιου του κουτιού αρκεί ως status.
+  Click ανοίγει πλέον το modal Ιστορικού Εκδόσεων (`showVersionHistory()`) αντί να πλοηγεί
+  στη σελίδα Backup — η σελίδα Backup δεν έχει πια δικό της presence panel.
+- **Λίστα συνδεδεμένων χρηστών**: μετακόμισε από πίνακα στη σελίδα Backup
+  (`bkRefreshPresence`/`#bk-presence-list`, αφαιρέθηκαν) σε δυναμικές ισομεγέθεις κάρτες
+  (`#presence-list`) μέσα στο modal Ιστορικού Εκδόσεων — μόνο online χρήστες, όχι πίνακας με
+  offline ιστορικό. Το δικό μας entry συνθέτεται client-side αν το πραγματικό heartbeat δεν
+  έχει προλάβει να συγχρονιστεί ΑΚΟΜΑ ΚΑΙ αν υπάρχει ένα stale (παλιό, >2 λεπτά) entry με το
+  ίδιο user/computer στη λίστα — το lab-galatista's αρχικό `alreadyListed` check δεν το
+  ξεχώριζε αυτό (οποιοδήποτε entry με το ίδιο identity μετρούσε ως "already listed"
+  ανεξαρτήτως φρεσκάδας), κάτι που βρέθηκε live στο dev testing εδώ (stale heartbeat file από
+  προηγούμενο test session) — διορθώθηκε ώστε `alreadyListed` να απαιτεί επίσης online.
+  Χρώματα reused από το `:root` του app: `--accent` (#e8a020, δική μας κάρτα όταν υπάρχει
+  άλλος online), `--success` (#1a7a4a, δική μας κάρτα όταν είμαστε μόνοι), `--danger`
+  (#c0392b, κάρτες άλλων online) — αντί για τα literal hex του lab-galatista, ίδια λογική
+  reuse-not-arbitrary αρχή αλλά με τα δικά μας ήδη-υπάρχοντα brand χρώματα.
+- **Bonus fix, ίδιο commit**: το `VERSIONS.md` είναι χειροκίνητα word-wrapped σαν αρχείο
+  κειμένου, και το παλιό `parseVersionsMd`/`white-space:pre-wrap` έκανε τις περιγραφές να
+  "κόβονται" στη μέση ανεξάρτητα από το πλάτος του modal — ίδιο bug που το lab-galatista
+  διόρθωσε στο ίδιο redesign. `parseVersionsMd` (`js/version-notice.js`) ενώνει πλέον
+  συνεχόμενες γραμμές σε ένα bullet μέχρι την επόμενη γραμμή που ξεκινά με λέξη-κλειδί +
+  άνω-κάτω τελεία ("Νέο:", "Fix:", "Αλλαγή:", "Docs:", …) — το ίδιο format δεν χρησιμοποιεί
+  "- " bullets σαν το lab-galatista, οπότε ο κανόνας προσαρμόστηκε σε αυτό το keyword-prefix
+  αντί να αντιγραφεί κατά λέξη.
+
+**Αρχεία:** `index.html`, `css/app.css`, `js/backup.js` (αφαιρέθηκε το presence-panel του),
+`js/version-notice.js` (νέο presence badge/list logic + parser fix).

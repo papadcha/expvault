@@ -1,18 +1,5 @@
 import { escapeHtml, py, showConfirm } from './utils.js';
 
-function _relativeTimeGr(iso) {
-  const then = new Date(iso);
-  if (!iso || isNaN(then)) return '';
-  const diffSec = Math.max(0, Math.round((Date.now() - then.getTime()) / 1000));
-  if (diffSec < 60) return 'μόλις τώρα';
-  const diffMin = Math.round(diffSec / 60);
-  if (diffMin < 60) return `πριν ${diffMin} λεπτ${diffMin === 1 ? 'ό' : 'ά'}`;
-  const diffHr = Math.round(diffMin / 60);
-  if (diffHr < 24) return `πριν ${diffHr} ώρ${diffHr === 1 ? 'α' : 'ες'}`;
-  const diffDay = Math.round(diffHr / 24);
-  return `πριν ${diffDay} μέρ${diffDay === 1 ? 'α' : 'ες'}`;
-}
-
 // ── BACKUP ───────────────────────────────────────────────────────────────────
 export async function loadBackupPage() {
   try {
@@ -91,7 +78,6 @@ export async function loadBackupPage() {
     console.error('loadBackupPage:', e);
   }
   bkRefreshRemotes();
-  bkRefreshPresence();
 }
 
 export async function bkPickDir(idx) {
@@ -164,90 +150,6 @@ export async function bkRefreshRemotes() {
     });
   } catch(e) {
     el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
-  }
-}
-
-const PRESENCE_ONLINE_MS = 2 * 60 * 1000; // "online" αν last_seen < 2 λεπτά
-let _myIdentity = null;
-
-async function _getMyIdentity() {
-  if (_myIdentity === null) {
-    try { _myIdentity = await py('whoami'); } catch { _myIdentity = false; }
-  }
-  return _myIdentity || null;
-}
-
-function _isOnline(u) {
-  const t = new Date(u.last_seen).getTime();
-  return !isNaN(t) && (Date.now() - t) < PRESENCE_ONLINE_MS;
-}
-
-export async function bkRefreshPresence() {
-  const el = document.getElementById('bk-presence-list');
-  if (!el) return;
-  try {
-    const users = await py('list_presence');
-    _renderSidebarPresence(users);
-    if (users.length === 0) {
-      el.innerHTML = `<div style="padding:16px;color:var(--muted);text-align:center;">Κανένας χρήστης δεν έχει καταγραφεί ακόμα.</div>`;
-      return;
-    }
-    const rows = users
-      .slice()
-      .sort((a, b) => new Date(b.last_seen) - new Date(a.last_seen))
-      .map(u => {
-        const online = _isOnline(u);
-        const status = online
-          ? `<span style="color:#4caf50;">● online</span>`
-          : `<span style="color:var(--muted);">τελευταία σύνδεση: ${escapeHtml(_relativeTimeGr(u.last_seen))}</span>`;
-        return `<tr style="border-top:1px solid rgba(255,255,255,0.05);">
-          <td style="padding:8px 12px;font-size:13px;">${escapeHtml(u.user)}</td>
-          <td style="padding:8px 12px;color:var(--muted);font-size:12px;font-family:monospace;">${escapeHtml(u.computer)}</td>
-          <td style="padding:8px 12px;text-align:right;font-size:12px;">${status}</td>
-        </tr>`;
-      }).join('');
-    el.innerHTML = `
-      <table style="width:100%;border-collapse:collapse;">
-        <thead><tr style="background:rgba(0,0,0,0.2);">
-          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--navy2);">Χρήστης</th>
-          <th style="padding:8px 12px;text-align:left;font-size:12px;font-weight:600;color:var(--navy2);">Υπολογιστής</th>
-          <th style="padding:8px 12px;text-align:right;font-size:12px;font-weight:600;color:var(--navy2);">Κατάσταση</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>`;
-  } catch (e) {
-    el.innerHTML = `<div style="padding:16px;color:#e57373;">Σφάλμα: ${escapeHtml(e.message)}</div>`;
-  }
-}
-
-// Badge στην κορυφή του sidebar: πράσινο αν δεν υπάρχει *άλλος* συνδεδεμένος
-// χρήστης (εξαιρείται το δικό μας heartbeat), κόκκινο αν υπάρχει.
-async function _renderSidebarPresence(users) {
-  const btn = document.getElementById('sidebar-presence');
-  const label = document.getElementById('sidebar-presence-label');
-  if (!btn || !label) return;
-  const me = await _getMyIdentity();
-  const others = users.filter(u => !(me && u.user === me.user && u.computer === me.computer));
-  const onlineOthers = others.filter(_isOnline);
-  const someoneElse = onlineOthers.length > 0;
-  btn.classList.toggle('presence-red', someoneElse);
-  label.textContent = someoneElse ? 'Άλλος χρήστης online' : 'Χωρίς άλλο χρήστη';
-  btn.title = someoneElse
-    ? `Συνδεδεμένος: ${onlineOthers.map(u => `${u.user} (${u.computer})`).join(', ')}`
-    : 'Κανένας άλλος χρήστης δεν είναι συνδεδεμένος αυτή τη στιγμή.';
-}
-
-// Κλήση στην εκκίνηση της εφαρμογής και περιοδικά, ανεξάρτητα από το αν η
-// σελίδα Backup έχει ανοίξει ποτέ — το badge πρέπει να είναι πάντα ενήμερο.
-export async function refreshSidebarPresence() {
-  try {
-    await _renderSidebarPresence(await py('list_presence'));
-  } catch {
-    // Χωρίς remote/rclone ρυθμισμένο δεν υπάρχει γνωστή σύγκρουση: παραμένει πράσινο.
-    const btn = document.getElementById('sidebar-presence');
-    const label = document.getElementById('sidebar-presence-label');
-    if (btn) btn.classList.remove('presence-red');
-    if (label) label.textContent = 'Χωρίς άλλο χρήστη';
   }
 }
 
