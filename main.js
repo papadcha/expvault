@@ -5,7 +5,7 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 const https = require('https');
-const { registerVersionIPC, checkVersionNotice } = require('./version-check');
+const { registerVersionIPC, checkVersionNotice, checkForUpdatesV2 } = require('./version-check');
 
 // electron-updater και checkVersionNotice() κοιτάζουν και οι δύο το GitHub repo
 // papadcha/expvault (μόνο v1.x releases εκεί) — ένα side-by-side build σαν το
@@ -387,9 +387,14 @@ function createWindow() {
   mainWindow.loadFile(path.join(__dirname, 'index.html'));
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    if (app.isPackaged && IS_MAIN_LINE) {
-      setTimeout(setupAutoUpdater, 3000);
-      setTimeout(() => checkVersionNotice(mainWindow), 4000);
+    if (app.isPackaged) {
+      if (IS_MAIN_LINE) {
+        setTimeout(setupAutoUpdater, 3000);
+        setTimeout(() => checkVersionNotice(mainWindow), 4000);
+      } else {
+        // ExpVault+/v2 — δικό του, ασφαλέστερο μηχανισμό, βλ. version-check.js.
+        setTimeout(() => checkForUpdatesV2(mainWindow), 4000);
+      }
     }
   });
 

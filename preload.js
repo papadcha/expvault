@@ -24,4 +24,6 @@ contextBridge.exposeInMainWorld('api', {
   getAllowedVersions: ()              => ipcRenderer.invoke('get-allowed-versions'),
   reportVersionIssue: (lastGood, desc) => ipcRenderer.invoke('report-version-issue', lastGood, desc),
   onVersionNotice:    (cb) => ipcRenderer.once('version-notice', (_, info) => cb(info)),
+  onVersionNoticeReady: (cb) => ipcRenderer.once('version-notice-ready', (_, info) => cb(info)),
+  installUpdateFile:  (localPath) => ipcRenderer.invoke('install-update-file', localPath),
 });

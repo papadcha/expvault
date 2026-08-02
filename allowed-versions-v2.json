@@ -1,0 +1,9 @@
+{
+  "_comment": "Manifest ΤΗΣ ΓΡΑΜΜΗΣ v2/ExpVault+ — ξεχωριστό αρχείο από το allowed-versions.json (v1.x/main), fetch-άρεται από version-check.js's checkForUpdatesV2() μέσω raw.githubusercontent.com/.../v2/allowed-versions-v2.json (branch v2, ΟΧΙ main). Αυτός ο διαχωρισμός υπάρχει ώστε οι ήδη εγκατεστημένες v1.x εφαρμογές (που fetch-άρουν το δικό τους αρχείο από main) να μην επηρεαστούν καθόλου από συστάσεις αυτής της γραμμής, ίδιο μοτίβο με το lab-galatista's allowed-versions-v2.json. Δεν υπάρχει ακόμα κανένα πραγματικό ExpVault+ GitHub release — αυτό το αρχείο είναι σκαλωσιά για όταν αποφασιστεί να δημοσιευτεί ένα (βλ. συζήτηση: χρειάζεται ΕΠΙΣΗΣ να αντικατασταθεί το setupAutoUpdater()/electron-updater της γραμμής main πριν γίνει ασφαλές, όχι μόνο αυτό το αρχείο).",
+  "latestRecommendedVersion": "2.0.0",
+  "safeDowngradeFloor": "2.0.0",
+  "notice": null,
+  "versions": [
+    { "version": "2.0.0", "date": null, "downloadUrl": null, "notes": "ExpVault+ — τοπικό test-build, δεν έχει δημοσιευτεί ακόμα ως GitHub release." }
+  ]
+}

@@ -240,21 +240,60 @@ export async function submitVersionIssueReport() {
 // Banner "νέα έκδοση διαθέσιμη" / "γνωστό πρόβλημα σε αυτή την έκδοση,
 // προτείνεται προσωρινό downgrade" — από version-check.js, ξεχωριστό κανάλι
 // (version-notice) από το update-status του electron-updater.
+//
+// Δύο σχήματα info, ίδιο banner: η γραμμή main/v1.x (checkVersionNotice) δεν
+// στέλνει ποτέ localPath — το κουμπί ανοίγει πάντα browser (electron-updater
+// κάνει το πραγματικό download/install εκεί). Η γραμμή v2/ExpVault+
+// (checkForUpdatesV2) στέλνει localPath:null αρχικά, μετά ένα ξεχωριστό
+// 'version-notice-ready' event όταν ολοκληρωθεί η background λήψη — το
+// κουμπί αναβαθμίζεται από "Λήψη" σε "Εγκατάσταση" χωρίς να ξαναχτιστεί.
+let _noticeInfo = null;
+
 export function showVersionNotice(info) {
   const banner = document.getElementById('version-notice-banner');
   const msg    = document.getElementById('version-notice-msg');
   const btn    = document.getElementById('version-notice-btn');
   const isRollback = info.kind === 'rollback';
+  _noticeInfo = info;
 
   msg.textContent = isRollback
     ? `Η έκδοσή σας (v${info.current}) έχει γνωστό πρόβλημα. Προτείνεται προσωρινή επιστροφή σε v${info.latest}${info.notes ? ' — ' + info.notes : ''}`
     : `Νέα έκδοση διαθέσιμη: v${info.latest} (τρέχουσα: v${info.current})`;
-  btn.textContent = isRollback ? `Λήψη v${info.latest}` : 'Λήψη';
-  btn.onclick = () => window.api.openExternal(info.url);
+  btn.textContent = info.localPath
+    ? (isRollback ? `Εγκατάσταση v${info.latest}` : 'Εγκατάσταση')
+    : (isRollback ? `Λήψη v${info.latest}` : 'Λήψη');
+  btn.disabled = false;
+  btn.onclick = _handleVersionNoticeClick;
   banner.style.display = 'flex';
 }
+
+async function _handleVersionNoticeClick() {
+  const info = _noticeInfo;
+  if (!info) return;
+  if (info.localPath && window.api?.installUpdateFile) {
+    const btn = document.getElementById('version-notice-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Άνοιγμα...'; }
+    const res = await window.api.installUpdateFile(info.localPath);
+    if (!res?.ok) {
+      window._showToast?.('⚠️ Δεν ήταν δυνατή η εκκίνηση του installer: ' + (res?.error || 'άγνωστο σφάλμα'), 'error');
+      window.api.openExternal(info.url); // fallback στον browser
+    }
+  } else {
+    window.api.openExternal(info.url);
+  }
+}
+
 if (window.api?.onVersionNotice) {
   window.api.onVersionNotice(showVersionNotice);
+}
+// Μόνο η γραμμή v2/ExpVault+ στέλνει ποτέ αυτό το event (βλ. checkForUpdatesV2).
+if (window.api?.onVersionNoticeReady) {
+  window.api.onVersionNoticeReady((info) => {
+    if (!_noticeInfo || _noticeInfo.latest !== info.latest) return;
+    _noticeInfo.localPath = info.localPath;
+    const btn = document.getElementById('version-notice-btn');
+    if (btn) btn.textContent = btn.textContent.replace('Λήψη', 'Εγκατάσταση');
+  });
 }
 
 // ── ΙΣΤΟΡΙΚΟ ΕΚΔΟΣΕΩΝ / SAFE DOWNGRADE FLOOR ─────────────────────────────────
