@@ -22,6 +22,12 @@ const { app, ipcMain } = require('electron');
 
 const REPO = 'papadcha/expvault';
 
+// Ίδιο guard με το main.js's IS_MAIN_LINE — το allowed-versions.json εδώ
+// περιέχει ΜΟΝΟ v1.x releases/download URLs. Ένα side-by-side build σαν το
+// "ExpVault+" δεν πρέπει να δείχνει live rollback-advice/λήψεις για μια
+// γραμμή προϊόντος που δεν είναι καν δική του.
+const IS_MAIN_LINE = require('./package.json').name === 'expvault';
+
 function _cmpVersion(a, b) {
   const pa = a.split('.').map(Number);
   const pb = b.split('.').map(Number);
@@ -131,6 +137,9 @@ function registerVersionIPC() {
   });
 
   ipcMain.handle('get-allowed-versions', async () => {
+    if (!IS_MAIN_LINE) {
+      return { versions: [], latestRecommendedVersion: null, safeDowngradeFloor: null, notice: null };
+    }
     const allowed = await _fetchAllowedVersions();
     return allowed || { versions: [], latestRecommendedVersion: null, safeDowngradeFloor: null, notice: null };
   });
