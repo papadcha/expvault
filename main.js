@@ -1,10 +1,8 @@
 const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
-const { autoUpdater } = require('electron-updater');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const https = require('https');
 const { registerVersionIPC, checkVersionNotice } = require('./version-check');
 
 let mainWindow = null;
@@ -258,7 +256,6 @@ function setupIPC() {
   });
 
   ipcMain.handle('open-external', (_, url) => shell.openExternal(url));
-  ipcMain.on('update-install', () => autoUpdater.quitAndInstall());
   registerVersionIPC();
 
   ipcMain.on('splash-close', () => splashWindow?.close());
@@ -268,71 +265,6 @@ function setupIPC() {
     mainWindow?.isMaximized() ? mainWindow.unmaximize() : mainWindow?.maximize();
   });
   ipcMain.on('window-close', () => mainWindow?.close());
-}
-
-function checkForUpdatesManually() {
-  const currentVersion = app.getVersion();
-  const req = https.get({
-    hostname: 'api.github.com',
-    path: '/repos/papadcha/expvault/releases/latest',
-    headers: { 'User-Agent': 'ExpVault-Updater' },
-    timeout: 10000,
-  }, (res) => {
-    const chunks = [];
-    res.on('data', chunk => chunks.push(chunk));
-    res.on('end', () => {
-      try {
-        const release = JSON.parse(Buffer.concat(chunks).toString('utf-8'));
-        // Αγνοούμε pre-release/build suffix (π.χ. "1.0.4-beta.1" → "1.0.4")
-        const latest = release.tag_name?.replace(/^v/, '').split(/[-+]/)[0];
-        if (!latest) return;
-        const parseVer = (v) => (v || '').split('.').map(n => parseInt(n, 10) || 0);
-        const [la, lb, lc] = parseVer(latest);
-        const [ca, cb, cc] = parseVer(currentVersion);
-        const isNewer = la > ca || (la === ca && lb > cb) || (la === ca && lb === cb && lc > cc);
-        if (isNewer) {
-          mainWindow?.webContents.send('update-status', {
-            type: 'notify-only',
-            version: latest,
-            url: release.html_url,
-          });
-        }
-      } catch (e) {
-        console.error('[Updater] Parse error:', e.message);
-      }
-    });
-  });
-  req.on('error', err => console.error('[Updater] Network error:', err.message));
-  req.on('timeout', () => req.destroy());
-}
-
-function setupAutoUpdater() {
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
-
-  autoUpdater.on('update-available', (info) => {
-    mainWindow?.webContents.send('update-status', { type: 'available', version: info.version });
-  });
-
-  autoUpdater.on('download-progress', (progress) => {
-    mainWindow?.webContents.send('update-status', { type: 'progress', percent: Math.round(progress.percent) });
-  });
-
-  autoUpdater.on('update-downloaded', (info) => {
-    mainWindow?.webContents.send('update-status', { type: 'downloaded', version: info.version });
-  });
-
-  autoUpdater.on('error', (err) => {
-    console.error('[Updater] electron-updater error:', err.message);
-    checkForUpdatesManually();
-  });
-
-  try {
-    autoUpdater.checkForUpdates();
-  } catch (e) {
-    console.error('[Updater] checkForUpdates failed:', e.message);
-    checkForUpdatesManually();
-  }
 }
 
 function createWindow() {
@@ -355,8 +287,7 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     if (app.isPackaged) {
-      setTimeout(setupAutoUpdater, 3000);
-      setTimeout(() => checkVersionNotice(mainWindow), 4000);
+      setTimeout(() => checkVersionNotice(mainWindow), 3000);
     }
   });
 

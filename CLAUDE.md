@@ -127,18 +127,24 @@ Two non-obvious NSIS constraints, both cost real debugging time to discover:
 
 ## Auto-update
 
-Two independent, parallel mechanisms — don't assume fixing one covers the other:
+As of v1.2.0, `version-check.js` is the **only** update mechanism — `electron-updater` was
+removed entirely (it had no concept of "known bad version" and, more importantly, no concept of
+appId/product-line: it blindly trusts whatever GitHub reports as "latest release" in this repo,
+which would be unsafe once a second product line (branch `v2`/ExpVault+, see below) can ever
+publish its own releases here). `checkVersionNotice()` in `main.js` reads `allowed-versions.json`
+(fetched live from `main`'s raw GitHub content, not bundled), shows the bottom banner
+(`#version-notice-banner`, `js/version-notice.js`) for both "update available" and "known bad
+version, roll back" cases, and downloads the installer in the background — but running it is
+always a manual click (`shell.openPath`), never a silent auto-install. If a release turns out to
+be broken, editing `allowed-versions.json` (lower `latestRecommendedVersion`, set `notice`) is now
+fully sufficient on its own for ≥1.2.0 installs; still mark the GitHub release itself as a
+pre-release too, both as good hygiene (a "Latest" release is manually downloadable straight off
+the public GitHub page regardless of this file) and because installs on ≤1.1.12 still carry the
+old `electron-updater` and need that step (see `RELEASE-CHECKLIST.md` for the full procedure).
 
-- **`electron-updater`** (`main.js`'s `setupAutoUpdater()`): real auto-update via the GitHub
-  Releases API (`package.json`'s `build.publish`), `autoDownload: true`,
-  `autoInstallOnAppQuit: true`. It always pushes whatever release GitHub reports as "latest",
-  full stop — it has no concept of "known bad version".
-- **`version-check.js`** (`allowed-versions.json` + the in-app version-history modal,
-  `js/version-notice.js`): a rollback-notice layer for "this version has a known issue, here's the
-  last safe one" that `electron-updater` can't express. If a release turns out to be broken,
-  editing `allowed-versions.json` alone is **not enough** — `electron-updater` will keep installing
-  it for anyone not yet updated. You must also mark the GitHub release itself as a pre-release (see
-  `RELEASE-CHECKLIST.md` for the full rollback procedure).
+Branch `v2` has its own separate, additional mechanism (`checkForUpdatesV2()`, reading
+`allowed-versions-v2.json` from the `v2` branch instead of `main`) for the "ExpVault+" side-build
+— see `DONE-v2.md`. It does not affect `main` at all.
 
 `js/version-notice.js`'s `parseVersionsMd()` parses `VERSIONS.md` for the in-app history modal —
 each entry's header must match `vX.Y.Z — YYYY-MM-DD` followed by a line of 5+ dashes, exactly the
