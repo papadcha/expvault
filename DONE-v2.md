@@ -225,3 +225,44 @@ gradient) με το lab-galatista, σε 7 νέα `--status-*` tokens στο `:ro
 **Αρχεία:** `css/app.css` (νέα tokens + 3 components), `js/adeies.js` (split expired tier),
 `splash.html` (ίδιο split + flat tiers), `js/version-notice.js` (presence cards, version list,
 schema banner).
+
+## Dual-install: ExpVault+ (v2) εγκαθίσταται παράλληλα με το ExpVault (main)
+
+Στόχος: να μπορεί ο χειριστής να δοκιμάσει τη δουλειά του `v2` σε πραγματικό μηχάνημα χωρίς να
+πειράξει την υπάρχουσα, "εν χρήσει" εγκατάσταση/βάση — ίδιο μοτίβο με το dual-install setup του
+lab-galatista (`daigma-lims` δίπλα στο `lab-galatista`, βλ. εκείνου το
+`Odigies-Dipli-Egkatastasi-v1-v2.md`, εκτός repo).
+
+**Ξεχωριστή ταυτότητα, μόνο στο `v2`** (`package.json`): `name: "expvaultplus"`,
+`appId: "gr.latomeio.expvaultplus"`, `productName: "ExpVault+"`, `version: "2.0.0"` — αυτό
+αυτόματα μετακινεί το data folder σε `%APPDATA%\expvaultplus\` (το Electron το παίρνει από το
+`name`) και δίνει ξεχωριστή καταχώρηση Προγράμματα/Εγκατάσταση αντί να πατήσει πάνω στο
+`gr.latomeio.expvault` του κανονικού ExpVault. Το `main` δεν αλλάζει καθόλου.
+
+**Titlebar/sidebar δείχνουν "ExpVault+" δυναμικά**, όχι hardcoded string — νέο
+`get-app-product-name` IPC (`version-check.js`) + `js/version-notice.js` γεμίζει
+`#titlebar-app-name`/tooltip του sidebar logo. Δύο αποτυχημένες προσπάθειες πριν τη σωστή
+λύση, και οι δύο επιβεβαιωμένες **live σε packaged build**, όχι θεωρητικά:
+1. `require('./package.json').build.productName` — δουλεύει σε dev, σκάει σε packaged
+   (`TypeError: undefined.productName`): το electron-builder αφαιρεί εντελώς το `"build"` key
+   από το package.json μέσα στο `app.asar` (μόνο name/version/description/author/license/
+   main/dependencies/allowScripts επιζούν).
+2. `app.getName()` — επιστρέφει το `"name"` field (`"expvaultplus"`), ΟΧΙ το `productName`,
+   και στα ΔΥΟ mode.
+3. Τελική λύση: `app.isPackaged ? path.basename(process.execPath, '.exe') : package.json's
+   build.productName` — σε packaged build το ίδιο το exe είναι ονομασμένο "ExpVault+.exe" από
+   το electron-builder, άρα το `process.execPath` είναι το μοναδικό αξιόπιστο σημείο αλήθειας.
+
+**Δημόσιο GitHub release**: πρώτα αφαιρέθηκε το `electron-updater` από το `main` (v1.2.0, βλ.
+DONE.md/VERSIONS.md — το `electron-updater` δεν έχει καμία γνώση appId, θα μπορούσε να
+αυτο-εγκαταστήσει ένα ExpVault+ release πάνω σε πραγματικά v1.x installs), ώστε να γίνει
+ασφαλές να δημοσιευτεί το ExpVault+. Το tag είναι σκόπιμα `expvaultplus-v2.0.0` (ΟΧΙ
+`v2.0.0`) — το CLAUDE.md λέει ρητά ότι το `v2` δεν παίρνει tag στο `vX.Y.Z` namespace μέχρι να
+γίνει το πραγματικό main merge, και ένα "v2.0.0" θα έδειχνε σαν επόμενη επίσημη έκδοση στη
+δημόσια σελίδα Releases. Marked pre-release επίσης, ώστε το "Latest" badge του repo να δείχνει
+πάντα στο πραγματικό ExpVault.
+
+**Αρχεία:** `package.json`, `main.js` (IS_MAIN_LINE guard), `version-check.js`
+(`get-app-product-name`, `checkForUpdatesV2`, `allowed-versions-v2.json` fetch από branch `v2`),
+`preload.js`, `index.html`/`js/version-notice.js` (dynamic titlebar), νέο
+`allowed-versions-v2.json`.
