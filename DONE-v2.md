@@ -178,3 +178,50 @@ presence status button ενώθηκαν σε ένα, και η λίστα συν
 
 **Αρχεία:** `index.html`, `css/app.css`, `js/backup.js` (αφαιρέθηκε το presence-panel του),
 `js/version-notice.js` (νέο presence badge/list logic + parser fix).
+
+## Ενιαία παλέτα κατάστασης, ευθυγραμμισμένη με το lab-galatista
+
+Οπτικός έλεγχος (2026-08-02) ανάμεσα στο ExpVault και το αδερφό project lab-galatista έδειξε
+ότι, ενώ το χρωματικό νόημα ταυτίζεται (πράσινο=ήσυχο, κόκκινο=προσοχή, θερμότερο χρώμα όσο
+πιο κοντά στη λήξη/στο πρόβλημα), η υλοποίηση όχι: το presence badge/λωρίδα άδειας του
+sidebar ήταν gradient pills με raw Tailwind hex, ενώ το version-history list και το πάνω
+banner "γνωστό πρόβλημα σχήματος" κουβαλούσαν ο καθένας τη δική του ασύνδετη παλέτα (Chakra
+UI green.300/red.300 στο ένα, ξεχωριστό pastel red στο άλλο) — τουλάχιστον πέντε ασύνδετες
+οικογένειες κόκκινου και τρεις πράσινου μέσα στο ίδιο codebase. Το lab-galatista αντίθετα
+περνάει σχεδόν κάθε τέτοιο badge από τα δικά του `--ok`/`--warn`/`--fail` tokens.
+
+Απόφαση: υιοθέτηση των ίδιων ακριβών χρωμάτων (και του flat outline/fill/font ύφους αντί για
+gradient) με το lab-galatista, σε 7 νέα `--status-*` tokens στο `:root` του `css/app.css`
+(`--status-ok #16a34a`, `--status-ok-light #22c55e`, `--status-warn-light #f59e0b`,
+`--status-warn #d97706`, `--status-danger-light #ef4444`, `--status-danger #dc2626`,
+`--status-neutral #94a3b8`) — ξεχωριστά από τα υπάρχοντα `--success`/`--danger`, που
+παραμένουν αμετάβλητα γιατί χρησιμοποιούνται ευρέως αλλού (κουμπιά, στήλες +/- σε πίνακες) και
+δεν είναι μέρος αυτού του status-signaling συστήματος:
+
+- **`.sidebar-presence-badge`**: gradient pill → flat κουτί (`--status-ok`/`--status-danger-light`
+  fill+border+font, ίδιο pattern με το lab-galatista `.presence-badge`).
+- **`.adeia-strip`** (sidebar) **και `splash.html`'s `.tier-*`** (ίδιοι ακριβώς 5 gradients
+  πριν, ίδια ακριβώς 6 flat κουτιά τώρα): προστέθηκε 6η βαθμίδα `expired`/`tier-expired`,
+  ξεχωριστή από `urgent` — πριν το `days_left <= 15` κάλυπτε ΚΑΙ "λήγει σε λίγες μέρες" ΚΑΙ
+  "ήδη έληξε" με το ίδιο κόκκινο, το lab-galatista ήδη τα ξεχωρίζει σε δύο εντάσεις. Split στο
+  `js/adeies.js` (`days_left < 0` → `adeia-strip-expired`) και στο `splash.html`'s inline
+  tier-λογική.
+- **`#presence-section-box`** (modal Ιστορικού Εκδόσεων): έμεινε flat κουτί όπως πριν, απλά η
+  ένταση του πράσινου/κόκκινου άλλαξε να ταιριάζει με το lab-galatista.
+- **Κάρτες online χρηστών** (`ME_GREEN`/`OTHER_RED` στο `js/version-notice.js`): αντικαθιστά
+  τα `--success`/`--danger` (#1a7a4a/#c0392b) που περιγράφονται στην προηγούμενη ενότητα με τα
+  lab-galatista ισοδύναμα (#16a34a/#dc2626). Το `ME_ORANGE` παραμένει το δικό μας `--accent`
+  (#e8a020, αμετάβλητο) — το lab-galatista δανείζεται εκεί το πορτοκαλί του δικού του
+  λογότυπου, όχι κάποιο κοινό token, οπότε δεν έχει νόημα να το αντιγράψουμε.
+- **Ιστορικό Εκδόσεων list + πάνω banner** (`js/version-notice.js`): Chakra UI hex
+  (`#68d391`/`#fc8181`) και pastel red banner (`#fde8e8`/`#f5b7b1`/`#7b1c1c`) αντικαταστάθηκαν
+  με τα ίδια `--status-*`-ισοδύναμα hex.
+
+Επαληθεύτηκε οπτικά με το `run-expvault` skill (dev mode) και ένα προσωρινό playwright script
+για το splash window (δεν επιλέγεται από το skill's `launch`, βλ. σχόλιο στο `driver.mjs`) —
+δοκιμάστηκαν και οι 6 βαθμίδες αλλάζοντας προσωρινά το `imerominia_lixis` μιας άδειας στη dev
+βάση, με επαναφορά σε `NULL` στο τέλος.
+
+**Αρχεία:** `css/app.css` (νέα tokens + 3 components), `js/adeies.js` (split expired tier),
+`splash.html` (ίδιο split + flat tiers), `js/version-notice.js` (presence cards, version list,
+schema banner).
