@@ -261,11 +261,21 @@ function _loadGithubToken() {
 
 function registerVersionIPC() {
   ipcMain.handle('get-app-version', () => app.getVersion());
-  // productName αντί για app.getName() — δεν θέλουμε να εξαρτηθούμε από την
-  // (ασαφή) προτεραιότητα name/productName του Electron για ό,τι δείχνεται
-  // στον χρήστη, όταν έχουμε ήδη το ρητό productName στο package.json (π.χ.
-  // "ExpVault+" σε build side-by-side με το κανονικό "ExpVault").
-  ipcMain.handle('get-app-product-name', () => require('./package.json').build.productName);
+  // Δοκιμάστηκαν και απορρίφθηκαν 2 πιο "προφανείς" λύσεις πριν αυτή —
+  // κρατάω το σχόλιο γιατί το λάθος είναι εύκολο να ξαναγίνει:
+  // - require('./package.json').build.productName: δουλεύει σε dev, σκάει σε
+  //   packaged build — το electron-builder αφαιρεί εντελώς το "build" key
+  //   από το package.json μέσα στο app.asar.
+  // - app.getName(): επιστρέφει "expvaultplus" (το "name" field) και στα
+  //   ΔΥΟ mode, ΟΧΙ το productName — επαληθεύτηκε live σε packaged build,
+  //   όχι θεωρητικά.
+  // Λύση: σε packaged build, το ίδιο το εκτελέσιμο ΕΙΝΑΙ ονομασμένο με το
+  // productName από το electron-builder (π.χ. "ExpVault+.exe") — το
+  // process.execPath είναι το μοναδικό αξιόπιστο σημείο αλήθειας.
+  ipcMain.handle('get-app-product-name', () => {
+    if (app.isPackaged) return path.basename(process.execPath, '.exe');
+    try { return require('./package.json').build.productName; } catch (e) { return app.getName(); }
+  });
 
   ipcMain.handle('get-version-history', () => {
     try {
