@@ -98,18 +98,15 @@ refactor, αλλά όχι τώρα — ρίσκο χωρίς άμεσο όφελ
 
 Κάθε εγκατάσταση γράφει periodic heartbeat στο ίδιο rclone remote που ήδη χρησιμοποιείται
 για DB backup/sync (το slot "Cloud (rclone)" στη σελίδα Backup), ώστε άλλες εγκαταστάσεις να
-βλέπουν ποιος χειριστής είναι online. Reference implementation στο sibling project
-`lab-galatista` (`modules/cloud-sync.js`) έκανε τις rclone κλήσεις απευθείας στο Electron main
-process· εδώ όλη η rclone/backup λογική ζει στο Python backend, οπότε το reference
-προσαρμόστηκε στο pattern του `backend/backup.py` αντί να αντιγραφεί.
+βλέπουν ποιος χειριστής είναι online. Όλη η rclone/backup λογική ζει στο Python backend, οπότε
+το presence detection ακολουθεί το ίδιο pattern με το `backend/backup.py`.
 
 **Backend** (`backend/presence.py`, νέο αρχείο): `send_heartbeat()` γράφει
 `{user, computer, last_seen}` (UTC ISO8601) σε `<remote>/presence/<computer>__<user>.json` —
 όχι μόνο hostname, ώστε δύο μηχανήματα με ίδιο default hostname (π.χ. δύο καινούργια Windows
 "DESKTOP-XXXXX") να μην αλληλοεπικαλύπτονται. `list_presence()` κάνει ένα `rclone copy
 <remote>/presence <tmpdir>` (όχι `lsjson`+per-file `cat`) και διαβάζει όλα τα ληφθέντα JSON
-τοπικά — ένα round-trip ανεξάρτητα από τον αριθμό εγκαταστάσεων, ίδιο pattern με το
-manifest-merge του `sync-document-library` στο lab-galatista. Ταυτότητα (`user`/`computer`)
+τοπικά — ένα round-trip ανεξάρτητα από τον αριθμό εγκαταστάσεων. Ταυτότητα (`user`/`computer`)
 από OS-level `USERNAME`/`USER`/`socket.gethostname()` — καμία νέα ρύθμιση identity, η
 εφαρμογή δεν είχε ποτέ concept "τρέχων χρήστης".
 
@@ -146,19 +143,12 @@ compact status button στην κορυφή του sidebar, ορατό από π
   είχε διαφορετικά vertical ink metrics ανάμεσα στο automated screenshot tool και το
   πραγματικό desktop, δημιουργώντας misalignment ορατό μόνο στην πραγματική εφαρμογή. Το SVG
   αποφεύγει ολόκληρη αυτή την κλάση bug.
-- Ίδια οικογένεια πράσινο/κόκκινο status button αργότερα αναπαρήχθη στο sibling project
-  `lab-galatista` (`src/index.html`'s `#sidebar-presence-badge`, βλ. εκεί το TODOLIST.md) —
-  ίδια λογική threshold (2 λεπτά), ίδιο "εξαίρεσε τον εαυτό σου" identity filtering, αλλά με
-  δικό της UI στο sidebar footer/header layout του lab-galatista αντί να αντιγραφεί
-  κατά λέξη.
 
-## Presence badge + Ιστορικό Εκδόσεων redesign — πόρτο από το lab-galatista
+## Presence badge + Ιστορικό Εκδόσεων redesign
 
-Το lab-galatista προχώρησε το presence button παραπάνω σε ένα δεύτερο redesign (2026-08-01,
-βλ. εκεί `CHANGELOG-v2.md` "Presence detection + redesign sidebar/Ιστορικό Εκδόσεων") που
-είχε προαναγγελθεί ότι θα ερχόταν και εδώ (`TODOLIST.md` εκεί: "Εκκρεμεί: το ίδιο pattern στο
-expvault"). Ίδια ιδέα, προσαρμοσμένη στο δικό μας navy sidebar (συμπαγές gradient pill αντί
-για το light-theme translucent box του lab-galatista):
+Δεύτερο redesign πάνω στο presence button παραπάνω (2026-08-02): το version badge και το
+presence status button ενώθηκαν σε ένα, και η λίστα συνδεδεμένων χρηστών μετακόμισε από τη
+σελίδα Backup στο modal Ιστορικού Εκδόσεων:
 
 - **Sidebar badge**: το `#sidebar-version` και το `#sidebar-presence` ενώθηκαν σε ΕΝΑ
   `#sidebar-presence-badge` (πράσινο/κόκκινο ίδιο gradient με πριν) — η ξεχωριστή SVG
@@ -169,23 +159,22 @@ expvault"). Ίδια ιδέα, προσαρμοσμένη στο δικό μας
   (`bkRefreshPresence`/`#bk-presence-list`, αφαιρέθηκαν) σε δυναμικές ισομεγέθεις κάρτες
   (`#presence-list`) μέσα στο modal Ιστορικού Εκδόσεων — μόνο online χρήστες, όχι πίνακας με
   offline ιστορικό. Το δικό μας entry συνθέτεται client-side αν το πραγματικό heartbeat δεν
-  έχει προλάβει να συγχρονιστεί ΑΚΟΜΑ ΚΑΙ αν υπάρχει ένα stale (παλιό, >2 λεπτά) entry με το
-  ίδιο user/computer στη λίστα — το lab-galatista's αρχικό `alreadyListed` check δεν το
-  ξεχώριζε αυτό (οποιοδήποτε entry με το ίδιο identity μετρούσε ως "already listed"
-  ανεξαρτήτως φρεσκάδας), κάτι που βρέθηκε live στο dev testing εδώ (stale heartbeat file από
-  προηγούμενο test session) — διορθώθηκε ώστε `alreadyListed` να απαιτεί επίσης online.
-  Χρώματα reused από το `:root` του app: `--accent` (#e8a020, δική μας κάρτα όταν υπάρχει
-  άλλος online), `--success` (#1a7a4a, δική μας κάρτα όταν είμαστε μόνοι), `--danger`
-  (#c0392b, κάρτες άλλων online) — αντί για τα literal hex του lab-galatista, ίδια λογική
-  reuse-not-arbitrary αρχή αλλά με τα δικά μας ήδη-υπάρχοντα brand χρώματα.
+  έχει προλάβει να συγχρονιστεί, ΑΚΟΜΑ ΚΑΙ αν υπάρχει ένα stale (παλιό, >2 λεπτά) entry με το
+  ίδιο user/computer στη λίστα — βρέθηκε live στο dev testing (stale heartbeat file από
+  προηγούμενο test session) ότι το αρχικό `alreadyListed` check δεν ξεχώριζε αυτή την
+  περίπτωση (οποιοδήποτε entry με το ίδιο identity μετρούσε ως "already listed" ανεξαρτήτως
+  φρεσκάδας) — διορθώθηκε ώστε `alreadyListed` να απαιτεί επίσης online. Χρώματα reused από
+  το `:root` του app: `--accent` (#e8a020, δική μας κάρτα όταν υπάρχει άλλος online),
+  `--success` (#1a7a4a, δική μας κάρτα όταν είμαστε μόνοι), `--danger` (#c0392b, κάρτες
+  άλλων online).
 - **Bonus fix, ίδιο commit**: το `VERSIONS.md` είναι χειροκίνητα word-wrapped σαν αρχείο
   κειμένου, και το παλιό `parseVersionsMd`/`white-space:pre-wrap` έκανε τις περιγραφές να
-  "κόβονται" στη μέση ανεξάρτητα από το πλάτος του modal — ίδιο bug που το lab-galatista
-  διόρθωσε στο ίδιο redesign. `parseVersionsMd` (`js/version-notice.js`) ενώνει πλέον
-  συνεχόμενες γραμμές σε ένα bullet μέχρι την επόμενη γραμμή που ξεκινά με λέξη-κλειδί +
-  άνω-κάτω τελεία ("Νέο:", "Fix:", "Αλλαγή:", "Docs:", …) — το ίδιο format δεν χρησιμοποιεί
-  "- " bullets σαν το lab-galatista, οπότε ο κανόνας προσαρμόστηκε σε αυτό το keyword-prefix
-  αντί να αντιγραφεί κατά λέξη.
+  "κόβονται" στη μέση ανεξάρτητα από το πλάτος του modal. `parseVersionsMd`
+  (`js/version-notice.js`) ενώνει πλέον συνεχόμενες γραμμές σε ένα bullet μέχρι την επόμενη
+  γραμμή που ξεκινά με λέξη-κλειδί + άνω-κάτω τελεία ("Νέο:", "Fix:", "Αλλαγή:", "Docs:", …).
+- **Sidebar font sizes**: follow-up στο ίδιο redesign — το `.nav-item`/`.nav-icon`,
+  `.sidebar-version-top` και `.adeia-strip` μεγάλωσαν (13px→15px/16px, 15px→17px) ώστε όλο το
+  sidebar να διαβάζεται σε συνεπές, μεγαλύτερο μέγεθος αντί το badge να ξεχωρίζει μόνο του.
 
 **Αρχεία:** `index.html`, `css/app.css`, `js/backup.js` (αφαιρέθηκε το presence-panel του),
 `js/version-notice.js` (νέο presence badge/list logic + parser fix).
