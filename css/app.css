@@ -49,7 +49,7 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 }
 .sidebar-presence-badge:hover { filter: brightness(1.15); transform: translateY(-1px); }
 .sidebar-presence-badge.presence-red { background: linear-gradient(135deg, #ef4444, #b91c1c); }
-.sidebar-version-top { font-weight: 700; font-size: 13px; letter-spacing: 0.2px; }
+.sidebar-version-top { font-weight: 700; font-size: 16px; letter-spacing: 0.2px; }
 #sidebar-presence-label:not(:empty)::before { content: '· '; }
 
 /* Κουτί με τη λίστα συνδεδεμένων χρηστών μέσα στο modal Ιστορικού Εκδόσεων */
@@ -60,27 +60,27 @@ body { font-family: var(--sans); background: var(--bg); color: var(--text); min-
 #presence-section-box.presence-clear { background: rgba(26,122,74,0.07); border-color: rgba(26,122,74,0.35); }
 #presence-section-box.presence-alert { background: rgba(192,57,43,0.08); border-color: rgba(192,57,43,0.35); }
 .sidebar-nav { flex: 1; padding: 16px 0; overflow-y: auto; }
-.nav-section { padding: 8px 20px 4px; color: rgba(255,255,255,0.3); font-size: 9px; letter-spacing: 2px; text-transform: uppercase; }
+.nav-section { padding: 8px 20px 4px; color: rgba(255,255,255,0.3); font-size: 10px; letter-spacing: 2px; text-transform: uppercase; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 20px; cursor: pointer; transition: all 0.15s;
-  color: rgba(255,255,255,0.65); font-size: 13px; font-weight: 400;
+  color: rgba(255,255,255,0.65); font-size: 15px; font-weight: 400;
   border-left: 3px solid transparent;
 }
 .nav-item:hover { background: rgba(255,255,255,0.07); color: white; }
 .nav-item.active { background: rgba(232,160,32,0.15); color: var(--accent); border-left-color: var(--accent); }
-.nav-item .nav-icon { width: 18px; text-align: center; font-size: 15px; }
+.nav-item .nav-icon { width: 18px; text-align: center; font-size: 17px; }
 
 /* ── ΛΩΡΙΔΑ ΆΔΕΙΑΣ ΣΕ ΙΣΧΥ (κάτω μέρος sidebar, θέση πρώην "Έξοδος") ── */
 .adeia-strip {
   display: flex; align-items: center; justify-content: center; gap: 8px; margin: 0 10px 10px;
   padding: 12px 14px; border-radius: 8px; cursor: pointer;
-  color: #fff; font-weight: 700; font-size: 13px;
+  color: #fff; font-weight: 700; font-size: 16px;
   box-shadow: 0 2px 6px rgba(0,0,0,0.3);
   transition: filter 0.15s, transform 0.15s;
 }
 .adeia-strip:hover { filter: brightness(1.15); transform: translateY(-1px); }
-.adeia-strip-icon { font-size: 15px; }
+.adeia-strip-icon { font-size: 17px; }
 .adeia-strip-text #adeia-strip-num { font-family: var(--mono); }
 
 .adeia-strip-default { background: linear-gradient(135deg, #475569, #1e293b); } /* χωρίς ημ. λήξης */
