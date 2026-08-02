@@ -14,7 +14,7 @@
 <div id="titlebar" style="display:none">
   <div id="titlebar-drag">
     <img src="./assets/icon.png" alt="" class="titlebar-icon">
-    <span>ExpVault</span>
+    <span id="titlebar-app-name">ExpVault</span>
     <span id="titlebar-version" class="titlebar-version"></span>
   </div>
   <div id="titlebar-btns">
@@ -27,7 +27,7 @@
 <!-- SIDEBAR -->
 <nav class="sidebar">
   <div class="sidebar-logo">
-    <button type="button" class="sidebar-icon-btn" onclick="document.querySelector('.nav-item[data-page=&quot;dashboard&quot;]').click()" title="ExpVault — Αρχική">
+    <button type="button" class="sidebar-icon-btn" id="sidebar-logo-btn" onclick="document.querySelector('.nav-item[data-page=&quot;dashboard&quot;]').click()" title="ExpVault — Αρχική">
       <img src="./assets/icon.png" alt="ExpVault" class="icon-big">
     </button>
     <div class="sidebar-presence-badge" id="sidebar-presence-badge" onclick="showVersionHistory()" title="Δες τι άλλαξε">

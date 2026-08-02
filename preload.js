@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('api', {
   openExternal:       (url) => ipcRenderer.invoke('open-external', url),
   installUpdate:      ()   => ipcRenderer.send('update-install'),
   getAppVersion:      ()              => ipcRenderer.invoke('get-app-version'),
+  getAppProductName:  ()              => ipcRenderer.invoke('get-app-product-name'),
   getVersionHistory:  ()              => ipcRenderer.invoke('get-version-history'),
   getAllowedVersions: ()              => ipcRenderer.invoke('get-allowed-versions'),
   reportVersionIssue: (lastGood, desc) => ipcRenderer.invoke('report-version-issue', lastGood, desc),

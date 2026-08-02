@@ -115,6 +115,11 @@ function _loadGithubToken() {
 
 function registerVersionIPC() {
   ipcMain.handle('get-app-version', () => app.getVersion());
+  // productName αντί για app.getName() — δεν θέλουμε να εξαρτηθούμε από την
+  // (ασαφή) προτεραιότητα name/productName του Electron για ό,τι δείχνεται
+  // στον χρήστη, όταν έχουμε ήδη το ρητό productName στο package.json (π.χ.
+  // "ExpVault+" σε build side-by-side με το κανονικό "ExpVault").
+  ipcMain.handle('get-app-product-name', () => require('./package.json').build.productName);
 
   ipcMain.handle('get-version-history', () => {
     try {

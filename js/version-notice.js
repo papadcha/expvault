@@ -270,3 +270,16 @@ if (window.api?.getAppVersion) {
     if (tbEl) tbEl.textContent = 'v' + ver;
   });
 }
+
+// Ίδιο productName με το package.json's build.productName — έτσι ένα build
+// "ExpVault+" (side-by-side με το κανονικό, βλ. dual-install setup) φαίνεται
+// αμέσως διαφορετικό στο titlebar/sidebar, όχι μόνο στον αριθμό έκδοσης.
+if (window.api?.getAppProductName) {
+  window.api.getAppProductName().then(name => {
+    if (!name) return;
+    const tbNameEl = document.getElementById('titlebar-app-name');
+    if (tbNameEl) tbNameEl.textContent = name;
+    const logoBtn = document.getElementById('sidebar-logo-btn');
+    if (logoBtn) logoBtn.title = `${name} — Αρχική`;
+  });
+}

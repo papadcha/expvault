@@ -1,5 +1,5 @@
 {
-  "name": "expvault",
+  "name": "expvaultplus",
   "version": "1.1.11",
   "description": "Βιβλίο Εκρηκτικών Υλών",
   "author": "papadcha",
@@ -13,8 +13,8 @@
     "dist:mac": "electron-builder --mac"
   },
   "build": {
-    "appId": "gr.latomeio.expvault",
-    "productName": "ExpVault",
+    "appId": "gr.latomeio.expvaultplus",
+    "productName": "ExpVault+",
     "files": [
       "main.js",
       "preload.js",
