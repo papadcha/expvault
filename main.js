@@ -398,31 +398,43 @@ function createWindow() {
     }
   });
 
+  // ΔΙΟΡΘΩΘΗΚΕ 2026-09-08 (εντοπίστηκε πρώτα στο port, C:\intake-tool\main.js): το
+  // preventDefault() γινόταν ΜΕΤΑ από ένα await (το get_backup_config), αλλά το
+  // 'close' event του Electron είναι synchronous -- αν δεν καλέσεις preventDefault()
+  // πριν επιστρέψει ο handler (πριν από οποιοδήποτε await), το Electron προχωράει στο
+  // default close ΑΜΕΣΩΣ, αγνοώντας τελείως το async backup logic που ακολουθεί.
+  // Επιβεβαιώθηκε στην πράξη (Playwright, throwaway test DB): το παράθυρο έκλεινε σε
+  // <50ms, μηδέν backup, ανεξάρτητα από το αν υπήρχε configured path ή όχι.
+  // Λύση: preventDefault() ΠΑΝΤΑ πρώτο πράγμα, synchronously· ο async έλεγχος του
+  // config τρέχει μετά και αποφασίζει αν χρειάζεται πραγματικό backup πριν το
+  // πραγματικό mainWindow.close() (bypassed δεύτερη φορά μέσω _closeInProgress).
   let _closeInProgress = false;
-  mainWindow.on('close', async (e) => {
+  mainWindow.on('close', (e) => {
     if (_closeInProgress) return;
-
-    let hasPaths = false;
-    try {
-      const cfg = await callPython('get_backup_config');
-      hasPaths = Array.isArray(cfg?.paths) && cfg.paths.some(p => p);
-    } catch {}
-
-    if (!hasPaths) return;
-
     e.preventDefault();
-    _closeInProgress = true;
 
-    mainWindow.webContents.send('backup-progress', 'start');
-    try {
-      await callPython('run_backup');
-      mainWindow.webContents.send('backup-progress', 'done');
-    } catch (err) {
-      console.error('[Backup] Error on close:', err.message);
-      mainWindow.webContents.send('backup-progress', 'error');
-    }
-    await new Promise(r => setTimeout(r, 900));
-    mainWindow.close();
+    (async () => {
+      let hasPaths = false;
+      try {
+        const cfg = await callPython('get_backup_config');
+        hasPaths = Array.isArray(cfg?.paths) && cfg.paths.some(p => p);
+      } catch {}
+
+      if (hasPaths) {
+        mainWindow.webContents.send('backup-progress', 'start');
+        try {
+          await callPython('run_backup');
+          mainWindow.webContents.send('backup-progress', 'done');
+        } catch (err) {
+          console.error('[Backup] Error on close:', err.message);
+          mainWindow.webContents.send('backup-progress', 'error');
+        }
+        await new Promise(r => setTimeout(r, 900));
+      }
+
+      _closeInProgress = true;
+      mainWindow.close();
+    })();
   });
 
   mainWindow.on('closed', () => {
