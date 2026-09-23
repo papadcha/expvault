@@ -65,6 +65,9 @@ def _build_suggested(header, grammes_raw):
         # ευρετική "τελευταία αγορά που καταχωρήθηκε" δεν αρκεί όταν υπάρχουν
         # πολλές αγορές στην ουρά χωρίς οι επιστροφές τους να ακολουθούν αμέσως.
         'agora_ref': (header.get('agora_ref') or header.get('sxetiko_parastatiko') or '').strip(),
+        # Προαιρετική παρατήρηση κίνησης από το ίδιο το αρχείο (π.χ. «ΠΡΟΣ ΦΥΛΑΞΗ» από το
+        # intake-tool's εξαγωγή εκρηκτικών) — βλ. submitPdfEntries().
+        'paratirishis': (header.get('paratirishis') or '').strip(),
     }
 
 

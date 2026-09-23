@@ -45,6 +45,10 @@ function _populatePdfForm(r) {
   // Hint από το ίδιο το παραστατικό (πεδίο agora_ref, βλ. IMPORT_DATA_PROMPT) —
   // used στο submitPdfEntries() για σωστό matching αγοράς/επιστροφής σε batch.
   window._pdfSuggestedAgoraRef = s.agora_ref || '';
+  // Παρατήρηση από το ίδιο το αρχείο εισαγωγής (π.χ. «ΠΡΟΣ ΦΥΛΑΞΗ»/«ΑΠΟ ΦΥΛΑΞΗ» από
+  // το intake-tool's εξαγωγή εκρηκτικών) — μπαίνει μπροστά από την ετικέτα προέλευσης
+  // στο submitPdfEntries(), ώστε να φαίνεται στο βιβλίο τι είναι η κίνηση.
+  window._pdfSuggestedParatirishis = s.paratirishis || '';
   if (s.imerominia && typeof s.imerominia === 'string') {
     const [d,m,y] = s.imerominia.split('/');
     document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
@@ -307,6 +311,9 @@ export async function submitPdfEntries() {
   // import (window._pdfImportSource, βλ. parsePdf()/_loadImportResult()) ώστε
   // να μένει ιχνηλάσιμο από πού προήλθε κάθε αυτόματη καταχώρηση.
   const sourceLabel = window._pdfImportSource === 'data' ? 'JSON/CSV' : 'PDF';
+  const kinisiParatirishis = window._pdfSuggestedParatirishis
+    ? `${window._pdfSuggestedParatirishis} — Εισαγωγή από ${sourceLabel}`
+    : `Εισαγωγή από ${sourceLabel}`;
 
   let saved = 0, errors = [];
   for (let i=0; i<window.pdfGrammesCount; i++) {
@@ -324,7 +331,7 @@ export async function submitPdfEntries() {
     try {
       await py('add_kinisi', {imerominia, tipos, yliko_id:yliko.id,
         posotita:pos, arithmos_parstatikos:parstatiko,
-        adeia_id:adeiaId, promitheftis_id:promId, paratirishis:`Εισαγωγή από ${sourceLabel}`});
+        adeia_id:adeiaId, promitheftis_id:promId, paratirishis:kinisiParatirishis});
       saved++;
     } catch(e) { errors.push(onoma+': '+e.message); }
   }
