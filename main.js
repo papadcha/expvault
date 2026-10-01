@@ -173,6 +173,7 @@ const ALLOWED_PYTHON_COMMANDS = new Set([
   'list_pdf_templates', 'delete_pdf_template', 'preview_pdf_template', 'save_pdf_template',
   'export_pdf_templates', 'import_pdf_templates', 'build_and_preview_pdf_template',
   'export_ypologismos_pdf', 'export_pdf', 'export_excel', 'export_docx', 'export_lista_agores',
+  'export_deltio_drastiriotitas_excel', 'export_deltio_drastiriotitas_pdf',
   'get_backup_config', 'save_backup_config', 'run_backup', 'check_startup_backups',
   'list_backups', 'restore_backup',
   'list_rclone_remotes', 'list_remotes_detail', 'delete_remote',
