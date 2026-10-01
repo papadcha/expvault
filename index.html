@@ -357,12 +357,14 @@
         <strong id="import-queue-pos"></strong>
         <button class="btn btn-sm btn-accent" id="import-queue-next-btn" onclick="nextImportQueueItem()">⏭ Επόμενο Παραστατικό</button>
         <button class="btn btn-sm btn-outline" id="import-queue-back-btn" onclick="showImportOverview()">🔙 Πίσω στην επισκόπηση</button>
+        <button class="btn btn-sm btn-outline" onclick="saveImportReceipt()" title="Αρχείο με ό,τι καταχωρήθηκε από εξαγωγή του invoicebook">🧾 Απόδειξη εισαγωγής</button>
         <span id="import-queue-errors" style="display:none;color:#c0392b;"></span>
       </div>
     </div>
 
     <div id="import-overview" class="card" style="display:none;">
       <div class="card-title">Επισκόπηση Παραστατικών</div>
+      <div style="margin-bottom:10px;"><button type="button" class="btn btn-sm btn-outline" onclick="saveImportReceipt()" title="Αρχείο με ό,τι καταχωρήθηκε από εξαγωγή του invoicebook — το φορτώνεις στο invoicebook για να επιβεβαιωθεί η εισαγωγή">🧾 Απόδειξη εισαγωγής</button></div>
       <div id="import-overview-errors" style="display:none;margin-bottom:10px;"></div>
       <div style="overflow-x:auto;">
         <table style="width:100%;">
@@ -1077,7 +1079,7 @@ import {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
   parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem, skipDuplicateAndNext,
-  showImportOverview,
+  showImportOverview, saveImportReceipt,
 } from './js/pdf-import.js';
 import { loadExportDropdowns, doExport, exportListaAgores, exportDeltioDrastiriotitas } from './js/export.js';
 import {
@@ -1106,7 +1108,7 @@ Object.assign(window, {
   parsePdf, submitPdfEntries, showEkkEisagogiWait, doAutoKataxorisiEisagogi,
   checkEkkremotitaByParst, deleteParstatiko, closeDiploModal,
   parseImportData, parseImportFolder, copyImportDataPrompt, nextImportQueueItem, skipDuplicateAndNext,
-  showImportOverview,
+  showImportOverview, saveImportReceipt,
   doExport, exportListaAgores, exportDeltioDrastiriotitas,
   showSenario, loadYpologismosAgora, calculateYpologismos,
   kataxoriYpologismos, saveEpistrofiFromYpologismos, exportYpologismosPdf,

@@ -49,6 +49,9 @@ function _populatePdfForm(r) {
   // το intake-tool's εξαγωγή εκρηκτικών) — μπαίνει μπροστά από την ετικέτα προέλευσης
   // στο submitPdfEntries(), ώστε να φαίνεται στο βιβλίο τι είναι η κίνηση.
   window._pdfSuggestedParatirishis = s.paratirishis || '';
+  // Αναγνωριστικά για το αποδεικτικό εισαγωγής (βλ. saveImportReceipt) — μόνο αν το αρχείο ήρθε από export του invoicebook.
+  window._pdfSuggestedExportId = s.export_id || '';
+  window._pdfSuggestedSourceRef = s.source_ref || '';
   if (s.imerominia && typeof s.imerominia === 'string') {
     const [d,m,y] = s.imerominia.split('/');
     document.getElementById('pdf-imerominia').value = y && m && d ? `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}` : '';
@@ -147,6 +150,23 @@ function _loadImportResult(r) {
     showImportOverview();
   } else {
     _showImportQueueItem(0);
+  }
+}
+
+// Αποδεικτικό εισαγωγής: αρχείο JSON με όσα πράγματι καταχωρήθηκαν από εξαγωγή του invoicebook (ανά export και ανά
+// τιμολόγιο). Το invoicebook το φορτώνει («Φόρτωση απόδειξης εισαγωγής») και σημειώνει τα παραστατικά ως ΕΙΣΗΧΘΗ.
+export async function saveImportReceipt() {
+  const ids = [...new Set((window._importQueue || []).map(it => it.suggested?.export_id).filter(Boolean))];
+  const exportId = ids.length === 1 ? ids[0] : '';   // πολλά exports στην ουρά ή κανένα → όλα όσα υπάρχουν στη βάση
+  const stamp = new Date().toISOString().slice(0, 10);
+  const path = await window.api.saveJson({ defaultName: `apodeixi_eisagogis_${exportId || 'ola'}_${stamp}.json` });
+  if (!path) return;
+  try {
+    const r = await py('export_import_receipt', { export_id: exportId || null, out_path: path });
+    if (r && r.ok === false) { alert(r.error || 'Αποτυχία δημιουργίας απόδειξης.'); return; }
+    alert(`Αποθηκεύτηκε η απόδειξη εισαγωγής: ${r.documents} παραστατικά, ${r.lines} γραμμές.\nΦόρτωσέ την στο invoicebook (καρτέλα Εκρηκτικά).`);
+  } catch (e) {
+    alert('Αποτυχία δημιουργίας απόδειξης: ' + e.message);
   }
 }
 
@@ -331,7 +351,8 @@ export async function submitPdfEntries() {
     try {
       await py('add_kinisi', {imerominia, tipos, yliko_id:yliko.id,
         posotita:pos, arithmos_parstatikos:parstatiko,
-        adeia_id:adeiaId, promitheftis_id:promId, paratirishis:kinisiParatirishis});
+        adeia_id:adeiaId, promitheftis_id:promId, paratirishis:kinisiParatirishis,
+        export_id: window._pdfSuggestedExportId || null, source_ref: window._pdfSuggestedSourceRef || null});
       saved++;
     } catch(e) { errors.push(onoma+': '+e.message); }
   }

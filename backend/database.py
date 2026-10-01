@@ -190,6 +190,17 @@ def init_db():
 
         # ── Migrations για παλιότερες εγκαταστάσεις (πίνακες προϋπάρχουν χωρίς κάποια στήλη) ──
 
+        # Migration (2026-10-01): αποδεικτικό εισαγωγής — κάθε κίνηση που ήρθε από export του invoicebook
+        # θυμάται από ποιο export (export_id) και ποιο τιμολόγιο (source_ref) προήλθε, ώστε το ExpVault+
+        # να μπορεί να βγάλει αρχείο-απόδειξη που το invoicebook φορτώνει και επαληθεύει.
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(kiniseis)").fetchall()]
+            if cols and 'export_id' not in cols:
+                conn.execute("ALTER TABLE kiniseis ADD COLUMN export_id TEXT")
+            if cols and 'source_ref' not in cols:
+                conn.execute("ALTER TABLE kiniseis ADD COLUMN source_ref TEXT")
+        except Exception:
+            pass
         # Migration: agora_ref για επιστροφές
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(kiniseis)").fetchall()]
@@ -633,7 +644,8 @@ def get_kiniseis(yliko_id=None, apo=None, eos=None, tipos=None, adeia_id=None):
         return [dict(r) for r in conn.execute(sql, params).fetchall()]
 
 def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
-               adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None):
+               adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None,
+               export_id=None, source_ref=None):
     arithmos_parstatikos = _clean_parst(arithmos_parstatikos)
     agora_ref = _clean_parst(agora_ref)
     # Δεν επιτρέπεται αποθήκευση αυτόματα υπολογισμένων καταναλώσεων
@@ -654,11 +666,48 @@ def add_kinisi(imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
                 agora_ref = last[0]
         conn.execute('''
             INSERT INTO kiniseis(auxon_arithmos,imerominia,tipos,yliko_id,posotita,
-                arithmos_parstatikos,adeia_id,promitheftis_id,paratirishis,ypografi,agora_ref)
-            VALUES(?,?,?,?,?,?,?,?,?,?,?)
+                arithmos_parstatikos,adeia_id,promitheftis_id,paratirishis,ypografi,agora_ref,
+                export_id,source_ref)
+            VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
         ''', (auxon, imerominia, tipos, yliko_id, posotita,
               arithmos_parstatikos or None, adeia_id or None,
-              promitheftis_id or None, paratirishis or None, ypografi or None, agora_ref or None))
+              promitheftis_id or None, paratirishis or None, ypografi or None, agora_ref or None,
+              (export_id or None), (str(source_ref) if source_ref else None)))
+
+def get_import_receipt(export_id=None):
+    """Αποδεικτικό εισαγωγής: όλες οι κινήσεις που ήρθαν από export του invoicebook (έχουν export_id),
+    ομαδοποιημένες ανά export και ανά τιμολόγιο-πηγή. Προαιρετικά μόνο ένα export_id.
+    Επιστρέφει {format, version, exports:[{export_id, documents:[{source_invoice_id, tipos,
+    arithmos_parstatikos, imerominia, imported_at, lines:[{onoma, posotita}]}]}]} — αυτό διαβάζει το
+    invoicebook για να σημειώσει ότι το export ΜΠΗΚΕ πράγματι στο νόμιμο βιβλίο."""
+    from collections import OrderedDict
+    from datetime import datetime
+    q = """SELECT k.export_id, k.source_ref, k.tipos, k.arithmos_parstatikos, k.imerominia,
+                   k.created_at, y.onoma, k.posotita
+           FROM kiniseis k JOIN ylika y ON y.id = k.yliko_id
+           WHERE k.export_id IS NOT NULL AND k.export_id <> ''"""
+    params = []
+    if export_id:
+        q += " AND k.export_id = ?"
+        params.append(export_id)
+    q += " ORDER BY k.export_id, k.imerominia, k.auxon_arithmos"
+    with get_db() as conn:
+        rows = conn.execute(q, params).fetchall()
+    exports = OrderedDict()
+    for r in rows:
+        eid, src, tipos, parst, imer, created, onoma, pos = r[0], r[1], r[2], r[3], r[4], r[5], r[6], r[7]
+        docs = exports.setdefault(eid, OrderedDict())
+        key = (src, tipos, parst, imer)
+        doc = docs.setdefault(key, {
+            'source_invoice_id': src, 'tipos': tipos, 'arithmos_parstatikos': parst,
+            'imerominia': imer, 'imported_at': created, 'lines': []})
+        doc['lines'].append({'onoma': onoma, 'posotita': pos})
+    return {
+        'format': 'expvault-import-receipt', 'version': 1,
+        'generated_at': datetime.now().isoformat(timespec='seconds'),
+        'exports': [{'export_id': eid, 'documents': list(docs.values())} for eid, docs in exports.items()],
+    }
+
 
 def update_kinisi(id, imerominia, tipos, yliko_id, posotita, arithmos_parstatikos,
                   adeia_id, promitheftis_id, paratirishis, ypografi, agora_ref=None):

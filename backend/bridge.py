@@ -140,7 +140,8 @@ def handle(cmd, payload):
             float(payload['posotita']), payload.get('arithmos_parstatikos'),
             payload.get('adeia_id'), payload.get('promitheftis_id'),
             payload.get('paratirishis'), payload.get('ypografi'),
-            agora_ref=payload.get('agora_ref')
+            agora_ref=payload.get('agora_ref'),
+            export_id=payload.get('export_id'), source_ref=payload.get('source_ref')
         )
         result = {'ok': True}
         if payload.get('adeia_id'):
@@ -444,6 +445,17 @@ def handle(cmd, payload):
         with open(out_path, 'wb') as f:
             f.write(data)
         return {'ok': True, 'path': out_path}
+
+    # ── ΑΠΟΔΕΙΚΤΙΚΟ ΕΙΣΑΓΩΓΗΣ (για το invoicebook) ─────────────────────────────────
+    if cmd == 'export_import_receipt':
+        receipt = database.get_import_receipt(payload.get('export_id') or None)
+        docs = sum(len(e['documents']) for e in receipt['exports'])
+        if not docs:
+            return {'ok': False, 'error': 'Δεν υπάρχουν κινήσεις με αναγνωριστικό export (δεν έγινε εισαγωγή από αρχείο του invoicebook).'}
+        with open(payload['out_path'], 'w', encoding='utf-8') as f:
+            json.dump(receipt, f, ensure_ascii=False, indent=2)
+        return {'ok': True, 'path': payload['out_path'], 'exports': len(receipt['exports']), 'documents': docs,
+                'lines': sum(len(d['lines']) for e in receipt['exports'] for d in e['documents'])}
 
     # ── ΔΕΛΤΙΟ ΔΡΑΣΤΗΡΙΟΤΗΤΑΣ ─────────────────────────────────────────────────
     if cmd in ('export_deltio_drastiriotitas_excel', 'export_deltio_drastiriotitas_pdf'):

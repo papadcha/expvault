@@ -68,6 +68,10 @@ def _build_suggested(header, grammes_raw):
         # Προαιρετική παρατήρηση κίνησης από το ίδιο το αρχείο (π.χ. «ΠΡΟΣ ΦΥΛΑΞΗ» από το
         # intake-tool's εξαγωγή εκρηκτικών) — βλ. submitPdfEntries().
         'paratirishis': (header.get('paratirishis') or '').strip(),
+        # Αναγνωριστικά για το αποδεικτικό εισαγωγής (βλ. database.get_import_receipt): από ποιο export του
+        # invoicebook και ποιο τιμολόγιο-πηγή προέρχεται το παραστατικό. Προαιρετικά.
+        'export_id': str(header.get('export_id') or '').strip(),
+        'source_ref': str(header.get('source_invoice_id') or header.get('source_ref') or '').strip(),
     }
 
 
