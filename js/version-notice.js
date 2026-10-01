@@ -127,8 +127,11 @@ const PRESENCE_ONLINE_MS = 2 * 60 * 1000; // "online" αν last_seen < 2 λεπ�
 let _myIdentity = null;
 
 async function _getMyIdentity() {
+  // Αν αποτύχει (π.χ. το bridge δεν είναι έτοιμο στην εκκίνηση) ΔΕΝ το
+  // κρατάμε στην cache — αλλιώς το δικό μας heartbeat μετρούσε ως «άλλος
+  // χρήστης» και το badge έμενε κόκκινο μέχρι επανεκκίνηση.
   if (_myIdentity === null) {
-    try { _myIdentity = await py('whoami'); } catch { _myIdentity = false; }
+    try { _myIdentity = await py('whoami'); } catch { return null; }
   }
   return _myIdentity || null;
 }
@@ -146,7 +149,8 @@ export async function updateSidebarPresenceBadge() {
   if (!badgeEl || !labelEl) return;
   try {
     const [users, me] = await Promise.all([py('list_presence'), _getMyIdentity()]);
-    const others = (users || []).filter(u => !(me && u.user === me.user && u.computer === me.computer));
+    // Χωρίς γνωστή δική μας ταυτότητα δεν μπορούμε να ξεχωρίσουμε ποιος είναι «άλλος» — μένει πράσινο.
+    const others = me ? (users || []).filter(u => !(u.user === me.user && u.computer === me.computer)) : [];
     const onlineOthers = others.filter(_isOnline);
     const online = onlineOthers.length > 0;
 
@@ -180,7 +184,15 @@ export async function refreshPresenceList() {
     // τελευταίο γνωστό heartbeat είναι παλιό/stale, π.χ. προηγούμενη
     // συνεδρία), προσθέτουμε φρέσκο entry εδώ ώστε η λίστα να μην ισχυρίζεται
     // ποτέ "κανένας χρήστης" ενώ κάποιος την κοιτάει.
-    const alreadyListed = me && users.some(u => u.user === me.user && u.computer === me.computer && _isOnline(u));
+    // Αν το δικό μας (φρέσκο) heartbeat υπάρχει ήδη στη λίστα, το σημαίνουμε ως
+    // _isMe — αλλιώς αντιμετωπιζόταν ως «άλλος χρήστης» και η κάρτα/το πλαίσιο
+    // έβγαιναν κόκκινα ενώ ήσουν μόνος.
+    let alreadyListed = false;
+    if (me) {
+      users.forEach(u => {
+        if (u.user === me.user && u.computer === me.computer && _isOnline(u)) { u._isMe = true; alreadyListed = true; }
+      });
+    }
     if (me && !alreadyListed) {
       users.push({ user: me.user, computer: me.computer, last_seen: new Date().toISOString(), _isMe: true });
     }
