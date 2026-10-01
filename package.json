@@ -1,6 +1,6 @@
 {
   "name": "expvaultplus",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Βιβλίο Εκρηκτικών Υλών",
   "author": "papadcha",
   "license": "MIT",
@@ -73,7 +73,7 @@
     }
   },
   "devDependencies": {
-    "electron": "^43.1.0",
+    "electron": "^43.7.7",
     "electron-builder": "^26.15.3",
     "playwright-core": "^1.61.1"
   },

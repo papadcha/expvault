@@ -4,6 +4,18 @@
 ίδιος σκοπός με το [`DONE.md`](DONE.md) του v1 αλλά ξεχωριστό γιατί τίποτα εδώ δεν έχει
 κυκλοφορήσει ακόμα. Δείτε [`VERSIONS-v2.md`](VERSIONS-v2.md) για τη user-facing σύνοψη.
 
+## Έκδοση 2.0.1 (προετοιμασία, αδημοσίευτη): διορθώσεις export, αποδεικτικό εισαγωγής, ενημέρωση bundled — 2026-10-01
+
+- **main.js allowlist**: οι εντολές `export_deltio_drastiriotitas_excel/_pdf` έλειπαν από το `ALLOWED_PYTHON_COMMANDS` (το `js/export.js` φτιάχνει το όνομα δυναμικά, γι' αυτό δεν φαινόταν
+  με grep) → «Άγνωστη εντολή». Έλεγχος και των 67 εντολών του `bridge.py`: μόνο αυτές έλειπαν (το `send_heartbeat` το καλεί το ίδιο το `main.js`). Commit 521ec58.
+- **Export βιβλίου (`exports.py`/`database.py`)**: κανονικοποίηση ids υλικών με βάση το όνομα (`canonicalize_kiniseis`, `canonical_all_ylika`, 8 σταθερά υλικά, τα υπόλοιπα > 100000)·
+  `derive_export_group()` σε add/update υλικού + idempotent backfill στην εκκίνηση. Επαληθεύτηκε: v1 παλιός ↔ νέος κώδικας ίδιος σε 4 modes NONEL × 3 formats· ExpVault+ ίδιες επικεφαλίδες και τιμές με το v1. Commit ad01521.
+- **Αποδεικτικό εισαγωγής**: στήλες `export_id`, `source_ref` στο `kiniseis` (migration), `import_data._build_suggested` τα κρατά, `add_kinisi` τα γράφει, `get_import_receipt()`, bridge εντολή
+  `export_import_receipt` (+ allowlist), `saveImportReceipt()` στο `js/pdf-import.js`, κουμπιά στο `index.html`. Μορφή: `expvault-import-receipt` v1. Commit 837ecad.
+- **Bundled/Build**: `pypdf==6.19.0` στο `requirements.txt` (έλειπε· το `pdf_parser.py` το χρειάζεται — σε καθαρό μηχάνημα το bridge.exe θα χτιζόταν χωρίς αυτό)· `reportlab==5.0.1`, `pyinstaller==6.22.3`·
+  Electron `^43.7.7` (43.7.7)· ενσωματωμένο `assets/rclone/rclone.exe` 1.74.4 → **1.75.1** (έλεγχος SHA-256 με το δημοσιευμένο `SHA256SUMS` του rclone.org· η PGP υπογραφή δεν επαληθεύτηκε)·
+  `package.json` έκδοση 2.0.1. **Δεν έχει γίνει build** ούτε δημοσίευση release· `allowed-versions-v2.json` ΔΕΝ αλλάζει πριν τη δημοσίευση. Σημείωση: το `github-token.json` (fine-grained PAT, μόνο «Issues: Read and write» στο `papadcha/expvault`, για το κουμπί «Αναφορά Προβλήματος» — ΟΧΙ για το presence, που δουλεύει μέσω rclone) ενσωματώνεται στον installer σκόπιμα, βλ. `RELEASE-CHECKLIST.md`· το scope του πραγματικού token δεν επαληθεύτηκε από εδώ.
+
 ## Παρατήρηση κίνησης από το αρχείο εισαγωγής (`paratirishis`) — 2026-09-23
 
 Το JSON/CSV import δέχεται πλέον προαιρετικό πεδίο `paratirishis` ανά παραστατικό
