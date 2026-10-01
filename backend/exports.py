@@ -78,6 +78,89 @@ def fmt_num(val):
 # Σειρά εμφάνισης υλικών στο export
 YLIKA_ORDER_IDS = [1, 4, 3, 2, 5, 10, 9, 33]
 
+# ── Κανονικοποίηση ids υλικών (διόρθωση 2026-10-01) ──────────────────────────────
+# Όλο το export του βιβλίου (PDF/Excel/Word) έχει σκληρά κωδικοποιημένα ids υλικών
+# (YLIKA_ORDER_IDS, FIXED, GROUPED_SHORT_LABEL, _MERGED…) που ισχύουν ΜΟΝΟ στην αρχική βάση
+# (1=ANFO, 2=EM-EX, 3/4=POLADYN, 5=ΒΡΑΔΥΚΑΥΣΤΗ, 9=ΚΟΙΝΟΙ, 10=ΑΚΑΡΙΑΙΑ, 33=ΗΛΕΚΤΡΙΚΟΙ). Σε βάση
+# όπου τα υλικά δημιουργήθηκαν με άλλη σειρά (π.χ. ExpVault+ μετά από import) τα ids δείχνουν σε
+# ΑΛΛΑ υλικά και οι ποσότητες έπεφταν κάτω από λάθος επικεφαλίδες. Εδώ κάθε υλικό «μεταφράζεται» στο
+# id-ΘΕΣΗ του με βάση το ΟΝΟΜΑ του (τα 8 σταθερά) και τα υπόλοιπα μετακινούνται σε ids πάνω από
+# _ID_OFFSET, ώστε να μη συγκρούονται. Αν η βάση έχει ήδη τα «σωστά» ids (π.χ. v1) η αντιστοίχιση είναι
+# ταυτοτική για τα σταθερά υλικά.
+_SLOT_NAMES = {
+    1: 'ΠΕΤΡΑΜΜΩΝΙΤΗΣ (AN-FO)',
+    4: 'POLADYN 31 ECO 65X500MM',
+    3: 'POLADYN 31 ECO 38X380MM',
+    2: 'EM-EX LC - 30, 65MM',
+    5: 'ΒΡΑΔΥΚΑΥΣΤΗ ΘΡΥΑΛΛΙΔΑ (PVC)',
+    10: 'ΑΚΑΡΙΑΙΑ ΘΡΥΑΛΛΙΔΑ 12GR/M PETΝ',
+    9: 'ΚΟΙΝΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ ΝΟ.8',
+    33: 'ΗΛΕΚΤΡΙΚΟΙ ΠΥΡΟΚΡΟΤΗΤΕΣ ΝΟ.8',
+}
+_ID_OFFSET = 100000
+_GREEK_TO_LATIN = str.maketrans('ΑΒΕΖΗΙΚΜΝΟΡΤΥΧ', 'ABEZHIKMNOPTYX')
+
+
+def _ykey(name):
+    """Κεφαλαία, μόνο γράμματα/ψηφία, ομόγλυφα ελληνικά→λατινικά (ανεκτικό σε μίξη αλφαβήτων)."""
+    return re.sub(r'[^0-9A-Z]', '', (name or '').upper().translate(_GREEK_TO_LATIN))
+
+
+_SLOT_BY_KEY = {_ykey(n): sid for sid, n in _SLOT_NAMES.items()}
+
+
+def _derive_export_group(onoma):
+    """Το export_group από το όνομα, όταν λείπει (ίδιοι κανόνες με το database.derive_export_group)."""
+    o = (onoma or '').upper()
+    if o.startswith('NONEL SNAPLINE'):
+        return 'NONEL SNAPLINE'
+    if o.startswith('NONEL UNIDET'):
+        return 'NONEL UNIDET'
+    if o.startswith('NONEL LP'):
+        return 'NONEL LP'
+    if 'POLADYN' in o:
+        return 'POLADYN'
+    if 'ΘΡΥΑΛΛΙΔΑ' in o:
+        return 'ΘΡΥΑΛΛΙΔΑ'
+    return None
+
+
+def _canon_id_map():
+    from database import get_all_ylika
+    m = {}
+    for y in get_all_ylika():
+        sid = _SLOT_BY_KEY.get(_ykey(y.get('onoma')))
+        m[y['id']] = sid if sid is not None else y['id'] + _ID_OFFSET
+    return m
+
+
+def canonical_all_ylika():
+    """Ό,τι επιστρέφει το database.get_all_ylika(), με κανονικοποιημένα ids και export_group."""
+    from database import get_all_ylika
+    m = _canon_id_map()
+    out = []
+    for y in get_all_ylika():
+        y = dict(y)
+        y['id'] = m[y['id']]
+        if not y.get('export_group'):
+            y['export_group'] = _derive_export_group(y.get('onoma'))
+        out.append(y)
+    return out
+
+
+def canonicalize_kiniseis(kiniseis):
+    """Αντίγραφο των kiniseis με κανονικοποιημένο yliko_id (και export_group όπου λείπει)."""
+    m = _canon_id_map()
+    out = []
+    for k in kiniseis:
+        k = dict(k)
+        k['yliko_id'] = m.get(k['yliko_id'], k['yliko_id'] + _ID_OFFSET)
+        if not k.get('export_group'):
+            k['export_group'] = _derive_export_group(k.get('yliko_onoma'))
+        out.append(k)
+    return out
+
+
 def _is_nonel(ydata):
     grp = ydata.get('export_group') or ''
     return grp.startswith('NONEL ')
@@ -97,8 +180,7 @@ def _sort_key(yid, ydata):
         return 500
 
 def get_ylika_order(kiniseis, nonel_mode='detail'):
-    from database import get_all_ylika
-    all_ylika = {y['id']: y for y in get_all_ylika()}
+    all_ylika = {y['id']: y for y in canonical_all_ylika()}
 
     # Fixed σειρά: ANFO, POLADYN 65, POLADYN 38, EM-EX, ΒΡΑΔΥΚΑΥΣΤΗ, ΑΚΑΡΙΑΙΑ, ΚΟΙΝΟΙ, ΗΛΕΚΤΡΙΚΟΙ, NONEL
     FIXED = [1, 4, 3, 2, 5, 10, 9, 33]
@@ -419,6 +501,7 @@ def build_book_rows(kiniseis):
 # ─── PDF ─────────────────────────────────────────────────────────────────────
 
 def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 'iosevka', nonel_mode: str = 'detail', cover_page: bool = False, blank_pages: int = 0) -> bytes:
+    kiniseis = canonicalize_kiniseis(kiniseis)
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4, landscape
     from reportlab.lib.units import cm
@@ -433,7 +516,7 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
     ylika_order = get_ylika_order(kiniseis, nonel_mode)
     rows, kat_by_parst = build_book_rows(kiniseis)
 
-    from database import get_all_ylika as _gay_main
+    _gay_main = canonical_all_ylika
     _all_y = {y['id']: y for y in _gay_main()}
     nonel_delay_map = {}
     if nonel_mode == 'subgroup':
@@ -865,13 +948,14 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
 # ─── Excel ────────────────────────────────────────────────────────────────────
 
 def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode: str = 'detail') -> bytes:
+    kiniseis = canonicalize_kiniseis(kiniseis)
     import openpyxl
     from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
     from openpyxl.utils import get_column_letter
 
     rows, kat_by_parst = build_book_rows(kiniseis)
 
-    from database import get_all_ylika as _gay_xl
+    _gay_xl = canonical_all_ylika
     _all_y = {y['id']: y for y in _gay_xl()}
 
     _MERGED_IDS = {'POLADYN': [4, 3], 'THRYALLIDES': [5, 10], 'KAPSYLIA': [9, 33]}
@@ -1181,6 +1265,7 @@ def export_excel(kiniseis: list, yliko_label: str, period_label: str, nonel_mode
 # ─── Word (docx) ─────────────────────────────────────────────────────────────
 
 def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode: str = 'detail') -> bytes:
+    kiniseis = canonicalize_kiniseis(kiniseis)
     from docx import Document
     from docx.shared import Cm, Pt, RGBColor
     from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -1189,7 +1274,7 @@ def export_docx(kiniseis: list, yliko_label: str, period_label: str, nonel_mode:
 
     rows, kat_by_parst = build_book_rows(kiniseis)
 
-    from database import get_all_ylika as _gay
+    _gay = canonical_all_ylika
     _all_y = {y['id']: y for y in _gay()}
 
     # Build virtual_order με merged στήλες (ίδια λογική PDF/Excel)

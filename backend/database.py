@@ -250,6 +250,15 @@ def init_db():
                     ELSE NULL END""")
         except Exception:
             pass
+        # Migration (2026-10-01): backfill export_group όπου λείπει — υλικά που δημιουργήθηκαν αυτόματα από το
+        # import (js/pdf-import.js) δεν είχαν ομάδα και τα NONEL έβγαιναν επίπεδα στα εξαγόμενα βιβλία.
+        try:
+            for r in conn.execute("SELECT id, onoma FROM ylika WHERE export_group IS NULL OR export_group=''").fetchall():
+                g = derive_export_group(r[1])
+                if g:
+                    conn.execute("UPDATE ylika SET export_group=? WHERE id=?", (g, r[0]))
+        except Exception:
+            pass
         # Migration: nomiki_katigoria στα ylika (νόμιμη κατηγορία για Δελτίο Δραστηριότητας)
         try:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(ylika)").fetchall()]
@@ -303,6 +312,23 @@ def get_all_ylika():
         return [dict(r) for r in conn.execute(
             "SELECT * FROM ylika ORDER BY onoma").fetchall()]
 
+def derive_export_group(onoma):
+    """Το export_group (ομαδοποίηση στηλών των εξαγωγών) από το όνομα του υλικού, όταν δεν δίνεται ρητά·
+    ίδιοι κανόνες με την παλιά migration από το `kategoria`. Υλικά χωρίς ομάδα (ANFO, EM-EX…) → None."""
+    o = (onoma or '').upper()
+    if o.startswith('NONEL SNAPLINE'):
+        return 'NONEL SNAPLINE'
+    if o.startswith('NONEL UNIDET'):
+        return 'NONEL UNIDET'
+    if o.startswith('NONEL LP'):
+        return 'NONEL LP'
+    if 'POLADYN' in o:
+        return 'POLADYN'
+    if 'ΘΡΥΑΛΛΙΔΑ' in o:
+        return 'ΘΡΥΑΛΛΙΔΑ'
+    return None
+
+
 def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None, nomiki_katigoria=None):
     with get_db() as conn:
         existing = conn.execute(
@@ -312,6 +338,7 @@ def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export
         if existing:
             return existing[0]
         nomiki_katigoria = nomiki_katigoria or classify_nomiki_katigoria(onoma)
+        export_group = export_group or derive_export_group(onoma)
         conn.execute(
             "INSERT INTO ylika(onoma,diatomi_mm,monada_metrisis,paratirishis,export_group,nomiki_katigoria) VALUES(?,?,?,?,?,?)",
             (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, nomiki_katigoria))
@@ -319,6 +346,7 @@ def add_yliko(onoma, diatomi_mm, monada, paratirishis, export_group=None, export
 def update_yliko(id, onoma, diatomi_mm, monada, paratirishis, export_group=None, export_subgroup=None, nomiki_katigoria=None):
     with get_db() as conn:
         nomiki_katigoria = nomiki_katigoria or classify_nomiki_katigoria(onoma)
+        export_group = export_group or derive_export_group(onoma)
         conn.execute(
             "UPDATE ylika SET onoma=?,diatomi_mm=?,monada_metrisis=?,paratirishis=?,export_group=?,nomiki_katigoria=? WHERE id=?",
             (onoma.upper(), diatomi_mm or None, monada, paratirishis or None, export_group, nomiki_katigoria, id))
