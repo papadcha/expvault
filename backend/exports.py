@@ -665,8 +665,10 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
                 ('LINEBELOW', (0, 3), (-1, 3), 1.0, colors.HexColor('#9AAAB5')),
                 ('TOPPADDING', (0, 0), (-1, -1), 3),
                 ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-                ('LEFTPADDING', (0, 0), (-1, -1), 3),
-                ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+                # Περιθώρια 1.5/1.5pt (όχι 3/4): με 25 στήλες NONEL (~0.69cm) οι τιμές «17,00»/«115,00» και οι
+                # επικεφαλίδες «SL109»/«NO.20» έσπαγαν σε 2 γραμμές (βλ. DONE/TODO ExpVault+, 2026-10-02)
+                ('LEFTPADDING', (0, 0), (-1, -1), 1.5),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 1.5),
             ] + spans
 
         # Μη-ομοιόμορφο πλάτος: πλατύτερες οι στήλες με μεγάλους αριθμούς
@@ -717,8 +719,8 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
             ('TOPPADDING',   (0,0), (-1,-1), 3),
             ('BOTTOMPADDING',(0,0), (-1,-1), 3),
-            ('LEFTPADDING',  (0,0), (-1,-1), 3),
-            ('RIGHTPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',  (0,0), (-1,-1), 1.5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 1.5),
         ]
         HDR_ROWS = 2
 
@@ -811,8 +813,8 @@ def export_pdf(kiniseis: list, yliko_label: str, period_label: str, font: str = 
             ('LINEBELOW',    (0,1), (-1,1), 1.0, colors.HexColor('#9AAAB5')),
             ('TOPPADDING',   (0,0), (-1,-1), 3),
             ('BOTTOMPADDING',(0,0), (-1,-1), 3),
-            ('LEFTPADDING',  (0,0), (-1,-1), 3),
-            ('RIGHTPADDING', (0,0), (-1,-1), 4),
+            ('LEFTPADDING',  (0,0), (-1,-1), 1.5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 1.5),
         ]
     r_style.append(('ALIGN', (2, HDR_ROWS), (1+n_ylika_cols, -1), 'RIGHT'))
 
