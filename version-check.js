@@ -279,7 +279,10 @@ function registerVersionIPC() {
 
   ipcMain.handle('get-version-history', () => {
     try {
-      const content = fs.readFileSync(path.join(__dirname, 'VERSIONS.md'), 'utf-8');
+      // Η γραμμή ExpVault+ (v2.x) έχει δικό της ιστορικό — το VERSIONS.md είναι της v1.x και
+      // δεν περιέχει καμία έκδοση 2.x (το modal «Ιστορικό Εκδόσεων» έδειχνε μόνο το δέντρο 1.x).
+      const file = IS_MAIN_LINE ? 'VERSIONS.md' : 'VERSIONS-v2.md';
+      const content = fs.readFileSync(path.join(__dirname, file), 'utf-8');
       return { ok: true, content };
     } catch (e) {
       return { ok: false, error: e.message };
