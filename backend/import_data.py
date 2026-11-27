@@ -131,7 +131,12 @@ def parse_import_items(text, fmt):
     raise ValueError(f'Άγνωστη μορφή αρχείου: {fmt}')
 
 
-def _fmt_for(filename):
+def _fmt_for(filename, text=''):
+    # Το περιεχόμενο υπερισχύει της κατάληξης: τα LLM (π.χ. Gemini) δίνουν συχνά JSON
+    # που ο χρήστης σώζει ως .csv.
+    stripped = text.lstrip('﻿ \t\r\n')
+    if stripped.startswith(('{', '[', '```')):
+        return 'json'
     return 'csv' if filename.lower().endswith('.csv') else 'json'
 
 
@@ -143,9 +148,9 @@ def _wrap_items(items, source):
 
 
 def parse_single_file(path):
-    fmt = _fmt_for(path)
     with open(path, 'r', encoding='utf-8-sig') as f:
         text = f.read()
+    fmt = _fmt_for(path, text)
     return _wrap_items(parse_import_items(text, fmt), os.path.basename(path))
 
 
@@ -175,7 +180,7 @@ def parse_zip(zippath):
         for name in names:
             try:
                 text = zf.read(name).decode('utf-8-sig')
-                items = parse_import_items(text, _fmt_for(name))
+                items = parse_import_items(text, _fmt_for(name, text))
                 results.extend(_wrap_items(items, name))
             except Exception as e:
                 errors.append({'source': name, 'error': str(e)})
